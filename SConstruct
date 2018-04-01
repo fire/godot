@@ -190,6 +190,7 @@ opts.Add(BoolVariable('builtin_squish', "Use the builtin squish library", True))
 opts.Add(BoolVariable('builtin_thekla_atlas', "Use the builtin thekla_altas library", True))
 opts.Add(BoolVariable('builtin_zlib', "Use the builtin zlib library", True))
 opts.Add(BoolVariable('builtin_zstd', "Use the builtin zstd library", True))
+opts.Add(BoolVariable('builtin_yojimbo', "Use the buildin yojimbo library", True))
 opts.Add(BoolVariable('no_editor_splash', "Don't use the custom splash screen for the editor", False))
 
 # Compilation environment setup
