@@ -23,6 +23,7 @@
 
 #pragma once
 #include "thirdparty/yojimbo/yojimbo.h"
+#include "YojimboGodotAdapter.h"
 #include <core/io/networked_multiplayer_peer.h>
 
 class NetworkedMultiplayerYojimbo : public NetworkedMultiplayerPeer {
@@ -93,6 +94,16 @@ public:
 
 	// Custom
 	void set_log_level(int32_t level);
+
+	void on_server_client_connected(int32_t clientIndex)
+	{
+		emit_signal("peer_connected", clientIndex);
+	}
+	void on_server_client_disconnected(int32_t clientIndex)
+	{
+		emit_signal("connection_failed");
+		emit_signal("peer_disconnected", clientIndex);
+	}
 
 protected:
 	static void _bind_methods();
