@@ -22,8 +22,8 @@
 // -- Godot Engine <https://godotengine.org>
 
 #pragma once
-#include "thirdparty/yojimbo/yojimbo.h"
 #include "YojimboGodotAdapter.h"
+#include "thirdparty/yojimbo/yojimbo.h"
 #include <core/io/networked_multiplayer_peer.h>
 
 class NetworkedMultiplayerYojimbo : public NetworkedMultiplayerPeer {
@@ -60,7 +60,7 @@ public:
 			numMessagesSentToClient(0),
 			numMessagesReceivedFromClient(0),
 			numMessagesReceivedFromServer(0),
-			bind_ip("127.0.0.1"){
+			bind_ip("127.0.0.1") {
 	}
 	~NetworkedMultiplayerYojimbo() {
 	}
@@ -95,12 +95,10 @@ public:
 	// Custom
 	void set_log_level(int32_t level);
 
-	void on_server_client_connected(int32_t clientIndex)
-	{
+	void on_server_client_connected(int32_t clientIndex) {
 		emit_signal("peer_connected", clientIndex);
 	}
-	void on_server_client_disconnected(int32_t clientIndex)
-	{
+	void on_server_client_disconnected(int32_t clientIndex) {
 		emit_signal("connection_failed");
 		emit_signal("peer_disconnected", clientIndex);
 	}
