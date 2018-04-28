@@ -80,6 +80,14 @@
 #define NETCODE_OK                  1
 #define NETCODE_ERROR               0
 
+#define NETCODE_NETWORK_NEXT        1
+
+#define NETCODE_ADDRESS_NONE        0
+#define NETCODE_ADDRESS_IPV4        1
+#define NETCODE_ADDRESS_IPV6        2
+#if NETCODE_NETWORK_NEXT
+#define NETCODE_ADDRESS_NEXT        3
+#endif // #if NETCODE_NETWORK_NEXT
 
 #ifdef __cplusplus
 #define NETCODE_CONST const
@@ -96,13 +104,45 @@ int netcode_init();
 
 void netcode_term();
 
-struct netcode_client_t * netcode_client_create( NETCODE_CONST char * address, double time );
+struct netcode_address_t
+{
+    uint8_t type;
+    union
+    {
+        uint8_t ipv4[4];
+        uint16_t ipv6[8];
+#ifdef NETCODE_NETWORK_NEXT
+        uint64_t flow_id;
+#endif // #if NETCODE_NETWORK_NEXT
+    } data;
+    uint16_t port;
+};
 
-struct netcode_client_t * netcode_client_create_with_allocator( NETCODE_CONST char * address, 
-                                                                double time, 
-                                                                void * allocator_context, 
-                                                                void * (*allocate_function)(void*,uint64_t), 
-                                                                void (*free_function)(void*,void*) );
+int netcode_parse_address( NETCODE_CONST char * address_string_in, struct netcode_address_t * address );
+
+char * netcode_address_to_string( struct netcode_address_t * address, char * buffer );
+
+int netcode_address_equal( struct netcode_address_t * a, struct netcode_address_t * b );
+
+struct netcode_client_config_t
+{
+    void * allocator_context;
+    void * (*allocate_function)(void*,uint64_t);
+    void (*free_function)(void*,void*);
+    struct netcode_network_simulator_t * network_simulator;
+    void * callback_context;
+    void (*state_change_callback)(void*,int,int);
+    void (*send_loopback_packet_callback)(void*,int,NETCODE_CONST uint8_t*,int,uint64_t);
+    int override_send_and_receive;
+    void (*send_packet_override)(void*,struct netcode_address_t*,NETCODE_CONST uint8_t*,int);
+    int (*receive_packet_override)(void*,struct netcode_address_t*,uint8_t*,int);
+};
+
+void netcode_default_client_config( struct netcode_client_config_t * config );
+
+struct netcode_client_t * netcode_client_create_overload( NETCODE_CONST char * address1, NETCODE_CONST char * address2, NETCODE_CONST struct netcode_client_config_t * config, double time );
+
+struct netcode_client_t * netcode_client_create( NETCODE_CONST char * address, NETCODE_CONST struct netcode_client_config_t * config, double time );
 
 void netcode_client_destroy( struct netcode_client_t * client );
 
@@ -126,22 +166,21 @@ int netcode_client_index( struct netcode_client_t * client );
 
 int netcode_client_max_clients( struct netcode_client_t * client );
 
-void netcode_client_state_change_callback( struct netcode_client_t * client, void * context, void (*callback_function)(void*,int,int) );
-
 void netcode_client_connect_loopback( struct netcode_client_t * client, int client_index, int max_clients );
 
 void netcode_client_disconnect_loopback( struct netcode_client_t * client );
+
+void netcode_client_process_packet( struct netcode_client_t * client, struct netcode_address_t * from, uint8_t * packet_data, int packet_bytes );
 
 int netcode_client_loopback( struct netcode_client_t * client );
 
 void netcode_client_process_loopback_packet( struct netcode_client_t * client, NETCODE_CONST uint8_t * packet_data, int packet_bytes, uint64_t packet_sequence );
 
-void netcode_client_send_loopback_packet_callback( struct netcode_client_t * client, void * context, void (*callback_function)(void*,int,NETCODE_CONST uint8_t*,int,uint64_t) );
-
 uint16_t netcode_client_get_port( struct netcode_client_t * client );
 
 int netcode_generate_connect_token( int num_server_addresses, 
-                                    NETCODE_CONST char ** server_addresses, 
+                                    NETCODE_CONST char ** public_server_addresses, 
+                                    NETCODE_CONST char ** internal_server_addresses, 
                                     int expire_seconds,
                                     int timeout_seconds, 
                                     uint64_t client_id, 
@@ -150,15 +189,27 @@ int netcode_generate_connect_token( int num_server_addresses,
                                     NETCODE_CONST uint8_t * private_key, 
                                     uint8_t * connect_token );
 
-struct netcode_server_t * netcode_server_create( NETCODE_CONST char * server_address, uint64_t protocol_id, uint8_t * private_key, double time );
+struct netcode_server_config_t
+{
+    uint64_t protocol_id;
+    uint8_t private_key[NETCODE_KEY_BYTES];
+    void * allocator_context;
+    void * (*allocate_function)(void*,uint64_t);
+    void (*free_function)(void*,void*);
+    struct netcode_network_simulator_t * network_simulator;
+    void * callback_context;
+    void (*connect_disconnect_callback)(void*,int,int);
+    void (*send_loopback_packet_callback)(void*,int,NETCODE_CONST uint8_t*,int,uint64_t);
+    int override_send_and_receive;
+    void (*send_packet_override)(void*,struct netcode_address_t*,NETCODE_CONST uint8_t*,int);
+    int (*receive_packet_override)(void*,struct netcode_address_t*,uint8_t*,int);
+};
 
-struct netcode_server_t * netcode_server_create_with_allocator( NETCODE_CONST char * server_address, 
-                                                                uint64_t protocol_id, 
-                                                                uint8_t * private_key, 
-                                                                double time, 
-                                                                void * allocator_context, 
-                                                                void * (*allocate_function)(void*,uint64_t), 
-                                                                void (*free_function)(void*,void*) );
+void netcode_default_server_config( struct netcode_server_config_t * config );
+
+struct netcode_server_t * netcode_server_create_overload( NETCODE_CONST char * server_address1, NETCODE_CONST char * server_address2, NETCODE_CONST struct netcode_server_config_t * config, double time );
+
+struct netcode_server_t * netcode_server_create( NETCODE_CONST char * server_address, NETCODE_CONST struct netcode_server_config_t * config, double time );
 
 void netcode_server_destroy( struct netcode_server_t * server );
 
@@ -192,7 +243,7 @@ int netcode_server_num_connected_clients( struct netcode_server_t * server );
 
 void * netcode_server_client_user_data( struct netcode_server_t * server, int client_index );
 
-void netcode_server_connect_disconnect_callback( struct netcode_server_t * server, void * context, void (*callback_function)(void*,int,int) );
+void netcode_server_process_packet( struct netcode_server_t * server, struct netcode_address_t * from, uint8_t * packet_data, int packet_bytes );
 
 void netcode_server_connect_loopback_client( struct netcode_server_t * server, int client_index, uint64_t client_id, NETCODE_CONST uint8_t * user_data );
 
@@ -201,8 +252,6 @@ void netcode_server_disconnect_loopback_client( struct netcode_server_t * server
 int netcode_server_client_loopback( struct netcode_server_t * server, int client_index );
 
 void netcode_server_process_loopback_packet( struct netcode_server_t * server, int client_index, NETCODE_CONST uint8_t * packet_data, int packet_bytes, uint64_t packet_sequence );
-
-void netcode_server_send_loopback_packet_callback( struct netcode_server_t * server, void * context, void (*callback_function)(void*,int,NETCODE_CONST uint8_t*,int,uint64_t) );
 
 uint16_t netcode_server_get_port( struct netcode_server_t * server );
 

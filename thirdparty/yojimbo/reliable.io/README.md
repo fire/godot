@@ -24,13 +24,15 @@ If you would like a secure client/server communications layer to use with reliab
 
 If you want something higher level that implements reliable-ordered messages on top of reliable.io, try [yojimbo](http://libyojimbo.com).
 
+There is also a port of reliable.io to JavaScript here: https://github.com/mreinstein/reliable.io.js
+
 # Author
 
 The author of this library is [Glenn Fiedler](https://www.linkedin.com/in/glennfiedler), a recognized expert in the field of game network programming with over 15 years experience in the game industry.
 
-Glenn is currently writing an article series about the development of this library called [Building a Game Network Protocol](http://gafferongames.com/2016/05/10/building-a-game-network-protocol/).
+Glenn wrote an article series about the development of this library called [Building a Game Network Protocol](http://gafferongames.com/2016/05/10/building-a-game-network-protocol/).
 
-You can support Glenn's work writing articles and open source code via [Patreon](http://www.patreon.com/gafferongames).
+Open source libraries by the same author include: [yojimbo](http://libyojimbo.com) and [netcode.io](http://netcode.io)
 
 # Sponsors
 
@@ -48,7 +50,7 @@ You can support Glenn's work writing articles and open source code via [Patreon]
     * [Kite & Lightning](http://kiteandlightning.la/)
     * [Data Realms](http://datarealms.com)
  
-And by individual supporters on [Patreon](http://www.patreon.com/gafferongames). Thank you. You make this possible!
+And by individual supporters on Patreon. Thank you. You made this possible!
 
 # License
 

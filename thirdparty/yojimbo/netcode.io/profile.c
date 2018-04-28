@@ -85,6 +85,11 @@ void profile_initialize()
         packet_data[i] = (uint8_t) i;
     }
 
+    struct netcode_server_config_t server_config;
+    netcode_default_server_config( &server_config );
+    server_config.protocol_id = PROTOCOL_ID;
+    memcpy( &server_config.private_key, private_key, NETCODE_KEY_BYTES );
+
     for ( i = 0; i < MAX_SERVERS; ++i )
     {
         char server_address[256];
@@ -93,12 +98,15 @@ void profile_initialize()
 		#else
         sprintf( server_address, "127.0.0.1:%d", SERVER_BASE_PORT + i );
 		#endif
-        server[i] = netcode_server_create( server_address, PROTOCOL_ID, private_key, 0.0 );
+        server[i] = netcode_server_create( server_address, &server_config, 0.0 );
     }
+
+    struct netcode_client_config_t client_config;
+    netcode_default_client_config( &client_config );
 
     for ( i = 0; i < MAX_CLIENTS; ++i )
     {
-        client[i] = netcode_client_create( "0.0.0.0", 0.0 );
+        client[i] = netcode_client_create( "0.0.0.0", &client_config, 0.0 );
     }
 }
 
@@ -212,7 +220,7 @@ void profile_iteration( double time )
                     }
                 }
 
-                if ( num_server_addresses > 0 && netcode_generate_connect_token( num_server_addresses, (NETCODE_CONST char**) server_address, CONNECT_TOKEN_EXPIRY, CONNECT_TOKEN_TIMEOUT, client_id, PROTOCOL_ID, 0, private_key, connect_token ) )
+                if ( num_server_addresses > 0 && netcode_generate_connect_token( num_server_addresses, (NETCODE_CONST char**) server_address, (NETCODE_CONST char**) server_address, CONNECT_TOKEN_EXPIRY, CONNECT_TOKEN_TIMEOUT, client_id, PROTOCOL_ID, 0, private_key, connect_token ) )
                 {
                     netcode_client_connect( client[i], connect_token );
                 }

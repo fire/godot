@@ -64,7 +64,9 @@ int main( int argc, char ** argv )
 
     printf( "[client/server]\n" );
 
-    struct netcode_client_t * client = netcode_client_create( "::", time );
+    struct netcode_client_config_t client_config;
+    netcode_default_client_config( &client_config );
+    struct netcode_client_t * client = netcode_client_create( "::", &client_config, time );
 
     if ( !client )
     {
@@ -72,9 +74,14 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    NETCODE_CONST char * server_address = "[::1]:40000";
+    struct netcode_server_config_t server_config;
+    netcode_default_server_config( &server_config );
+    server_config.protocol_id = PROTOCOL_ID;
+    memcpy( &server_config.private_key, private_key, NETCODE_KEY_BYTES );
 
-    struct netcode_server_t * server = netcode_server_create( server_address, PROTOCOL_ID, private_key, time );
+    char * server_address = "[::1]:40000";
+
+    struct netcode_server_t * server = netcode_server_create( server_address, &server_config, time );
 
     if ( !server )
     {
@@ -90,7 +97,7 @@ int main( int argc, char ** argv )
     netcode_random_bytes( (uint8_t*) &client_id, 8 );
     printf( "client id is %.16" PRIx64 "\n", client_id );
 
-    if ( netcode_generate_connect_token( 1, &server_address, CONNECT_TOKEN_EXPIRY, CONNECT_TOKEN_TIMEOUT, client_id, PROTOCOL_ID, 0, private_key, connect_token ) != NETCODE_OK )
+    if ( netcode_generate_connect_token( 1, (NETCODE_CONST char**) &server_address, (NETCODE_CONST char**) &server_address, CONNECT_TOKEN_EXPIRY, CONNECT_TOKEN_TIMEOUT, client_id, PROTOCOL_ID, 0, private_key, connect_token ) != NETCODE_OK )
     {
         printf( "error: failed to generate connect token\n" );
         return 1;
