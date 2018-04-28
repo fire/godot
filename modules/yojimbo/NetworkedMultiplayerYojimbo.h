@@ -33,7 +33,7 @@ private:
 	yojimbo::Server *server;
 	yojimbo::Client *client;
 	yojimbo::Matcher *matcher;
-	const int messagesToSend;
+	const int32_t messagesToSend;
 	uint64_t numMessagesSentToServer = 0;
 	uint64_t numMessagesSentToClient = 0;
 	uint64_t numMessagesReceivedFromClient = 0;
@@ -41,9 +41,9 @@ private:
 	int32_t client_id = 0;
 	uint32_t gen_unique_id_() const;
 	NetworkedMultiplayerPeer::ConnectionStatus connection_status;
-	const int num_blocks = 256;
-	const int block_size = 1024;
-	const int memory_size = num_blocks * block_size;
+	const int32_t num_blocks = 256;
+	const int32_t block_size = 1024;
+	const int32_t memory_size = num_blocks * block_size;
 	uint8_t *client_memory;
 	uint8_t *server_memory;
 	uint8_t *matcher_memory;
@@ -65,21 +65,21 @@ public:
 	}
 
 	void close_connection();
-	int32_t create_client(String ip, int port, int in_bandwidth = 0, int out_bandwidth = 0);
-	int32_t create_server(int port, int max_clients = 32, int in_bandwidth = 0, int out_bandwidth = 0);
+	int32_t create_client(String ip, int32_t port, int32_t in_bandwidth = 0, int32_t out_bandwidth = 0);
+	int32_t create_server(int32_t port, int32_t max_clients = 32, int32_t in_bandwidth = 0, int32_t out_bandwidth = 0);
 	void set_bind_ip(String ip);
 
 	NetworkedMultiplayerPeer::ConnectionStatus get_connection_status() const;
 	int32_t get_packet_peer() const;
 	int32_t get_unique_id() const;
 	void poll();
-	void set_target_peer(int id);
+	void set_target_peer(int32_t id);
 	void set_transfer_mode(TransferMode p_mode);
 
 	int32_t get_available_packet_count() const;
-	Error get_packet(const uint8_t **, int &);
+	Error get_packet(const uint8_t **, int32_t &);
 	Error get_packet_error() const;
-	Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
+	Error put_packet(const uint8_t *p_buffer, int32_t p_buffer_size);
 	virtual Error get_var(Variant &r_variant);
 	virtual Error put_var(const Variant &p_packet);
 
@@ -92,7 +92,7 @@ public:
 	bool is_server() const;
 
 	// Custom
-	void set_log_level(int level);
+	void set_log_level(int32_t level);
 
 protected:
 	static void _bind_methods();

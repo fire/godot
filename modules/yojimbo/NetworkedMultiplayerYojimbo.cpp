@@ -34,11 +34,11 @@
 // clang-format on
 
 bool verboseOutput = false;
-static const int UNRELIABLE_UNORDERED_CHANNEL = 0;
-static const int RELIABLE_ORDERED_CHANNEL = 1;
-const int MaxPacketSize = 16 * 1024;
-const int MaxSnapshotSize = 8 * 1024;
-const int MaxBlockSize = 64 * 1024;
+static const int32_t UNRELIABLE_UNORDERED_CHANNEL = 0;
+static const int32_t RELIABLE_ORDERED_CHANNEL = 1;
+const int32_t MaxPacketSize = 16 * 1024;
+const int32_t MaxSnapshotSize = 8 * 1024;
+const int32_t MaxBlockSize = 64 * 1024;
 
 Error NetworkedMultiplayerYojimbo::initialize_yojimbo() {
 	if (client != nullptr || server != nullptr) {
@@ -54,7 +54,7 @@ Error NetworkedMultiplayerYojimbo::initialize_yojimbo() {
 	return OK;
 }
 
-void NetworkedMultiplayerYojimbo::set_log_level(int level) {
+void NetworkedMultiplayerYojimbo::set_log_level(int32_t level) {
 	yojimbo_log_level(level);
 }
 
@@ -86,7 +86,7 @@ void NetworkedMultiplayerYojimbo::close_connection() {
 	}
 }
 
-int NetworkedMultiplayerYojimbo::create_client(String ip, int port, int in_bandwidth, int out_bandwidth) {
+int32_t NetworkedMultiplayerYojimbo::create_client(String ip, int32_t port, int32_t in_bandwidth, int32_t out_bandwidth) {
 	if (initialize_yojimbo() != OK) {
 		return FAILED;
 	}
@@ -145,7 +145,7 @@ int NetworkedMultiplayerYojimbo::create_client(String ip, int port, int in_bandw
 	return OK;
 }
 
-int NetworkedMultiplayerYojimbo::create_server(int port, int max_clients, int in_bandwidth, int out_bandwidth) {
+int32_t NetworkedMultiplayerYojimbo::create_server(int32_t port, int32_t max_clients, int32_t in_bandwidth, int32_t out_bandwidth) {
 	if (initialize_yojimbo() != OK) {
 		return FAILED;
 	}
@@ -220,7 +220,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 				case TEST_BLOCK_MESSAGE: {
 					TestBlockMessage *blockMessage = (TestBlockMessage *)message;
 					yojimbo_assert(blockMessage->sequence == uint16_t(numMessagesReceivedFromClient));
-					const int blockSize = blockMessage->GetBlockSize();
+					const int32_t blockSize = blockMessage->GetBlockSize();
 					const uint8_t *blockData = blockMessage->GetBlockData();
 					yojimbo_assert(blockData);
 					OS::get_singleton()->print("Server received message %d\n", uint16_t(numMessagesReceivedFromClient));
@@ -242,7 +242,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 						server->ReleaseMessage(i, message);
 						return;
 					}
-					for (int j = 0; j < block_size; ++j) {
+					for (int32_t j = 0; j < block_size; ++j) {
 						block_data[j] = buffer[j] & 0xff;
 					}
 					server->AttachBlockToMessage(i, message, block_data, block_size);
@@ -256,17 +256,17 @@ void NetworkedMultiplayerYojimbo::poll() {
 	}*/
 }
 
-void NetworkedMultiplayerYojimbo::set_target_peer(int id) {
+void NetworkedMultiplayerYojimbo::set_target_peer(int32_t id) {
 }
 
 void NetworkedMultiplayerYojimbo::set_transfer_mode(TransferMode p_mode) {
 }
 
-int NetworkedMultiplayerYojimbo::get_available_packet_count() const {
+int32_t NetworkedMultiplayerYojimbo::get_available_packet_count() const {
 	return OK;
 }
 
-Error NetworkedMultiplayerYojimbo::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
+Error NetworkedMultiplayerYojimbo::get_packet(const uint8_t **r_buffer, int32_t &r_buffer_size) {
 	if (!client->IsConnected()) {
 		return FAILED;
 	}
@@ -281,7 +281,7 @@ Error NetworkedMultiplayerYojimbo::get_packet(const uint8_t **r_buffer, int &r_b
 	}
 	TestBlockMessage *blockMessage = (TestBlockMessage *)message;
 	yojimbo_assert(blockMessage->sequence == uint16_t(numMessagesReceivedFromServer));
-	const int blockSize = blockMessage->GetBlockSize();
+	const int32_t blockSize = blockMessage->GetBlockSize();
 	const uint8_t *blockData = blockMessage->GetBlockData();
 	yojimbo_assert(blockData);
 	PoolByteArray block;
@@ -313,7 +313,7 @@ Error NetworkedMultiplayerYojimbo::get_var(Variant &r_variant) {
 	return error;
 }
 
-Error NetworkedMultiplayerYojimbo::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
+Error NetworkedMultiplayerYojimbo::put_packet(const uint8_t *p_buffer, int32_t p_buffer_size) {
 	if (!client) {
 		return FAILED;
 	}
@@ -333,7 +333,7 @@ Error NetworkedMultiplayerYojimbo::put_packet(const uint8_t *p_buffer, int p_buf
 			client->ReleaseMessage(message);
 			return FAILED;
 		}
-		for (int j = 0; j < block_size; ++j) {
+		for (int32_t j = 0; j < block_size; ++j) {
 			block_data[j] = p_buffer[j];
 		}
 		client->AttachBlockToMessage(message, block_data, block_size);
