@@ -30,9 +30,9 @@ private:
 	GDCLASS(NetworkedMultiplayerYojimbo, NetworkedMultiplayerPeer);
 	Error initialize_yojimbo();
 	yojimbo::ClientServerConfig config;
-	yojimbo::Server *server;
-	yojimbo::Client *client;
-	yojimbo::Matcher *matcher;
+	yojimbo::Server *server = nullptr;
+	yojimbo::Client *client = nullptr;
+	yojimbo::Matcher *matcher = nullptr;
 	const int32_t messagesToSend;
 	uint64_t numMessagesSentToServer = 0;
 	uint64_t numMessagesSentToClient = 0;
@@ -40,31 +40,30 @@ private:
 	uint64_t numMessagesReceivedFromServer = 0;
 	int32_t client_id = 0;
 	uint32_t gen_unique_id_() const;
-	NetworkedMultiplayerPeer::ConnectionStatus connection_status;
+	NetworkedMultiplayerPeer::ConnectionStatus connection_status = NetworkedMultiplayerPeer::CONNECTION_DISCONNECTED;
 	const int32_t num_blocks = 256;
 	const int32_t block_size = 1024;
 	const int32_t memory_size = num_blocks * block_size;
-	uint8_t *client_memory;
-	uint8_t *server_memory;
-	uint8_t *matcher_memory;
-	String bind_ip;
+	String bind_ip = "127.0.0.1";
+	GodotAllocator *godot_allocator = nullptr;
+	void close_connection();
 
 public:
 	NetworkedMultiplayerYojimbo() :
-			server(nullptr),
-			client(nullptr),
-			matcher(nullptr),
+			godot_allocator(new GodotAllocator()),
 			messagesToSend(8),
 			numMessagesSentToServer(0),
 			numMessagesSentToClient(0),
 			numMessagesReceivedFromClient(0),
-			numMessagesReceivedFromServer(0),
-			bind_ip("127.0.0.1") {
+			numMessagesReceivedFromServer(0) {
 	}
 	~NetworkedMultiplayerYojimbo() {
+		close_connection();
+		delete godot_allocator;
 	}
 
-	void close_connection();
+	GodotAllocator &GetGodotAllocator();
+
 	int32_t create_client(String ip, int32_t port, int32_t in_bandwidth = 0, int32_t out_bandwidth = 0);
 	int32_t create_server(int32_t port, int32_t max_clients = 32, int32_t in_bandwidth = 0, int32_t out_bandwidth = 0);
 	void set_bind_ip(String ip);
@@ -94,13 +93,8 @@ public:
 	// Custom
 	void set_log_level(int32_t level);
 
-	void on_server_client_connected(int32_t clientIndex) {
-		emit_signal("peer_connected", clientIndex);
-	}
-	void on_server_client_disconnected(int32_t clientIndex) {
-		emit_signal("connection_failed");
-		emit_signal("peer_disconnected", clientIndex);
-	}
+	void on_server_client_connected(int32_t clientIndex);
+	void on_server_client_disconnected(int32_t clientIndex);
 
 protected:
 	static void _bind_methods();

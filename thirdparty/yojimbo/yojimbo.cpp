@@ -907,9 +907,6 @@ double yojimbo_time()
 #include <string.h>
 #include "netcode.h"
 
-#define SERVER_PORT "8080"
-#define SERVER_NAME "localhost"
-
 namespace yojimbo
 {
     struct MatcherInternal
@@ -999,7 +996,7 @@ namespace yojimbo
 
         int result;
 
-        if ( ( result = mbedtls_net_connect( &m_internal->server_fd, SERVER_NAME, SERVER_PORT, MBEDTLS_NET_PROTO_TCP ) ) != 0 )
+        if ( ( result = mbedtls_net_connect( &m_internal->server_fd, SERVER_NAME.c_str(), SERVER_PORT.c_str(), MBEDTLS_NET_PROTO_TCP ) ) != 0 )
         {
             yojimbo_printf( YOJIMBO_LOG_LEVEL_ERROR, "error: mbedtls_net_connect failed (%d)\n", result );
             m_matchStatus = MATCH_FAILED;

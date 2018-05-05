@@ -32,26 +32,30 @@
 #include "thirdparty/yojimbo/shared.h"
 #include "NetworkedMultiplayerYojimbo.h"
 #include "yojimbo_shared.h"
+#include <core/io/ip.h>
 // clang-format on
 
-bool verboseOutput = false;
+bool verboseOutput = true;
 static const int32_t UNRELIABLE_UNORDERED_CHANNEL = 0;
 static const int32_t RELIABLE_ORDERED_CHANNEL = 1;
 const int32_t MaxPacketSize = 16 * 1024;
 const int32_t MaxSnapshotSize = 8 * 1024;
 const int32_t MaxBlockSize = 64 * 1024;
 
+GodotAllocator & NetworkedMultiplayerYojimbo::GetGodotAllocator()
+{
+	return *godot_allocator;
+}
+
 Error NetworkedMultiplayerYojimbo::initialize_yojimbo() {
 	if (client != nullptr || server != nullptr) {
 		return OK;
 	}
-
 	config.numChannels = 2;
 	config.channel[UNRELIABLE_UNORDERED_CHANNEL].type = CHANNEL_TYPE_UNRELIABLE_UNORDERED;
 	config.channel[RELIABLE_ORDERED_CHANNEL].type = CHANNEL_TYPE_RELIABLE_ORDERED;
 	config.channel[RELIABLE_ORDERED_CHANNEL].blockFragmentSize = 1024;
-
-	yojimbo_log_level(YOJIMBO_LOG_LEVEL_DEBUG);
+	set_log_level(YOJIMBO_LOG_LEVEL_DEBUG);
 	return OK;
 }
 
@@ -59,26 +63,39 @@ void NetworkedMultiplayerYojimbo::set_log_level(int32_t level) {
 	yojimbo_log_level(level);
 }
 
+
+void NetworkedMultiplayerYojimbo::on_server_client_connected(int32_t clientIndex)
+{
+	emit_signal("connection_succeeded");
+	emit_signal("peer_connected", clientIndex);
+	connection_status = NetworkedMultiplayerPeer::ConnectionStatus::CONNECTION_CONNECTED;
+	char addressString[256];
+	client->GetAddress().ToString(addressString, sizeof(addressString));
+	OS::get_singleton()->print("Client address is %s\n", addressString);
+}
+
+void NetworkedMultiplayerYojimbo::on_server_client_disconnected(int32_t clientIndex)
+{
+	emit_signal("connection_failed");
+	emit_signal("peer_disconnected", clientIndex);
+}
+
 void NetworkedMultiplayerYojimbo::close_connection() {
 	if (server != nullptr) {
 		server->Stop();
 	}
-
 	if (client != nullptr) {
 		client->Disconnect();
 	}
-
 	if (server != nullptr) {
 		delete server;
 	}
 	if (client != nullptr) {
 		delete client;
 	}
-
 	if (matcher != nullptr) {
 		delete matcher;
 	}
-
 	if (server != nullptr || client != nullptr || matcher != nullptr) {
 		ShutdownYojimbo();
 		server = nullptr;
@@ -91,16 +108,23 @@ int32_t NetworkedMultiplayerYojimbo::create_client(String ip, int32_t port, int3
 	if (initialize_yojimbo() != OK) {
 		return FAILED;
 	}
-	matcher = new yojimbo::Matcher(GetDefaultAllocator());
+	if (client) {
+		return FAILED;
+	}
+	matcher = new yojimbo::Matcher(GetGodotAllocator());
+	if (!matcher->Initialize()) {
+		return FAILED;
+	}
 	connection_status = NetworkedMultiplayerPeer::ConnectionStatus::CONNECTION_CONNECTING;
-	OS::get_singleton()->print("Connecting client (secure)\n");
+	//OS::get_singleton()->print("Connecting client (secure)\n");
 	client_id = gen_unique_id_();
-	OS::get_singleton()->print("Client id is %d\n", client_id);
+	//OS::get_singleton()->print("Client id is %d\n", client_id);
 	if (!matcher->Initialize()) {
 		OS::get_singleton()->print("Error: failed to initialize matcher\n");
 		return FAILED;
 	}
-	OS::get_singleton()->print("Requesting match from https://localhost:8080\n");
+	yojimbo::SERVER_PORT = port;
+	yojimbo::SERVER_NAME = std::string(ip.ascii());
 	matcher->RequestMatch(ProtocolId, client_id, false);
 	if (matcher->GetMatchStatus() == MATCH_FAILED) {
 		OS::get_singleton()->print("Request match failed. Is the matcher running? Please run matcher before you connect a secure client\n");
@@ -108,23 +132,13 @@ int32_t NetworkedMultiplayerYojimbo::create_client(String ip, int32_t port, int3
 	}
 	uint8_t connectToken[ConnectTokenBytes];
 	matcher->GetConnectToken(connectToken);
-	OS::get_singleton()->print("Received connect token from matcher\n");
+	//OS::get_singleton()->print("Received connect token from matcher\n");
 	double time = OS::get_singleton()->get_ticks_msec();
 	config.protocolId = ProtocolId;
-	client = new yojimbo::Client(GetDefaultAllocator(), yojimbo::Address("0.0.0.0"), config, yojimbo_adapter, time);
 	yojimbo_adapter.init(this);
-	Address serverAddress("127.0.0.1", port);
+	Address client_address("0.0.0.0", 0);
+	client = new yojimbo::Client(GetGodotAllocator(), client_address, config, yojimbo_adapter, time);
 	client->Connect(client_id, connectToken);
-	if (client->IsDisconnected()) {
-		emit_signal("connection_failed");
-		return FAILED;
-	}
-	emit_signal("peer_connected", client_id);
-	connection_status = NetworkedMultiplayerPeer::ConnectionStatus::CONNECTION_CONNECTED;
-	emit_signal("connection_succeeded");
-	char addressString[256];
-	client->GetAddress().ToString(addressString, sizeof(addressString));
-	OS::get_singleton()->print("Client address is %s\n", addressString);
 	return OK;
 }
 
@@ -132,22 +146,17 @@ int32_t NetworkedMultiplayerYojimbo::create_server(int32_t port, int32_t max_cli
 	if (initialize_yojimbo() != OK) {
 		return FAILED;
 	}
-
-	if (server != nullptr) {
+	if (server) {
 		return FAILED;
 	}
-
 	config.protocolId = ProtocolId;
-
 	uint8_t privateKey[yojimbo::KeyBytes] = { 0x60, 0x6a, 0xbe, 0x6e, 0xc9, 0x19, 0x10, 0xea,
 		0x9a, 0x65, 0x62, 0xf6, 0x6f, 0x2b, 0x30, 0xe4,
 		0x43, 0x71, 0xd6, 0x2c, 0xd1, 0x99, 0x27, 0x26,
 		0x6b, 0x3c, 0x60, 0xf4, 0xb7, 0x15, 0xab, 0xa1 };
-
 	const double time = double(OS::get_singleton()->get_ticks_msec()) / 1000;
-	const uint8_t *address = (uint8_t *)bind_ip.c_str();
-	server = new yojimbo::Server(GetDefaultAllocator(), privateKey, yojimbo::Address(address, port), config, yojimbo_adapter, time);
 	yojimbo_adapter.init(this);
+	server = new yojimbo::Server(GetGodotAllocator(), privateKey, yojimbo::Address(bind_ip.ascii(), port), config, yojimbo_adapter, time);
 	OS::get_singleton()->print("Starting server (secure)\n");
 	server->Start(max_clients);
 	return OK;
@@ -185,9 +194,6 @@ void NetworkedMultiplayerYojimbo::poll() {
 		if (!server) {
 			return;
 		}
-		if (!client) {
-			return;
-		}
 		for (size_t i = 0; i < server->GetNumConnectedClients(); i++) {
 			if (!server->IsClientConnected(i)) {
 				continue;
@@ -198,6 +204,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 				return;
 			}
 			yojimbo_assert(message->GetId() == (uint16_t)numMessagesReceivedFromClient);
+			/*
 			switch (message->GetType()) {
 				case TEST_BLOCK_MESSAGE: {
 					TestBlockMessage *blockMessage = (TestBlockMessage *)message;
@@ -233,7 +240,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 					OS::get_singleton()->print("Sent packet from server\n");
 					break;
 				}
-			}
+			}*/
 		}
 	}
 }
@@ -249,6 +256,9 @@ int32_t NetworkedMultiplayerYojimbo::get_available_packet_count() const {
 }
 
 Error NetworkedMultiplayerYojimbo::get_packet(const uint8_t **r_buffer, int32_t &r_buffer_size) {
+	if (!client) {
+		return FAILED;
+	}
 	if (!client->IsConnected()) {
 		return FAILED;
 	}
@@ -383,7 +393,6 @@ bool NetworkedMultiplayerYojimbo::is_server() const {
 void NetworkedMultiplayerYojimbo::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_server", "port", "max_clients", "in_bandwidth", "out_bandwidth"), &NetworkedMultiplayerYojimbo::create_server, DEFVAL(40000), DEFVAL(32), DEFVAL(0), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("create_client", "ip", "port", "in_bandwidth", "out_bandwidth"), &NetworkedMultiplayerYojimbo::create_client, DEFVAL("127.0.0.1"), DEFVAL(40000), DEFVAL(0), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("close_connection"), &NetworkedMultiplayerYojimbo::close_connection);
 	//ClassDB::bind_method(D_METHOD("set_compression_mode", "mode"), &NetworkedMultiplayerYojimbo::set_compression_mode);
 	//ClassDB::bind_method(D_METHOD("get_compression_mode"), &NetworkedMultiplayerYojimbo::get_compression_mode);
 	ClassDB::bind_method(D_METHOD("set_bind_ip", "ip"), &NetworkedMultiplayerYojimbo::set_bind_ip);

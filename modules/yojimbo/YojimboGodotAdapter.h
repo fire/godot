@@ -5,6 +5,7 @@
 #include "scene/main/node.h"
 #include "thirdparty/yojimbo/shared.h"
 #include "thirdparty/yojimbo/yojimbo.h"
+#include "GodotAllocator.h"
 class NetworkedMultiplayerYojimbo;
 class YojimboGodotAdapter : public yojimbo::Adapter {
 private:
@@ -13,6 +14,8 @@ private:
 public:
 	YojimboGodotAdapter(){};
 	~YojimboGodotAdapter(){};
+
+	Allocator *CreateAllocator(Allocator &allocator, void *memory, size_t bytes) override;
 
 	YojimboGodotAdapter *init(NetworkedMultiplayerYojimbo *networked_yojimbo);
 
