@@ -25,7 +25,6 @@
 #include "YojimboGodotAdapter.h"
 #include "thirdparty/yojimbo/yojimbo.h"
 #include <core/io/networked_multiplayer_peer.h>
-
 class NetworkedMultiplayerYojimbo : public NetworkedMultiplayerPeer {
 private:
 	GDCLASS(NetworkedMultiplayerYojimbo, NetworkedMultiplayerPeer);

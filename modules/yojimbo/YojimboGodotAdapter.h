@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NetworkedMultiplayerYojimbo.h"
 #include "core/io/multiplayer_api.h"
 #include "core/reference.h"
 #include "scene/main/node.h"
@@ -8,20 +7,26 @@
 #include "thirdparty/yojimbo/yojimbo.h"
 class NetworkedMultiplayerYojimbo;
 class YojimboGodotAdapter : public yojimbo::Adapter {
+private:
 	NetworkedMultiplayerYojimbo *network = nullptr;
+
 public:
-	void init(NetworkedMultiplayerYojimbo *p_network);
-	yojimbo::MessageFactory *CreateMessageFactory(yojimbo::Allocator &allocator);
+	YojimboGodotAdapter(){};
+	~YojimboGodotAdapter(){};
+
+	YojimboGodotAdapter *init(NetworkedMultiplayerYojimbo *networked_yojimbo);
+
+	yojimbo::MessageFactory *CreateMessageFactory(yojimbo::Allocator &allocator) const override;
 
 	/**
-	Callback when a client connects on the server.
-	*/
+		Callback when a client connects on the server.
+		*/
 
-	virtual void OnServerClientConnected(int clientIndex);
+	virtual void OnServerClientConnected(int clientIndex) override;
 
 	/**
-	Callback when a client disconnects from the server.
-	*/
+		Callback when a client disconnects from the server.
+		*/
 
-	virtual void OnServerClientDisconnected(int clientIndex);
+	virtual void OnServerClientDisconnected(int clientIndex) override;
 };

@@ -3,6 +3,7 @@
 #include "register_types.h"
 #include "NetworkedMultiplayerYojimbo.h"
 #include "class_db.h"
+#include "YojimboGodotAdapter.h"
 
 static bool yojimbo_ok = false;
 

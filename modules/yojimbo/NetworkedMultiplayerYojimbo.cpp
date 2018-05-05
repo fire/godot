@@ -31,6 +31,7 @@
 #include "thirdparty/yojimbo/yojimbo.h"
 #include "thirdparty/yojimbo/shared.h"
 #include "NetworkedMultiplayerYojimbo.h"
+#include "yojimbo_shared.h"
 // clang-format on
 
 bool verboseOutput = false;
@@ -90,58 +91,40 @@ int32_t NetworkedMultiplayerYojimbo::create_client(String ip, int32_t port, int3
 	if (initialize_yojimbo() != OK) {
 		return FAILED;
 	}
-
 	matcher = new yojimbo::Matcher(GetDefaultAllocator());
-
 	connection_status = NetworkedMultiplayerPeer::ConnectionStatus::CONNECTION_CONNECTING;
-
 	OS::get_singleton()->print("Connecting client (secure)\n");
-
 	client_id = gen_unique_id_();
 	OS::get_singleton()->print("Client id is %d\n", client_id);
-
 	if (!matcher->Initialize()) {
 		OS::get_singleton()->print("Error: failed to initialize matcher\n");
 		return FAILED;
 	}
-
 	OS::get_singleton()->print("Requesting match from https://localhost:8080\n");
-
 	matcher->RequestMatch(ProtocolId, client_id, false);
-
 	if (matcher->GetMatchStatus() == MATCH_FAILED) {
 		OS::get_singleton()->print("Request match failed. Is the matcher running? Please run matcher before you connect a secure client\n");
 		return FAILED;
 	}
-
 	uint8_t connectToken[ConnectTokenBytes];
 	matcher->GetConnectToken(connectToken);
-
 	OS::get_singleton()->print("Received connect token from matcher\n");
-
 	double time = OS::get_singleton()->get_ticks_msec();
-
 	config.protocolId = ProtocolId;
-
-	client = new yojimbo::Client(GetDefaultAllocator(), yojimbo::Address("0.0.0.0"), config, adapter, time);
-
+	client = new yojimbo::Client(GetDefaultAllocator(), yojimbo::Address("0.0.0.0"), config, yojimbo_adapter, time);
+	yojimbo_adapter.init(this);
 	Address serverAddress("127.0.0.1", port);
-
 	client->Connect(client_id, connectToken);
-
 	if (client->IsDisconnected()) {
 		emit_signal("connection_failed");
 		return FAILED;
 	}
 	emit_signal("peer_connected", client_id);
-
 	connection_status = NetworkedMultiplayerPeer::ConnectionStatus::CONNECTION_CONNECTED;
 	emit_signal("connection_succeeded");
-
 	char addressString[256];
 	client->GetAddress().ToString(addressString, sizeof(addressString));
 	OS::get_singleton()->print("Client address is %s\n", addressString);
-
 	return OK;
 }
 
@@ -163,11 +146,10 @@ int32_t NetworkedMultiplayerYojimbo::create_server(int32_t port, int32_t max_cli
 
 	const double time = double(OS::get_singleton()->get_ticks_msec()) / 1000;
 	const uint8_t *address = (uint8_t *)bind_ip.c_str();
-	server = new yojimbo::Server(GetDefaultAllocator(), privateKey, yojimbo::Address(address, port), config, adapter, time);
-
+	server = new yojimbo::Server(GetDefaultAllocator(), privateKey, yojimbo::Address(address, port), config, yojimbo_adapter, time);
+	yojimbo_adapter.init(this);
 	OS::get_singleton()->print("Starting server (secure)\n");
 	server->Start(max_clients);
-
 	return OK;
 }
 
@@ -198,7 +180,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 		client->ReceivePackets();
 		client->AdvanceTime(double(OS::get_singleton()->get_ticks_msec()) / 1000);
 	}
-/*
+
 	if (server != nullptr) {
 		if (!server) {
 			return;
@@ -253,7 +235,7 @@ void NetworkedMultiplayerYojimbo::poll() {
 				}
 			}
 		}
-	}*/
+	}
 }
 
 void NetworkedMultiplayerYojimbo::set_target_peer(int32_t id) {
@@ -367,7 +349,7 @@ uint32_t NetworkedMultiplayerYojimbo::gen_unique_id_() const {
 		hash = hash_djb2_one_32(
 				(uint32_t)((uint64_t)&hash), hash); //rely on aslr stack
 
-		hash = hash & 0x7FFFFFFF; // make it compatible with unsigned, since negatie id is used for exclusion
+		hash = hash & 0x7FFFFFFF; // make it compatible with unsigned, since negative id is used for exclusion
 	}
 
 	return hash;

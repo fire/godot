@@ -1,10 +1,12 @@
 #include "YojimboGodotAdapter.h"
+#include "NetworkedMultiplayerYojimbo.h"
 
-void YojimboGodotAdapter::init(NetworkedMultiplayerYojimbo *p_network) {
-	network = p_network;
+YojimboGodotAdapter *YojimboGodotAdapter::init(NetworkedMultiplayerYojimbo *networked_yojimbo) {
+	network = networked_yojimbo;
+	return this;
 }
 
-yojimbo::MessageFactory *YojimboGodotAdapter::CreateMessageFactory(yojimbo::Allocator &allocator) {
+yojimbo::MessageFactory *YojimboGodotAdapter::CreateMessageFactory(yojimbo::Allocator &allocator) const {
 	return YOJIMBO_NEW(allocator, TestMessageFactory, allocator);
 }
 
