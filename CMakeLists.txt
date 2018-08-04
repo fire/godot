@@ -4,18 +4,6 @@ add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 set(DEBUG_ENABLED DEBUG_ENABLED DEBUG_MEMORY_ENABLED)
 set(TOOLS_ENABLED TOOLS_ENABLED)
 
-file(GLOB_RECURSE MODULES_STB_VORBIS "modules/stb_vorbis/*.cpp")
-add_library(godot_stb_vorbis STATIC ${MODULES_STB_VORBIS})
-target_compile_definitions(godot_stb_vorbis
-                           PUBLIC
-                           ${DEBUG_ENABLED}
-                           ${TOOLS_ENABLED})
-target_include_directories(godot_stb_vorbis
-                           PUBLIC .
-                                  "core"
-                                  "core/math"
-                                  "platform/windows")
-
 file(GLOB THIRDPARTY_LIBPNG "thirdparty/libpng/*.c")
 add_library(libpng ${THIRDPARTY_LIBPNG})
 target_include_directories(libpng
@@ -372,7 +360,6 @@ target_compile_definitions(godot_core
                            WINDOWS_ENABLED
                            MODULE_VISUAL_SCRIPT_ENABLED
                            MODULE_GDSCRIPT_ENABLED
-                           #MODULE_STB_VORBIS_ENABLED
                            FT_CONFIG_OPTION_USE_PNG
                            FT2_BUILD_LIBRARY
                            FT_CONFIG_OPTION_SYSTEM_ZLIB
@@ -400,9 +387,7 @@ target_link_libraries(godot_core
                       godot_visual_script
                       godot_dds
                       godot_regex
-                      godot_svg
-                      godot_vorbis
-                      godot_stb_vorbis)
+                      godot_svg)
 add_executable(godot ${MAIN} ${MAIN_TESTS})
 target_link_libraries(godot
                       dxguid
