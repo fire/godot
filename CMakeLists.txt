@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(godot VERSION 0.0.1 LANGUAGES C CXX)
-
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 set(DEBUG_ENABLED DEBUG_ENABLED DEBUG_MEMORY_ENABLED)
 
 file(GLOB_RECURSE MODULES_DDS "modules/dds/*.cpp")
