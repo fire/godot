@@ -34,7 +34,7 @@
 #include "io/resource_loader.h"
 #include "os/file_access.h"
 #include "os/thread_safe.h"
-#include "scene/resources/audio_stream.h"
+#include "servers/audio/audio_stream.h"
 
 #include <vorbis/vorbisfile.h>
 
