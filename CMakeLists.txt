@@ -3,10 +3,17 @@ project(godot VERSION 0.0.1 LANGUAGES C CXX)
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 set(DEBUG_ENABLED DEBUG_ENABLED DEBUG_MEMORY_ENABLED)
 
+file(GLOB_RECURSE MODULES_SVG "modules/svg/*.cpp")
+add_library(godot_svg STATIC ${MODULES_SVG})
+target_include_directories(godot_svg
+                           PUBLIC .
+                                  "platform/windows"
+                                  "core"
+                                  "thirdparty/nanosvg"
+                                  "core/math")
+
 file(GLOB_RECURSE MODULES_DDS "modules/dds/*.cpp")
-
 add_library(godot_dds STATIC ${MODULES_DDS})
-
 target_include_directories(godot_dds
                            PUBLIC .
                                   "core"
@@ -339,6 +346,7 @@ target_compile_definitions(godot_core
                            TOOLS_ENABLED
                            MINIZIP_ENABLED
                            RECAST_ENABLED
+                           SVG_ENABLED
                            GLES_OVER_GL
                            GLAD_ENABLED
                            ZSTD_STATIC_LINKING_ONLY
@@ -361,4 +369,5 @@ target_link_libraries(godot
                       iphlpapi
                       godot_core
                       godot_dds
-                      godot_regex)
+                      godot_regex
+                      godot_svg)
