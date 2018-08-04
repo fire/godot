@@ -2,6 +2,34 @@ cmake_minimum_required(VERSION 3.5)
 project(godot VERSION 0.0.1 LANGUAGES C CXX)
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 set(DEBUG_ENABLED DEBUG_ENABLED DEBUG_MEMORY_ENABLED)
+set(TOOLS_ENABLED TOOLS_ENABLED)
+
+file(GLOB THIRDPARTY_LIBPNG "thirdparty/libpng/*.c")
+add_library(libpng ${THIRDPARTY_LIBPNG})
+target_include_directories(libpng
+                           PUBLIC . "thirdparty/libpng" "thirdparty/zlib")
+
+file(GLOB_RECURSE MODULES_GDSCRIPT "modules/gdscript/*.cpp")
+add_library(godot_gdscript STATIC ${MODULES_GDSCRIPT})
+target_compile_definitions(godot_gdscript PUBLIC ${DEBUG_ENABLED})
+target_include_directories(godot_gdscript
+                           PUBLIC .
+                                  "core"
+                                  "core/math"
+                                  "platform/windows")
+
+file(GLOB_RECURSE MODULES_VISUAL_SCRIPT "modules/visual_script/*.cpp")
+add_library(godot_visual_script STATIC ${MODULES_VISUAL_SCRIPT})
+target_compile_definitions(godot_visual_script
+                           PUBLIC
+                           ${DEBUG_ENABLED}
+                           ${TOOLS_ENABLED})
+target_include_directories(godot_visual_script
+                           PUBLIC .
+                                  "platform/windows"
+                                  "core"
+                                  "core/math"
+                                  "editor")
 
 file(GLOB_RECURSE MODULES_SVG "modules/svg/*.cpp")
 add_library(godot_svg STATIC ${MODULES_SVG})
@@ -159,10 +187,8 @@ file(GLOB PLATFORM_OSX_EXPORT "platform/osx/export/*.cpp")
 file(GLOB PLATFORM_IPHONE_EXPORT "platform/iphone/export/*.cpp")
 file(GLOB PLATFORM_IPHONE_GLOBALS "platform/iphone/globals/*.cpp")
 file(GLOB PLATFORM_WINDOWS_EXPORT "platform/windows/export/*.cpp")
-file(GLOB THIRDPARTY_LIBPNG "thirdparty/libpng")
 file(GLOB MODULES_FREETYPE "modules/freetype/*.cpp")
 file(GLOB MODULES_GDSCRIPT "modules/gdscript/*.cpp")
-file(GLOB THIRDPARTY_LIBPNG "thirdparty/libpng/*.c")
 file(GLOB DRIVERS_WINDOWS "drivers/windows/*.cpp")
 file(GLOB DRIVERS "drivers/*.cpp")
 file(GLOB MODULES "modules/*.cpp")
@@ -186,7 +212,6 @@ add_library(godot_core
             STATIC
             ${PLATFORM_WINDOWS}
             ${MAIN}
-            ${PLATFORM_WINDOWS}
             ${CORE}
             ${THIRDPARTY_ZSTD}
             ${THIRDPARTY_ZLIB}
@@ -201,16 +226,16 @@ add_library(godot_core
             ${PLATFORM_X11_EXPORT}
             ${PLATFORM_ANDROID_EXPORT}
             ${PLATFORM_ANDROID_GLOBALS}
+            ${MODULES_GDSCRIPT}
+            ${MODULES_VISUAL_SCRIPT}
             ${PLATFORM_UWP_EXPORT}
             ${PLATFORM_JAVASCRIPT_EXPORT}
             ${PLATFORM_OSX_EXPORT}
             ${PLATFORM_IPHONE_EXPORT}
             ${PLATFORM_IPHONE_GLOBALS}
             ${PLATFORM_WINDOWS_EXPORT}
-            ${THIRDPARTY_LIBPNG}
             ${MODULES_FREETYPE}
             ${MODULES_GDSCRIPT}
-            ${THIRDPARTY_LIBPNG}
             ${DRIVERS_WINDOWS}
             ${DRIVERS}
             ${MODULES}
@@ -307,6 +332,7 @@ target_include_directories(godot_core
                                   thirdparty/freetype
                                   thirdparty/freetype/include
                                   thirdparty/libpng
+                                  drivers/libpng
                                   thirdparty/recastnavigation/Recast
                                   thirdparty/recastnavigation/Recast/Include
                                   thirdparty/nanosvg
@@ -332,6 +358,8 @@ target_compile_definitions(godot_core
                            D3D_DEBUG_INFO
                            FREETYPE_ENABLED
                            WINDOWS_ENABLED
+                           MODULE_VISUAL_SCRIPT_ENABLED
+                           MODULE_GDSCRIPT_ENABLED
                            FT_CONFIG_OPTION_USE_PNG
                            FT2_BUILD_LIBRARY
                            FT_CONFIG_OPTION_SYSTEM_ZLIB
@@ -343,7 +371,7 @@ target_compile_definitions(godot_core
                            MSVC
                            _WIN64
                            GDSCRIPT_ENABLED
-                           TOOLS_ENABLED
+                           ${TOOLS_ENABLED}
                            MINIZIP_ENABLED
                            RECAST_ENABLED
                            SVG_ENABLED
@@ -353,6 +381,13 @@ target_compile_definitions(godot_core
                            XML_ENABLED)
 file(GLOB MAIN "main/*.cpp")
 file(GLOB MAIN_TESTS "main/tests/*.cpp")
+target_link_libraries(godot_core
+                      libpng
+                      godot_gdscript
+                      godot_visual_script
+                      godot_dds
+                      godot_regex
+                      godot_svg)
 add_executable(godot ${MAIN} ${MAIN_TESTS})
 target_link_libraries(godot
                       dxguid
@@ -367,7 +402,4 @@ target_link_libraries(godot
                       winmm
                       shlwapi
                       iphlpapi
-                      godot_core
-                      godot_dds
-                      godot_regex
-                      godot_svg)
+                      godot_core)
