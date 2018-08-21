@@ -62,6 +62,7 @@
 #include "path_remap.h"
 #include "project_settings.h"
 #include "translation.h"
+#include "thread_pool.h"
 
 #include "undo_redo.h"
 static ResourceFormatSaverBinary *resource_saver_binary = NULL;
@@ -183,6 +184,8 @@ void register_core_types() {
 	ClassDB::register_class<EncodedObjectAsID>();
 
 	ClassDB::register_class<JSONParseResult>();
+
+	 ClassDB::register_class<ThreadPool>();
 
 	ip = IP::create();
 
