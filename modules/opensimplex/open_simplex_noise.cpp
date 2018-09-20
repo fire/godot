@@ -116,7 +116,30 @@ Ref<Image> OpenSimplexNoise::get_image(int p_width, int p_height) {
 	return image;
 }
 
-Ref<Image> OpenSimplexNoise::get_seamless_image(int p_size) {
+Ref<Image> OpenSimplexNoise::get_image_3d(int p_x, int p_y, int p_z, int p_layer) {
+
+	PoolVector<uint8_t> data;
+	data.resize(p_x * p_y * 4);
+	Ref<Image> images;
+
+	PoolVector<uint8_t>::Write wd8 = data.write();
+	for (int i = 0; i < p_y; i++) {
+		for (int j = 0; j < p_x; j++) {
+			float v = get_noise_3d(i, j, p_layer);
+			v = v * 0.5 + 0.5; // Normalize [0..1]
+			uint8_t value = uint8_t(CLAMP(v * 255.0, 0, 255));
+			wd8[(i * p_x + j) * 4 + 0] = value;
+			wd8[(i * p_x + j) * 4 + 1] = value;
+			wd8[(i * p_x + j) * 4 + 2] = value;
+			wd8[(i * p_x + j) * 4 + 3] = 255;
+		}
+	}
+	Ref<Image> image = memnew(Image(p_x, p_y, false, Image::FORMAT_RGBA8, data));
+
+	return image;
+}
+
+Ref<Image> SimplexNoise::get_seamless_image(int p_size) {
 
 	PoolVector<uint8_t> data;
 	data.resize(p_size * p_size * 4);
@@ -171,6 +194,7 @@ void OpenSimplexNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_lacunarity"), &OpenSimplexNoise::get_lacunarity);
 
 	ClassDB::bind_method(D_METHOD("get_image", "width", "height"), &OpenSimplexNoise::get_image);
+	ClassDB::bind_method(D_METHOD("get_image_3d", "width", "height", "length"), &OpenSimplexNoise::get_image_3d);
 	ClassDB::bind_method(D_METHOD("get_seamless_image", "size"), &OpenSimplexNoise::get_seamless_image);
 
 	ClassDB::bind_method(D_METHOD("get_noise_2d", "x", "y"), &OpenSimplexNoise::get_noise_2d);
