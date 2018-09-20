@@ -143,6 +143,7 @@
 #include "scene/resources/mesh.h"
 #include "scene/resources/mesh_data_tool.h"
 #include "scene/resources/mesh_library.h"
+#include "scene/resources/noise.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/particles_material.h"
 #include "scene/resources/plane_shape.h"
@@ -501,6 +502,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVectorDecompose>();
 	ClassDB::register_class<VisualShaderNodeTransformDecompose>();
 	ClassDB::register_class<VisualShaderNodeTexture>();
+	ClassDB::register_class<VisualShaderNodeTexture3D>();
 	ClassDB::register_class<VisualShaderNodeCubeMap>();
 	ClassDB::register_virtual_class<VisualShaderNodeUniform>();
 	ClassDB::register_class<VisualShaderNodeScalarUniform>();
@@ -508,6 +510,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVec3Uniform>();
 	ClassDB::register_class<VisualShaderNodeTransformUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniform>();
+	ClassDB::register_class<VisualShaderNodeTexture3DUniform>();
 	ClassDB::register_class<VisualShaderNodeCubeMapUniform>();
 
 	ClassDB::register_class<ShaderMaterial>();
@@ -603,6 +606,8 @@ void register_scene_types() {
 
 	ClassDB::register_class<SurfaceTool>();
 	ClassDB::register_class<MeshDataTool>();
+	
+	ClassDB::register_virtual_class<Noise>();
 
 	OS::get_singleton()->yield(); //may take time to init
 

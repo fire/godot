@@ -38,6 +38,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "editor/property_editor.h"
+#include "scene/resources/noise.h"
 
 class NoiseTexture : public Texture {
 	GDCLASS(NoiseTexture, Texture)
@@ -54,7 +55,7 @@ private:
 	RID texture;
 	uint32_t flags;
 
-	Ref<OpenSimplexNoise> noise;
+	Ref<Noise> noise;
 	Vector2i size;
 	bool seamless;
 	bool as_normalmap;
@@ -71,8 +72,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_noise(Ref<OpenSimplexNoise> p_noise);
-	Ref<OpenSimplexNoise> get_noise();
+	void set_noise(Ref<Noise> p_noise);
+	Ref<Noise> get_noise();
 
 	void set_width(int p_width);
 	void set_height(int p_hieght);
