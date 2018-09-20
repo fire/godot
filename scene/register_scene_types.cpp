@@ -146,6 +146,9 @@
 #include "scene/resources/material.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/mesh_data_tool.h"
+#include "scene/resources/mesh_library.h"
+#include "scene/resources/noise.h"
+#include "scene/resources/fractal_brownian_noise.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/particles_material.h"
 #include "scene/resources/physics_material.h"
@@ -161,6 +164,8 @@
 #include "scene/resources/surface_tool.h"
 #include "scene/resources/text_file.h"
 #include "scene/resources/texture.h"
+#include "scene/resources/noise_texture.h"
+#include "scene/resources/noise_texture_3d.h"
 #include "scene/resources/tile_set.h"
 #include "scene/resources/video_stream.h"
 #include "scene/resources/visual_shader.h"
@@ -519,6 +524,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVectorDecompose>();
 	ClassDB::register_class<VisualShaderNodeTransformDecompose>();
 	ClassDB::register_class<VisualShaderNodeTexture>();
+	ClassDB::register_class<VisualShaderNodeTexture3D>();
 	ClassDB::register_class<VisualShaderNodeCubeMap>();
 	ClassDB::register_virtual_class<VisualShaderNodeUniform>();
 	ClassDB::register_class<VisualShaderNodeScalarUniform>();
@@ -527,6 +533,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVec3Uniform>();
 	ClassDB::register_class<VisualShaderNodeTransformUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniform>();
+	ClassDB::register_class<VisualShaderNodeTexture3DUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniformTriplanar>();
 	ClassDB::register_class<VisualShaderNodeCubeMapUniform>();
 	ClassDB::register_class<VisualShaderNodeIf>();
@@ -635,6 +642,12 @@ void register_scene_types() {
 	ClassDB::register_class<ConvexPolygonShape>();
 	ClassDB::register_class<ConcavePolygonShape>();
 
+	ClassDB::register_class<SurfaceTool>();
+	ClassDB::register_class<MeshDataTool>();
+	
+	ClassDB::register_virtual_class<Noise>();
+	ClassDB::register_virtual_class<FractalBrownianNoise>();
+
 	OS::get_singleton()->yield(); //may take time to init
 
 	ClassDB::register_class<SpatialVelocityTracker>();
@@ -646,6 +659,8 @@ void register_scene_types() {
 	ClassDB::register_class<World2D>();
 	ClassDB::register_virtual_class<Texture>();
 	ClassDB::register_virtual_class<Sky>();
+	ClassDB::register_class<NoiseTexture>();
+	ClassDB::register_class<NoiseTexture3D>();
 	ClassDB::register_class<PanoramaSky>();
 	ClassDB::register_class<ProceduralSky>();
 	ClassDB::register_class<StreamTexture>();

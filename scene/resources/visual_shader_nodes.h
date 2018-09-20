@@ -198,6 +198,7 @@ public:
 		SOURCE_TEXTURE,
 		SOURCE_SCREEN,
 		SOURCE_2D_TEXTURE,
+		SOURCE_3D_TEXTURE,
 		SOURCE_2D_NORMAL,
 		SOURCE_DEPTH
 	};
@@ -250,6 +251,65 @@ VARIANT_ENUM_CAST(VisualShaderNodeTexture::TextureType)
 VARIANT_ENUM_CAST(VisualShaderNodeTexture::Source)
 
 ///////////////////////////////////////
+
+class VisualShaderNodeTexture3D : public VisualShaderNode {
+	GDCLASS(VisualShaderNodeTexture3D, VisualShaderNode)
+	Ref<Texture3D> texture;
+
+public:
+	enum Source {
+		SOURCE_TEXTURE,
+		SOURCE_SCREEN,
+		SOURCE_2D_TEXTURE,
+		SOURCE_3D_TEXTURE,
+		SOURCE_2D_NORMAL
+	};
+
+	enum TextureType {
+		TYPE_DATA,
+		TYPE_COLOR,
+		TYPE_NORMALMAP
+	};
+
+private:
+	Source source;
+	TextureType texture_type;
+
+protected:
+	static void _bind_methods();
+
+public:
+	virtual String get_caption() const;
+
+	virtual int get_input_port_count() const;
+	virtual PortType get_input_port_type(int p_port) const;
+	virtual String get_input_port_name(int p_port) const;
+
+	virtual int get_output_port_count() const;
+	virtual PortType get_output_port_type(int p_port) const;
+	virtual String get_output_port_name(int p_port) const;
+
+	virtual Vector<VisualShader::DefaultTextureParam> get_default_texture_parameters(VisualShader::Type p_type, int p_id) const;
+	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const;
+	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	void set_texture(Ref<Texture3D> p_value);
+	Ref<Texture3D> get_texture() const;
+
+	void set_texture_type(TextureType p_type);
+	TextureType get_texture_type() const;
+
+	virtual Vector<StringName> get_editable_properties() const;
+
+	virtual String get_warning(Shader::Mode p_mode, VisualShader::Type p_type) const;
+
+	VisualShaderNodeTexture3D();
+};
+
+VARIANT_ENUM_CAST(VisualShaderNodeTexture3D::TextureType)
+VARIANT_ENUM_CAST(VisualShaderNodeTexture3D::Source)
+
+//////////////////////////////////
 
 class VisualShaderNodeCubeMap : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeCubeMap, VisualShaderNode);
@@ -1445,6 +1505,58 @@ VARIANT_ENUM_CAST(VisualShaderNodeTextureUniform::TextureType)
 VARIANT_ENUM_CAST(VisualShaderNodeTextureUniform::ColorDefault)
 
 ///////////////////////////////////////
+
+class VisualShaderNodeTexture3DUniform : public VisualShaderNodeUniform {
+	GDCLASS(VisualShaderNodeTexture3DUniform, VisualShaderNodeUniform)
+public:
+	enum TextureType {
+		TYPE_DATA,
+		TYPE_COLOR,
+		TYPE_NORMALMAP,
+		TYPE_ANISO,
+	};
+
+	enum ColorDefault {
+		COLOR_DEFAULT_WHITE,
+		COLOR_DEFAULT_BLACK
+	};
+
+private:
+	TextureType texture_type;
+	ColorDefault color_default;
+
+protected:
+	static void _bind_methods();
+
+public:
+	virtual String get_caption() const;
+
+	virtual int get_input_port_count() const;
+	virtual PortType get_input_port_type(int p_port) const;
+	virtual String get_input_port_name(int p_port) const;
+
+	virtual int get_output_port_count() const;
+	virtual PortType get_output_port_type(int p_port) const;
+	virtual String get_output_port_name(int p_port) const;
+
+	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const;
+	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	Vector<StringName> get_editable_properties() const;
+
+	void set_texture_type(TextureType p_type);
+	TextureType get_texture_type() const;
+
+	void set_color_default(ColorDefault p_default);
+	ColorDefault get_color_default() const;
+
+	VisualShaderNodeTexture3DUniform();
+};
+
+VARIANT_ENUM_CAST(VisualShaderNodeTexture3DUniform::TextureType)
+VARIANT_ENUM_CAST(VisualShaderNodeTexture3DUniform::ColorDefault)
+
+//////////////////////////////////
 
 class VisualShaderNodeTextureUniformTriplanar : public VisualShaderNodeTextureUniform {
 	GDCLASS(VisualShaderNodeTextureUniformTriplanar, VisualShaderNodeTextureUniform);

@@ -632,6 +632,7 @@ void VisualShaderNodeTexture::_bind_methods() {
 	BIND_ENUM_CONSTANT(SOURCE_TEXTURE);
 	BIND_ENUM_CONSTANT(SOURCE_SCREEN);
 	BIND_ENUM_CONSTANT(SOURCE_2D_TEXTURE);
+	BIND_ENUM_CONSTANT(SOURCE_3D_TEXTURE);
 	BIND_ENUM_CONSTANT(SOURCE_2D_NORMAL);
 	BIND_ENUM_CONSTANT(SOURCE_DEPTH);
 	BIND_ENUM_CONSTANT(TYPE_DATA);
@@ -642,6 +643,129 @@ void VisualShaderNodeTexture::_bind_methods() {
 VisualShaderNodeTexture::VisualShaderNodeTexture() {
 	texture_type = TYPE_DATA;
 	source = SOURCE_TEXTURE;
+}
+
+////////////// Texture3D
+
+String VisualShaderNodeTexture3D::get_caption() const {
+	return "Texture";
+}
+
+int VisualShaderNodeTexture3D::get_input_port_count() const {
+	return 2;
+}
+VisualShaderNodeTexture3D::PortType VisualShaderNodeTexture3D::get_input_port_type(int p_port) const {
+	return p_port == 0 ? PORT_TYPE_VECTOR : PORT_TYPE_SCALAR;
+}
+String VisualShaderNodeTexture3D::get_input_port_name(int p_port) const {
+	return p_port == 0 ? "uv" : "lod";
+}
+
+int VisualShaderNodeTexture3D::get_output_port_count() const {
+	return 2;
+}
+VisualShaderNodeTexture3D::PortType VisualShaderNodeTexture3D::get_output_port_type(int p_port) const {
+	return p_port == 0 ? PORT_TYPE_VECTOR : PORT_TYPE_SCALAR;
+}
+String VisualShaderNodeTexture3D::get_output_port_name(int p_port) const {
+	return p_port == 0 ? "rgb" : "alpha";
+}
+
+Vector<VisualShader::DefaultTextureParam> VisualShaderNodeTexture3D::get_default_texture_parameters(VisualShader::Type p_type, int p_id) const {
+	VisualShader::DefaultTextureParam dtp;
+	dtp.name = make_unique_id(p_type, p_id, "tex3d");
+	dtp.param = texture;
+	Vector<VisualShader::DefaultTextureParam> ret;
+	ret.push_back(dtp);
+	return ret;
+}
+
+String VisualShaderNodeTexture3D::generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const {
+	String u = "uniform sampler3D " + make_unique_id(p_type, p_id, "tex3d");
+	switch (texture_type) {
+		case TYPE_DATA: break;
+		case TYPE_COLOR: u += " : hint_color"; break;
+		case TYPE_NORMALMAP: u += " : hint_normal"; break;
+	}
+	return u + ";";
+}
+
+String VisualShaderNodeTexture3D::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
+	String id = make_unique_id(p_type, p_id, "tex3d");
+	String code;
+	if (p_input_vars[0] == String()) { //none bound, do nothing
+
+		code += "\tvec4 " + id + "_read = vec4(0.0);\n";
+
+	} else if (p_input_vars[1] == String()) {
+		//no lod
+		code += "\tvec4 " + id + "_read = texture3D( " + id + " , " + p_input_vars[0] + ".xyz );\n";
+	} else {
+		code += "\tvec4 " + id + "_read = textureLod( " + id + " , " + p_input_vars[0] + ".xyz , " + p_input_vars[1] + " );\n";
+	}
+
+	code += "\t" + p_output_vars[0] + " = " + id + "_read.rgb;\n";
+	code += "\t" + p_output_vars[1] + " = " + id + "_read.a;\n";
+	return code;
+}
+
+void VisualShaderNodeTexture3D::set_texture(Ref<Texture3D> p_value) {
+
+	texture = p_value;
+	emit_changed();
+}
+
+Ref<Texture3D> VisualShaderNodeTexture3D::get_texture() const {
+
+	return texture;
+}
+
+void VisualShaderNodeTexture3D::set_texture_type(TextureType p_type) {
+	texture_type = p_type;
+	emit_changed();
+}
+
+VisualShaderNodeTexture3D::TextureType VisualShaderNodeTexture3D::get_texture_type() const {
+	return texture_type;
+}
+
+Vector<StringName> VisualShaderNodeTexture3D::get_editable_properties() const {
+	Vector<StringName> props;
+	props.push_back("texture");
+	props.push_back("texture_type");
+	return props;
+}
+
+String VisualShaderNodeTexture3D::get_warning(Shader::Mode p_mode, VisualShader::Type p_type) const {
+
+	if (source == SOURCE_3D_TEXTURE) {
+
+		return String(); // all good
+	}
+
+	return TTR("Invalid source for shader.");
+}
+
+void VisualShaderNodeTexture3D::_bind_methods() {
+
+	ClassDB::bind_method(D_METHOD("set_texture", "value"), &VisualShaderNodeTexture3D::set_texture);
+	ClassDB::bind_method(D_METHOD("get_texture"), &VisualShaderNodeTexture3D::get_texture);
+
+	ClassDB::bind_method(D_METHOD("set_texture_type", "value"), &VisualShaderNodeTexture3D::set_texture_type);
+	ClassDB::bind_method(D_METHOD("get_texture_type"), &VisualShaderNodeTexture3D::get_texture_type);
+
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture3D"), "set_texture", "get_texture");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normalmap"), "set_texture_type", "get_texture_type");
+
+	BIND_ENUM_CONSTANT(SOURCE_3D_TEXTURE);
+	BIND_ENUM_CONSTANT(TYPE_DATA);
+	BIND_ENUM_CONSTANT(TYPE_COLOR);
+	BIND_ENUM_CONSTANT(TYPE_NORMALMAP);
+}
+
+VisualShaderNodeTexture3D::VisualShaderNodeTexture3D() {
+	texture_type = TYPE_DATA;
+	source = SOURCE_3D_TEXTURE;
 }
 
 ////////////// CubeMap
@@ -3217,6 +3341,125 @@ String VisualShaderNodeTextureUniformTriplanar::generate_code(Shader::Mode p_mod
 }
 
 VisualShaderNodeTextureUniformTriplanar::VisualShaderNodeTextureUniformTriplanar() {
+}
+
+
+////////////// Texture Uniform
+
+String VisualShaderNodeTexture3DUniform::get_caption() const {
+	return "Texture3DUniform";
+}
+
+int VisualShaderNodeTexture3DUniform::get_input_port_count() const {
+	return 2;
+}
+VisualShaderNodeTexture3DUniform::PortType VisualShaderNodeTexture3DUniform::get_input_port_type(int p_port) const {
+	return p_port == 0 ? PORT_TYPE_VECTOR : PORT_TYPE_SCALAR;
+}
+String VisualShaderNodeTexture3DUniform::get_input_port_name(int p_port) const {
+	return p_port == 0 ? "uv" : "lod";
+}
+
+int VisualShaderNodeTexture3DUniform::get_output_port_count() const {
+	return 2;
+}
+VisualShaderNodeTexture3DUniform::PortType VisualShaderNodeTexture3DUniform::get_output_port_type(int p_port) const {
+	return p_port == 0 ? PORT_TYPE_VECTOR : PORT_TYPE_SCALAR;
+}
+String VisualShaderNodeTexture3DUniform::get_output_port_name(int p_port) const {
+	return p_port == 0 ? "rgb" : "alpha";
+}
+
+String VisualShaderNodeTexture3DUniform::generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const {
+	String code = "uniform sampler3D " + get_uniform_name();
+
+	switch (texture_type) {
+		case TYPE_DATA:
+			if (color_default == COLOR_DEFAULT_BLACK)
+				code += " : hint_black;\n";
+			else
+				code += ";\n";
+			break;
+		case TYPE_COLOR:
+			if (color_default == COLOR_DEFAULT_BLACK)
+				code += " : hint_black_albedo;\n";
+			else
+				code += " : hint_albedo;\n";
+			break;
+		case TYPE_NORMALMAP: code += " : hint_normal;\n"; break;
+		case TYPE_ANISO: code += " : hint_aniso;\n"; break;
+	}
+
+	return code;
+}
+
+String VisualShaderNodeTexture3DUniform::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
+
+	String id = get_uniform_name();
+	String code = "\t{\n";
+	if (p_input_vars[0] == String()) { //none bound, do nothing
+
+		code += "\t\tvec4 n_tex_read = vec4(0.0);\n";
+	} else if (p_input_vars[1] == String()) {
+		//no lod
+		code += "\t\tvec4 n_tex_read = texture3D( " + id + " , " + p_input_vars[0] + ".xyz );\n";
+	} else {
+		code += "\t\tvec4 n_tex_read = textureLod( " + id + " , " + p_input_vars[0] + ".xyz , " + p_input_vars[1] + " );\n";
+	}
+
+	code += "\t\t" + p_output_vars[0] + " = n_tex_read.rgb;\n";
+	code += "\t\t" + p_output_vars[1] + " = n_tex_read.a;\n";
+	code += "\t}\n";
+	return code;
+}
+
+void VisualShaderNodeTexture3DUniform::set_texture_type(TextureType p_type) {
+
+	texture_type = p_type;
+	emit_changed();
+}
+
+VisualShaderNodeTexture3DUniform::TextureType VisualShaderNodeTexture3DUniform::get_texture_type() const {
+	return texture_type;
+}
+
+void VisualShaderNodeTexture3DUniform::set_color_default(ColorDefault p_default) {
+	color_default = p_default;
+	emit_changed();
+}
+VisualShaderNodeTexture3DUniform::ColorDefault VisualShaderNodeTexture3DUniform::get_color_default() const {
+	return color_default;
+}
+
+Vector<StringName> VisualShaderNodeTexture3DUniform::get_editable_properties() const {
+	Vector<StringName> props;
+	props.push_back("texture_type");
+	props.push_back("color_default");
+	return props;
+}
+
+void VisualShaderNodeTexture3DUniform::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_texture_type", "type"), &VisualShaderNodeTexture3DUniform::set_texture_type);
+	ClassDB::bind_method(D_METHOD("get_texture_type"), &VisualShaderNodeTexture3DUniform::get_texture_type);
+
+	ClassDB::bind_method(D_METHOD("set_color_default", "type"), &VisualShaderNodeTexture3DUniform::set_color_default);
+	ClassDB::bind_method(D_METHOD("get_color_default"), &VisualShaderNodeTexture3DUniform::get_color_default);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normalmap,Aniso"), "set_texture_type", "get_texture_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "color_default", PROPERTY_HINT_ENUM, "White Default,Black Default"), "set_color_default", "get_color_default");
+
+	BIND_ENUM_CONSTANT(TYPE_DATA);
+	BIND_ENUM_CONSTANT(TYPE_COLOR);
+	BIND_ENUM_CONSTANT(TYPE_NORMALMAP);
+	BIND_ENUM_CONSTANT(TYPE_ANISO);
+
+	BIND_ENUM_CONSTANT(COLOR_DEFAULT_WHITE);
+	BIND_ENUM_CONSTANT(COLOR_DEFAULT_BLACK);
+}
+
+VisualShaderNodeTexture3DUniform::VisualShaderNodeTexture3DUniform() {
+	texture_type = TYPE_DATA;
+	color_default = COLOR_DEFAULT_WHITE;
 }
 
 ////////////// CubeMap Uniform

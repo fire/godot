@@ -35,15 +35,17 @@
 #include "core/reference.h"
 #include "scene/resources/texture.h"
 
+#include "scene/resources/fractal_brownian_noise.h"
 #include "thirdparty/misc/open-simplex-noise.h"
 
-class OpenSimplexNoise : public Resource {
-	GDCLASS(OpenSimplexNoise, Resource);
+class OpenSimplexNoise : public FractalBrownianNoise {
+	GDCLASS(OpenSimplexNoise, FractalBrownianNoise)
 	OBJ_SAVE_TYPE(OpenSimplexNoise);
 
 	osn_context contexts[6];
 
 	int seed;
+	Vector<int32_t> size;
 	float persistence; // Controls details, value in [0,1]. Higher increases grain, lower increases smoothness.
 	int octaves; // Number of noise layers
 	float period; // Distance above which we start to see similarities. The higher, the longer "hills" will be on a terrain.
@@ -56,13 +58,16 @@ public:
 	void _init_seeds();
 
 	void set_seed(int seed);
-	int get_seed();
+	int get_seed() const;
+
+	void set_size(Vector<int32_t> p_size);
+	Vector<int32_t> get_size() const;
+
+	void set_period(float p_period);
+	float get_period() const;
 
 	void set_octaves(int p_octaves);
 	int get_octaves() const { return octaves; }
-
-	void set_period(float p_period);
-	float get_period() const { return period; }
 
 	void set_persistence(float p_persistence);
 	float get_persistence() const { return persistence; }
@@ -71,15 +76,29 @@ public:
 	float get_lacunarity() const { return lacunarity; }
 
 	Ref<Image> get_image(int p_width, int p_height);
+	Vector<Ref<Image> > get_image_3d(int p_x, int p_y, int p_z);
 	Ref<Image> get_seamless_image(int p_size);
+	Vector<Ref<Image> > get_seamless_image_3d(int p_size);
 
 	float get_noise_1d(float x);
 	float get_noise_2d(float x, float y);
 	float get_noise_3d(float x, float y, float z);
+	float get_noise_3d_tiled(float x, float y, float z);
 	float get_noise_4d(float x, float y, float z, float w);
 
-	_FORCE_INLINE_ float _get_octave_noise_2d(int octave, float x, float y) { return open_simplex_noise2(&(contexts[octave]), x, y); }
-	_FORCE_INLINE_ float _get_octave_noise_3d(int octave, float x, float y, float z) { return open_simplex_noise3(&(contexts[octave]), x, y, z); }
+	_FORCE_INLINE_ float _get_octave_noise_2d(int octave, float x, float y) {
+		return open_simplex_noise2(&(contexts[octave]), x, y);
+	}
+	_FORCE_INLINE_ float _get_octave_noise_3d(int octave, float x, float y, float z) {
+		return open_simplex_noise3(&(contexts[octave]), x, y, z);
+	}
+
+	_FORCE_INLINE_ float _get_octave_noise_3d_tiled(int octave, float x, float y, float z) {
+		ERR_FAIL_COND_V(contexts[octave].w6 == 0, 0.0f);
+		ERR_FAIL_COND_V(contexts[octave].h6 == 0, 0.0f);
+		ERR_FAIL_COND_V(contexts[octave].d6 == 0, 0.0f);
+		return open_simplex_noise3_tiled(&(contexts[octave]), x, y, z);
+	}
 	_FORCE_INLINE_ float _get_octave_noise_4d(int octave, float x, float y, float z, float w) { return open_simplex_noise4(&(contexts[octave]), x, y, z, w); }
 
 	// Convenience
