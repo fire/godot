@@ -71,7 +71,7 @@ public:
 	float get_lacunarity() const { return lacunarity; }
 
 	Ref<Image> get_image(int p_width, int p_height);
-	Ref<Image> get_image_3d(int p_width, int p_height, int p_length, int p_layer);
+	Ref<Image> get_image_3d(int p_width, int p_height, int p_layer);
 	Ref<Image> get_seamless_image(int p_size);
 
 	float get_noise_2d(float x, float y);

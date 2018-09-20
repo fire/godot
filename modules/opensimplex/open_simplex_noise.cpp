@@ -139,7 +139,7 @@ Ref<Image> OpenSimplexNoise::get_image_3d(int p_x, int p_y, int p_z, int p_layer
 	return image;
 }
 
-Ref<Image> SimplexNoise::get_seamless_image(int p_size) {
+Ref<Image> OpenSimplexNoise::get_seamless_image(int p_size) {
 
 	PoolVector<uint8_t> data;
 	data.resize(p_size * p_size * 4);

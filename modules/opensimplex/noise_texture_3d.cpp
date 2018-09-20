@@ -84,7 +84,7 @@ Ref<Image> NoiseTexture3D::_generate_texture(const int p_layer) {
 	update_queued = false;
 
 	if (noise.is_null()) return Ref<Image>();
-	Ref<Image> image = noise->get_image_3d(size.x, size.y, size.z, p_layer);
+	Ref<Image> image = noise->get_image_3d(size.x, size.y, p_layer);
 
 	return image;
 }
