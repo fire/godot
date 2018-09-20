@@ -501,6 +501,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVectorDecompose>();
 	ClassDB::register_class<VisualShaderNodeTransformDecompose>();
 	ClassDB::register_class<VisualShaderNodeTexture>();
+	ClassDB::register_class<VisualShaderNodeTexture3D>();
 	ClassDB::register_class<VisualShaderNodeCubeMap>();
 	ClassDB::register_virtual_class<VisualShaderNodeUniform>();
 	ClassDB::register_class<VisualShaderNodeScalarUniform>();
@@ -508,6 +509,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVec3Uniform>();
 	ClassDB::register_class<VisualShaderNodeTransformUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniform>();
+	ClassDB::register_class<VisualShaderNodeTexture3DUniform>();
 	ClassDB::register_class<VisualShaderNodeCubeMapUniform>();
 
 	ClassDB::register_class<ShaderMaterial>();

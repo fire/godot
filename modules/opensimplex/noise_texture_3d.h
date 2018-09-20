@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  noise_texture_3d.h                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,17 +28,68 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
-#include "noise_texture.h"
+#ifndef NOISE_TEXTURE_3D_H
+#define NOISE_TEXTURE_3D_H
+
 #include "open_simplex_noise.h"
-#include "noise_texture_3d.h"
 
-void register_opensimplex_types() {
+#include "core/core_string_names.h"
+#include "core/dvector.h"
+#include "core/image.h"
+#include "core/reference.h"
+#include "editor/editor_node.h"
+#include "editor/editor_plugin.h"
+#include "editor/property_editor.h"
 
-	ClassDB::register_class<OpenSimplexNoise>();
-	ClassDB::register_class<NoiseTexture>();
-	ClassDB::register_class<NoiseTexture3D>();
-}
+class NoiseTexture3D : public Texture3D {
+	GDCLASS(NoiseTexture3D, Texture3D)
 
-void unregister_opensimplex_types() {
-}
+private:
+	struct ImageLayer {
+		Ref<NoiseTexture3D> ref;
+		int layer;
+	} noise_thread_layer;
+
+	Vector<Ref<Image> > data;
+
+	Thread *noise_thread;
+
+	bool first_time;
+	bool update_queued;
+	bool regen_queued;
+
+	RID texture;
+	uint32_t flags;
+
+	Ref<OpenSimplexNoise> noise;
+	Vector3 size;
+
+	void _set_texture_data(const Vector<Ref<Image> > data_layers);
+	void _thread_done();
+	static void _thread_function(void *p_ud);
+	void _queue_update();
+	Ref<Image> _generate_texture(const int p_depth);
+	void _update_texture();
+
+protected:
+	static void _bind_methods();
+
+public:
+	void set_noise(Ref<OpenSimplexNoise> p_noise);
+	Ref<OpenSimplexNoise> get_noise();
+	void set_width(int p_width);
+	void set_height(int p_height);
+	void set_length(int p_length);
+	void set_size(Vector3 p_size);
+	Vector3 get_size();
+	int get_width() const;
+	int get_height() const;
+	int get_length() const;
+	void set_flags(uint32_t p_flags);
+	uint32_t get_flags() const;
+	Vector<Ref<Image> > get_data() const;
+	NoiseTexture3D();
+	~NoiseTexture3D();
+};
+
+#endif // NOISE_TEXTURE_3D_H

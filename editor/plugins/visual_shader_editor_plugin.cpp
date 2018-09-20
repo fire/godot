@@ -807,6 +807,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("Color", "Constants", "VisualShaderNodeColorConstant"));
 	add_options.push_back(AddOption("Transform", "Constants", "VisualShaderNodeTransformConstant"));
 	add_options.push_back(AddOption("Texture", "Constants", "VisualShaderNodeTexture"));
+	add_options.push_back(AddOption("Texture3D", "Constants", "VisualShaderNodeTexture3D"));
 	add_options.push_back(AddOption("CubeMap", "Constants", "VisualShaderNodeCubeMap"));
 	add_options.push_back(AddOption("ScalarOp", "Operators", "VisualShaderNodeScalarOp"));
 	add_options.push_back(AddOption("VectorOp", "Operators", "VisualShaderNodeVectorOp"));
@@ -828,6 +829,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("Color", "Uniforms", "VisualShaderNodeColorUniform"));
 	add_options.push_back(AddOption("Transform", "Uniforms", "VisualShaderNodeTransformUniform"));
 	add_options.push_back(AddOption("Texture", "Uniforms", "VisualShaderNodeTextureUniform"));
+	add_options.push_back(AddOption("Texture3D", "Uniforms", "VisualShaderNodeTexture3DUniform"));
 	add_options.push_back(AddOption("CubeMap", "Uniforms", "VisualShaderNodeCubeMapUniform"));
 	add_options.push_back(AddOption("Input", "Inputs", "VisualShaderNodeInput"));
 
