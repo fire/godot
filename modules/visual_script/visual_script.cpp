@@ -742,7 +742,7 @@ void VisualScript::rename_variable(const StringName &p_name, const StringName &p
 }
 
 void VisualScript::get_graph_list(List<StringName> *r_graphs) const {
-	for (Map<StringName, Variable>::Element *E = graphs.front(); E; E = E->next()) {
+	for (Map<StringName, Graph>::Element *E = graphs.front(); E; E = E->next()) {
 		r_graphs->push_back(E->key());
 	}
 

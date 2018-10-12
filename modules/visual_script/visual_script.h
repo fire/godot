@@ -236,6 +236,23 @@ private:
 		Function() { function_id = -1; }
 	};
 
+	struct Graph {
+		struct NodeData {
+			Point2 pos;
+			Ref<VisualScriptNode> node;
+		};
+
+		Map<int, NodeData> nodes;
+
+		Set<SequenceConnection> sequence_connections;
+
+		Set<DataConnection> data_connections;
+
+		Vector2 scroll;
+
+		Graph() {}
+	};
+
 	struct Variable {
 		PropertyInfo info;
 		Variant default_value;
@@ -244,7 +261,7 @@ private:
 
 	Map<StringName, Function> functions;
 	Map<StringName, Variable> variables;
-	Map<StringName, Variable> graphs;
+	Map<StringName, Graph> graphs;
 	Map<StringName, Vector<Argument> > custom_signals;
 
 	Map<Object *, VisualScriptInstance *> instances;
@@ -308,6 +325,10 @@ public:
 	void get_variable_list(List<StringName> *r_variables) const;
 	void rename_variable(const StringName &p_name, const StringName &p_new_name);
 
+	void add_graph(const StringName &p_name) {}
+	bool has_graph(const StringName &p_name) const {}
+	void remove_graph(const StringName &p_name) {}
+	void rename_graph(const StringName &p_name, const StringName &p_new_name) {}
 	void get_graph_list(List<StringName> *r_graphs) const;
 
 	void add_custom_signal(const StringName &p_name);
