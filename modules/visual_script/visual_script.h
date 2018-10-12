@@ -327,6 +327,11 @@ public:
 
 	void add_graph(const StringName &p_name);
 	bool has_graph(const StringName &p_name) const;
+		
+	Vector2 get_graph_scroll(const StringName &p_name) const;
+	
+void set_graph_scroll(const StringName &p_name, const Vector2 &p_scroll);
+
 	void remove_graph(const StringName &p_name);
 	void rename_graph(const StringName &p_name, const StringName &p_new_name);
 	void get_graph_list(List<StringName> *r_graphs) const;

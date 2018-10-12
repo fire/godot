@@ -754,6 +754,16 @@ bool VisualScript::has_graph(const StringName &p_name) const {
 	return graphs.has(p_name);
 }
 
+Vector2 VisualScript::get_graph_scroll(const StringName &p_name) const {
+	ERR_FAIL_COND_V(!graphs.has(p_name), Vector2());
+	return graphs[p_name].scroll;
+}
+
+void VisualScript::set_graph_scroll(const StringName &p_name, const Vector2 &p_scroll) {
+	ERR_FAIL_COND(!graphs.has(p_name));
+	graphs[p_name].scroll = p_scroll;
+}
+
 void VisualScript::remove_graph(const StringName &p_name) {
 	ERR_FAIL_COND(instances.size());
 	ERR_FAIL_COND(!graphs.has(p_name));
@@ -1241,7 +1251,7 @@ void VisualScript::_set_data(const Dictionary &p_data) {
 		//int id=func["function_id"];
 		add_graph(name);
 
-		//set_function_scroll(name, graph["scroll"]);
+		set_function_scroll(name, graph["scroll"]);
 
 		Array nodes = graph["nodes"];
 
@@ -1345,6 +1355,53 @@ Dictionary VisualScript::_get_data() const {
 	}
 
 	d["functions"] = funcs;
+
+	Array graph_arr;
+
+	for (const Map<StringName, Graph>::Element *E = graphs.front(); E; E = E->next()) {
+
+		Dictionary graph;
+		graph["name"] = E->key();
+		graph["scroll"] = E->get().scroll;
+
+		Array nodes;
+
+		for (const Map<int, Graph::NodeData>::Element *F = E->get().nodes.front(); F; F = F->next()) {
+
+			nodes.push_back(F->key());
+			nodes.push_back(F->get().pos);
+			nodes.push_back(F->get().node);
+		}
+
+		graph["nodes"] = nodes;
+
+		Array sequence_connections;
+
+		for (const Set<SequenceConnection>::Element *F = E->get().sequence_connections.front(); F; F = F->next()) {
+
+			sequence_connections.push_back(F->get().from_node);
+			sequence_connections.push_back(F->get().from_output);
+			sequence_connections.push_back(F->get().to_node);
+		}
+
+		graph["sequence_connections"] = sequence_connections;
+
+		Array data_connections;
+
+		for (const Set<DataConnection>::Element *F = E->get().data_connections.front(); F; F = F->next()) {
+
+			data_connections.push_back(F->get().from_node);
+			data_connections.push_back(F->get().from_port);
+			data_connections.push_back(F->get().to_node);
+			data_connections.push_back(F->get().to_port);
+		}
+
+		graph["data_connections"] = data_connections;
+
+		graph_arr.push_back(graph);
+	}
+
+	d["graphs"] = graph_arr;
 
 	return d;
 }
