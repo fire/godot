@@ -861,16 +861,16 @@ void VisualScriptEditor::_update_members() {
 			ti->select(0);
 	}
 
-	TreeItem *graphs = members->create_item(root);
-	graphs->set_selectable(0, false);
-	graphs->set_text(0, TTR("Graphs:"));
-	graphs->add_button(0, Control::get_icon("Add", "EditorIcons"), 0);
-	graphs->set_custom_color(0, Control::get_color("mono_color", "Editor"));
+	TreeItem *_graphs = members->create_item(root);
+	_graphs->set_selectable(0, false);
+	_graphs->set_text(0, TTR("Graphs:"));
+	_graphs->add_button(0, Control::get_icon("Add", "EditorIcons"), 2);
+	_graphs->set_custom_color(0, Control::get_color("mono_color", "Editor"));
 
 	List<StringName> graph_names;
 	script->get_graph_list(&graph_names);
 	for (List<StringName>::Element *E = graph_names.front(); E; E = E->next()) {
-		TreeItem *ti = members->create_item(graphs);
+		TreeItem *ti = members->create_item(_graphs);
 		ti->set_text(0, E->get());
 		ti->set_selectable(0, true);
 		ti->set_editable(0, true);
@@ -1024,12 +1024,7 @@ void VisualScriptEditor::_member_button(Object *p_item, int p_column, int p_butt
 		if (ti == root->get_children()) {
 			//add function, this one uses menu
 
-			if (p_button == 1) {
-
-				new_virtual_method_select->select_method_from_base_type(script->get_instance_base_type(), String(), true);
-
-				return;
-			} else if (p_button == 0) {
+			if (p_button == 0) {
 
 				String name = _validate_name("new_function");
 				selected = name;
@@ -1052,6 +1047,9 @@ void VisualScriptEditor::_member_button(Object *p_item, int p_column, int p_butt
 				undo_redo->commit_action();
 
 				_update_graph();
+			} else if (p_button == 1) {
+
+				new_virtual_method_select->select_method_from_base_type(script->get_instance_base_type(), String(), true);
 			}
 
 			return; //or crash because it will become invalid
@@ -1087,6 +1085,27 @@ void VisualScriptEditor::_member_button(Object *p_item, int p_column, int p_butt
 			undo_redo->add_undo_method(this, "emit_signal", "edited_script_changed");
 			undo_redo->commit_action();
 			return; //or crash because it will become invalid
+		}
+
+		
+		if (ti == root->get_children()->get_next()->get_next()->get_next() && p_button == 2) {
+
+			String name = _validate_name("graph");
+			selected = name;
+			edited_graph = selected;
+
+			undo_redo->create_action(TTR("Add Graph"));
+			undo_redo->add_do_method(script.ptr(), "add_graph", name);
+			undo_redo->add_undo_method(script.ptr(), "remove_graph", name);
+			undo_redo->add_do_method(this, "_update_members");
+			undo_redo->add_undo_method(this, "_update_members");
+			undo_redo->add_do_method(this, "_update_graph");
+			undo_redo->add_undo_method(this, "_update_graph");
+			undo_redo->add_do_method(this, "emit_signal", "edited_script_changed");
+			undo_redo->add_undo_method(this, "emit_signal", "edited_script_changed");
+			undo_redo->commit_action();
+
+			_update_graph();
 		}
 	}
 }
