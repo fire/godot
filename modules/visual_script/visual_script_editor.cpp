@@ -3137,6 +3137,12 @@ void VisualScriptEditor::_graph_ofs_changed(const Vector2 &p_ofs) {
 		script->set_function_scroll(edited_func, graph->get_scroll_ofs() / EDSCALE);
 		script->set_edited(true);
 	}
+
+	if (script->has_graph(edited_graph)) {
+		script->set_graph_scroll(edited_graph, graph->get_scroll_ofs() / EDSCALE);
+		script->set_edited(true);
+	}
+
 	updating_graph = false;
 }
 
