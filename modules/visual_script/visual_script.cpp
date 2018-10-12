@@ -1229,6 +1229,41 @@ void VisualScript::_set_data(const Dictionary &p_data) {
 			data_connect(name, data_connections[j + 0], data_connections[j + 1], data_connections[j + 2], data_connections[j + 3]);
 		}
 	}
+
+	Array graphs = d["graphs"];
+	graphs.clear();
+
+	for (int i = 0; i < graphs.size(); i++) {
+
+		Dictionary graph = graphs[i];
+
+		StringName name = graph["name"];
+		//int id=func["function_id"];
+		add_graph(name);
+
+		//set_function_scroll(name, graph["scroll"]);
+
+		Array nodes = graph["nodes"];
+
+		for (int i = 0; i < nodes.size(); i += 3) {
+
+			add_node(name, nodes[i], nodes[i + 2], nodes[i + 1]);
+		}
+
+		Array sequence_connections = graph["sequence_connections"];
+
+		for (int j = 0; j < sequence_connections.size(); j += 3) {
+
+			sequence_connect(name, sequence_connections[j + 0], sequence_connections[j + 1], sequence_connections[j + 2]);
+		}
+
+		Array data_connections = graph["data_connections"];
+
+		for (int j = 0; j < data_connections.size(); j += 4) {
+
+			data_connect(name, data_connections[j + 0], data_connections[j + 1], data_connections[j + 2], data_connections[j + 3]);
+		}
+	}
 }
 
 Dictionary VisualScript::_get_data() const {
