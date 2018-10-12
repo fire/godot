@@ -476,6 +476,14 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 	if (!script->has_function(edited_func)) {
 		graph->hide();
 		select_func_text->show();
+	}
+
+	if (!script->has_graph(edited_graph)) {
+		graph->hide();
+		select_func_text->show();
+	}
+
+	if (!script->has_function(edited_func) && !script->has_graph(edited_graph)) {
 		updating_graph = false;
 		return;
 	}
@@ -910,9 +918,15 @@ void VisualScriptEditor::_member_selected() {
 		return; //or crash because it will become invalid
 	}
 
-	revert_on_drag = edited_func;
-	edited_func = selected;
-	edited_graph = selected;
+	if (ti->get_parent() == members->get_root()->get_children()) {
+		revert_on_drag = edited_func;
+		edited_func = selected;
+	}
+
+	if (ti->get_parent() == members->get_root()->get_children()->get_next()->get_next()->get_next()) {
+		revert_on_drag = edited_graph;
+		edited_graph = selected;
+	}
 	_update_members();
 	_update_graph();
 }
