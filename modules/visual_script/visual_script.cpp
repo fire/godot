@@ -1353,6 +1353,11 @@ void VisualScript::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_variable_export", "name"), &VisualScript::get_variable_export);
 	ClassDB::bind_method(D_METHOD("rename_variable", "name", "new_name"), &VisualScript::rename_variable);
 
+	ClassDB::bind_method(D_METHOD("add_graph", "name"), &VisualScript::add_graph);
+	ClassDB::bind_method(D_METHOD("has_graph", "name"), &VisualScript::has_graph);
+	ClassDB::bind_method(D_METHOD("remove_graph", "name"), &VisualScript::remove_graph);
+	ClassDB::bind_method(D_METHOD("rename_graph", "name", "new_name"), &VisualScript::rename_graph);
+
 	ClassDB::bind_method(D_METHOD("add_custom_signal", "name"), &VisualScript::add_custom_signal);
 	ClassDB::bind_method(D_METHOD("has_custom_signal", "name"), &VisualScript::has_custom_signal);
 	ClassDB::bind_method(D_METHOD("custom_signal_add_argument", "name", "type", "argname", "index"), &VisualScript::custom_signal_add_argument, DEFVAL(-1));
