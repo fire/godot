@@ -448,13 +448,25 @@ Point2 VisualScript::get_node_position(const StringName &p_func, int p_id) const
 	return func.nodes[p_id].pos;
 }
 
-void VisualScript::get_node_list(const StringName &p_func, List<int> *r_nodes) const {
+void VisualScript::get_node_list(const StringName &p_func_graph, List<int> *r_nodes) const {
 
-	ERR_FAIL_COND(!functions.has(p_func));
-	const Function &func = functions[p_func];
+	ERR_FAIL_COND(!functions.has(p_func_graph) && !graphs.has(p_func_graph));
 
-	for (const Map<int, Function::NodeData>::Element *E = func.nodes.front(); E; E = E->next()) {
-		r_nodes->push_back(E->key());
+	if (functions.has(p_func_graph)) {
+
+		const Function &func = functions[p_func_graph];
+
+		for (const Map<int, Function::NodeData>::Element *E = func.nodes.front(); E; E = E->next()) {
+			r_nodes->push_back(E->key());
+		}
+	}
+
+	if (graphs.has(p_func_graph)) {
+		const Graph &graph = graphs[p_func_graph];
+
+		for (const Map<int, Graph::NodeData>::Element *E = graph.nodes.front(); E; E = E->next()) {
+			r_nodes->push_back(E->key());
+		}
 	}
 }
 
@@ -500,13 +512,23 @@ bool VisualScript::has_sequence_connection(const StringName &p_func, int p_from_
 	return func.sequence_connections.has(sc);
 }
 
-void VisualScript::get_sequence_connection_list(const StringName &p_func, List<SequenceConnection> *r_connection) const {
+void VisualScript::get_sequence_connection_list(const StringName &p_func_graph, List<SequenceConnection> *r_connection) const {
 
-	ERR_FAIL_COND(!functions.has(p_func));
-	const Function &func = functions[p_func];
+	ERR_FAIL_COND(!functions.has(p_func_graph) && !graphs.has(p_func_graph));
+	if (functions.has(p_func_graph)) {
+		const Function &func = functions[p_func_graph];
 
-	for (const Set<SequenceConnection>::Element *E = func.sequence_connections.front(); E; E = E->next()) {
-		r_connection->push_back(E->get());
+		for (const Set<SequenceConnection>::Element *E = func.sequence_connections.front(); E; E = E->next()) {
+			r_connection->push_back(E->get());
+		}
+	}
+
+	if (graphs.has(p_func_graph)) {
+		const Graph &graph = graphs[p_func_graph];
+
+		for (const Set<SequenceConnection>::Element *E = graph.sequence_connections.front(); E; E = E->next()) {
+			r_connection->push_back(E->get());
+		}
 	}
 }
 
@@ -586,13 +608,24 @@ bool VisualScript::get_input_value_port_connection_source(const StringName &p_fu
 	return false;
 }
 
-void VisualScript::get_data_connection_list(const StringName &p_func, List<DataConnection> *r_connection) const {
+void VisualScript::get_data_connection_list(const StringName &p_func_graph, List<DataConnection> *r_connection) const {
 
-	ERR_FAIL_COND(!functions.has(p_func));
-	const Function &func = functions[p_func];
+	ERR_FAIL_COND(!functions.has(p_func_graph) && !graphs.has(p_func_graph));
 
-	for (const Set<DataConnection>::Element *E = func.data_connections.front(); E; E = E->next()) {
-		r_connection->push_back(E->get());
+	if (functions.has(p_func_graph)) {
+		const Function &func = functions[p_func_graph];
+
+		for (const Set<DataConnection>::Element *E = func.data_connections.front(); E; E = E->next()) {
+			r_connection->push_back(E->get());
+		}
+	}
+
+	if (graphs.has(p_func_graph)) {
+		const Graph &graph = graphs[p_func_graph];
+
+		for (const Set<DataConnection>::Element *E = graph.data_connections.front(); E; E = E->next()) {
+			r_connection->push_back(E->get());
+		}
 	}
 }
 

@@ -902,7 +902,7 @@ void VisualScriptEditor::_member_selected() {
 
 	selected = ti->get_metadata(0);
 
-	if (ti->get_parent() != members->get_root()->get_children()) {
+	if (ti->get_parent() != members->get_root()->get_children() || ti->get_parent() != members->get_root()->get_children()->get_next()->get_next()->get_next()) {
 		return;
 	}
 
@@ -3383,6 +3383,15 @@ void VisualScriptEditor::_member_rmb_selected(const Vector2 &p_pos) {
 		member_popup->popup();
 		return;
 	}
+
+		if (ti->get_parent() == root->get_children()->get_next()->get_next()->get_next()) {
+
+		member_type = MEMBER_GRAPH;
+		member_name = ti->get_text(0);
+		member_popup->add_icon_shortcut(del_icon, ED_GET_SHORTCUT("visual_script_editor/delete_selected"), MEMBER_REMOVE);
+		member_popup->popup();
+		return;
+	}
 }
 
 void VisualScriptEditor::_member_option(int p_option) {
@@ -3400,11 +3409,6 @@ void VisualScriptEditor::_member_option(int p_option) {
 					undo_redo->add_undo_method(script.ptr(), "add_function", name);
 				}
 
-				if (script->has_graph(name)) {
-					undo_redo->create_action(TTR("Remove Graph"));
-					undo_redo->add_do_method(script.ptr(), "remove_graph", name);
-					undo_redo->add_undo_method(script.ptr(), "add_graph", name);
-				}
 				List<int> nodes;
 				script->get_node_list(name, &nodes);
 				for (List<int>::Element *E = nodes.front(); E; E = E->next()) {
@@ -3472,6 +3476,47 @@ void VisualScriptEditor::_member_option(int p_option) {
 				signal_editor->edit(name);
 				edit_signal_dialog->set_title(TTR("Editing Signal:") + " " + name);
 				edit_signal_dialog->popup_centered_minsize(Size2(400, 300) * EDSCALE);
+			}
+		} break;
+		case MEMBER_GRAPH: {
+
+			if (p_option == MEMBER_REMOVE) {
+				//delete the graph
+				String name = member_name;
+
+				if (script->has_graph(name)) {
+					undo_redo->create_action(TTR("Remove Graph"));
+					undo_redo->add_do_method(script.ptr(), "remove_graph", name);
+					undo_redo->add_undo_method(script.ptr(), "add_graph", name);
+				}
+
+				List<int> nodes;
+				script->get_node_list(name, &nodes);
+				for (List<int>::Element *E = nodes.front(); E; E = E->next()) {
+					undo_redo->add_undo_method(script.ptr(), "add_node", name, E->get(), script->get_node(name, E->get()), script->get_node_position(name, E->get()));
+				}
+
+				List<VisualScript::SequenceConnection> seq_connections;
+
+				script->get_sequence_connection_list(name, &seq_connections);
+
+				for (List<VisualScript::SequenceConnection>::Element *E = seq_connections.front(); E; E = E->next()) {
+					undo_redo->add_undo_method(script.ptr(), "sequence_connect", name, E->get().from_node, E->get().from_output, E->get().to_node);
+				}
+
+				List<VisualScript::DataConnection> data_connections;
+
+				script->get_data_connection_list(name, &data_connections);
+
+				for (List<VisualScript::DataConnection>::Element *E = data_connections.front(); E; E = E->next()) {
+					undo_redo->add_undo_method(script.ptr(), "data_connect", name, E->get().from_node, E->get().from_port, E->get().to_node, E->get().to_port);
+				}
+
+				undo_redo->add_do_method(this, "_update_members");
+				undo_redo->add_undo_method(this, "_update_members");
+				undo_redo->add_do_method(this, "_update_graph");
+				undo_redo->add_undo_method(this, "_update_graph");
+				undo_redo->commit_action();
 			}
 		} break;
 	}
