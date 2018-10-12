@@ -741,6 +741,49 @@ void VisualScript::rename_variable(const StringName &p_name, const StringName &p
 	variables.erase(p_name);
 }
 
+void VisualScript::add_graph(const StringName &p_name) {
+	ERR_FAIL_COND(instances.size());
+	ERR_FAIL_COND(!String(p_name).is_valid_identifier());
+	ERR_FAIL_COND(graphs.has(p_name));
+
+	graphs[p_name] = Graph();
+	graphs[p_name].scroll = Vector2(-50, -100);
+}
+
+bool VisualScript::has_graph(const StringName &p_name) const {
+	return graphs.has(p_name);
+}
+
+void VisualScript::remove_graph(const StringName &p_name) {
+	ERR_FAIL_COND(instances.size());
+	ERR_FAIL_COND(!graphs.has(p_name));
+
+	for (Map<int, Graph::NodeData>::Element *E = graphs[p_name].nodes.front(); E; E = E->next()) {
+
+		E->get().node->disconnect("ports_changed", this, "_node_ports_changed");
+		E->get().node->scripts_used.erase(this);
+	}
+
+	graphs.erase(p_name);
+}
+
+void VisualScript::rename_graph(const StringName &p_name, const StringName &p_new_name) {
+	ERR_FAIL_COND(instances.size());
+	ERR_FAIL_COND(!graphs.has(p_name));
+	if (p_new_name == p_name)
+		return;
+
+	ERR_FAIL_COND(!String(p_new_name).is_valid_identifier());
+
+	ERR_FAIL_COND(graphs.has(p_new_name));
+	ERR_FAIL_COND(functions.has(p_new_name));
+	ERR_FAIL_COND(variables.has(p_new_name));
+	ERR_FAIL_COND(custom_signals.has(p_new_name));
+
+	graphs[p_new_name] = graphs[p_name];
+	graphs.erase(p_name);
+}
+
 void VisualScript::get_graph_list(List<StringName> *r_graphs) const {
 	for (Map<StringName, Graph>::Element *E = graphs.front(); E; E = E->next()) {
 		r_graphs->push_back(E->key());

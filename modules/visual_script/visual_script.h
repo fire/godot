@@ -325,10 +325,10 @@ public:
 	void get_variable_list(List<StringName> *r_variables) const;
 	void rename_variable(const StringName &p_name, const StringName &p_new_name);
 
-	void add_graph(const StringName &p_name) {}
-	bool has_graph(const StringName &p_name) const {}
-	void remove_graph(const StringName &p_name) {}
-	void rename_graph(const StringName &p_name, const StringName &p_new_name) {}
+	void add_graph(const StringName &p_name);
+	bool has_graph(const StringName &p_name) const;
+	void remove_graph(const StringName &p_name);
+	void rename_graph(const StringName &p_name, const StringName &p_new_name);
 	void get_graph_list(List<StringName> *r_graphs) const;
 
 	void add_custom_signal(const StringName &p_name);
