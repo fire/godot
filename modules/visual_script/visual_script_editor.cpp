@@ -472,13 +472,13 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 			}
 		}
 	}
-
-	if (!script->has_function(edited_func)) {
-		graph->hide();
-		select_func_text->show();
-		updating_graph = false;
+	if (script->has_function(edited_func) || script->has_graph(edited_graph)) {
 		return;
 	}
+
+	graph->hide();
+	select_func_text->show();
+	updating_graph = false;
 
 	graph->show();
 	select_func_text->hide();
@@ -893,26 +893,28 @@ void VisualScriptEditor::_update_members() {
 
 void VisualScriptEditor::_member_selected() {
 
-	if (updating_members)
+	if (updating_members) {
 		return;
+	}
 
 	TreeItem *ti = members->get_selected();
 	ERR_FAIL_COND(!ti);
 
 	selected = ti->get_metadata(0);
 
-	if (ti->get_parent() == members->get_root()->get_children()) {
+	if (ti->get_parent() != members->get_root()->get_children()) {
+		return;
+	}
 
-		if (edited_func != selected) {
-
-			revert_on_drag = edited_func;
-			edited_func = selected;
-			_update_members();
-			_update_graph();
-		}
-
+	if (edited_func == selected || edited_graph == selected) {
 		return; //or crash because it will become invalid
 	}
+
+	revert_on_drag = edited_func;
+	edited_func = selected;
+	edited_graph = selected;
+	_update_members();
+	_update_graph();
 }
 
 void VisualScriptEditor::_member_edited() {
@@ -938,9 +940,9 @@ void VisualScriptEditor::_member_edited() {
 		return;
 	}
 
-	if (script->has_function(new_name) || script->has_variable(new_name) || script->has_custom_signal(new_name)) {
+	if (script->has_function(new_name) || script->has_variable(new_name) || script->has_custom_signal(new_name) || script->has_graph(new_name)) {
 
-		EditorNode::get_singleton()->show_warning(TTR("Name already in use by another func/var/signal:") + " " + new_name);
+		EditorNode::get_singleton()->show_warning(TTR("Name already in use by another func/var/signal/graph:") + " " + new_name);
 		updating_members = true;
 		ti->set_text(0, name);
 		updating_members = false;
@@ -1008,6 +1010,29 @@ void VisualScriptEditor::_member_edited() {
 		undo_redo->add_do_method(this, "emit_signal", "edited_script_changed");
 		undo_redo->add_undo_method(this, "emit_signal", "edited_script_changed");
 		undo_redo->commit_action();
+
+		return; //or crash because it will become invalid
+	}
+
+	if (ti->get_parent() == root->get_children()->get_next()->get_next()->get_next()) {
+
+		if (edited_graph == selected) {
+			edited_graph = new_name;
+		}
+		selected = new_name;
+
+		undo_redo->create_action(TTR("Rename Graph"));
+		undo_redo->add_do_method(script.ptr(), "rename_graph", name, new_name);
+		undo_redo->add_undo_method(script.ptr(), "rename_graph", new_name, name);
+		undo_redo->add_do_method(this, "_update_members");
+		undo_redo->add_undo_method(this, "_update_members");
+		undo_redo->add_do_method(this, "_update_graph");
+		undo_redo->add_undo_method(this, "_update_graph");
+		undo_redo->add_do_method(this, "emit_signal", "edited_script_changed");
+		undo_redo->add_undo_method(this, "emit_signal", "edited_script_changed");
+		undo_redo->commit_action();
+
+		//		_update_graph();
 
 		return; //or crash because it will become invalid
 	}
@@ -1087,7 +1112,6 @@ void VisualScriptEditor::_member_button(Object *p_item, int p_column, int p_butt
 			return; //or crash because it will become invalid
 		}
 
-		
 		if (ti == root->get_children()->get_next()->get_next()->get_next() && p_button == 2) {
 
 			String name = _validate_name("graph");
@@ -1243,7 +1267,7 @@ String VisualScriptEditor::_validate_name(const String &p_name) const {
 	int counter = 1;
 	while (true) {
 
-		bool exists = script->has_function(valid) || script->has_variable(valid) || script->has_custom_signal(valid);
+		bool exists = script->has_graph(valid) || script->has_function(valid) || script->has_variable(valid) || script->has_custom_signal(valid);
 
 		if (exists) {
 			counter++;
@@ -1385,6 +1409,9 @@ void VisualScriptEditor::_members_gui_input(const Ref<InputEvent> &p_event) {
 				}
 				if (ti->get_parent() == root->get_children()->get_next()->get_next()) {
 					member_type = MEMBER_SIGNAL;
+				}
+				if (ti->get_parent() == root->get_children()->get_next()->get_next()->get_next()) {
+					member_type = MEMBER_GRAPH;
 				}
 				member_name = ti->get_text(0);
 			}
@@ -3367,9 +3394,17 @@ void VisualScriptEditor::_member_option(int p_option) {
 				//delete the function
 				String name = member_name;
 
-				undo_redo->create_action(TTR("Remove Function"));
-				undo_redo->add_do_method(script.ptr(), "remove_function", name);
-				undo_redo->add_undo_method(script.ptr(), "add_function", name);
+				if (script->has_function(name)) {
+					undo_redo->create_action(TTR("Remove Function"));
+					undo_redo->add_do_method(script.ptr(), "remove_function", name);
+					undo_redo->add_undo_method(script.ptr(), "add_function", name);
+				}
+
+				if (script->has_graph(name)) {
+					undo_redo->create_action(TTR("Remove Graph"));
+					undo_redo->add_do_method(script.ptr(), "remove_graph", name);
+					undo_redo->add_undo_method(script.ptr(), "add_graph", name);
+				}
 				List<int> nodes;
 				script->get_node_list(name, &nodes);
 				for (List<int>::Element *E = nodes.front(); E; E = E->next()) {

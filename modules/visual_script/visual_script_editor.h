@@ -76,7 +76,8 @@ class VisualScriptEditor : public ScriptEditorBase {
 	enum MemberType {
 		MEMBER_FUNCTION,
 		MEMBER_VARIABLE,
-		MEMBER_SIGNAL
+		MEMBER_SIGNAL,
+		MEMBER_GRAPH
 	};
 
 	VSplitContainer *left_vsplit;
