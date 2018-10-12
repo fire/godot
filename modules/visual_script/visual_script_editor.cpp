@@ -861,6 +861,11 @@ void VisualScriptEditor::_update_members() {
 			ti->select(0);
 	}
 
+	TreeItem *graph = members->create_item(root);
+	graph->set_selectable(0, false);
+	graph->set_text(0, TTR("Graph:"));
+	graph->set_custom_color(0, Control::get_color("mono_color", "Editor"));
+
 	String base_type = script->get_instance_base_type();
 	String icon_type = base_type;
 	if (!Control::has_icon(base_type, "EditorIcons")) {
