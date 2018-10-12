@@ -902,7 +902,7 @@ void VisualScriptEditor::_member_selected() {
 
 	selected = ti->get_metadata(0);
 
-	if (ti->get_parent() != members->get_root()->get_children() || ti->get_parent() != members->get_root()->get_children()->get_next()->get_next()->get_next()) {
+	if (ti->get_parent() != members->get_root()->get_children() && ti->get_parent() != members->get_root()->get_children()->get_next()->get_next()->get_next()) {
 		return;
 	}
 
@@ -3390,7 +3390,7 @@ void VisualScriptEditor::_member_rmb_selected(const Vector2 &p_pos) {
 		return;
 	}
 
-		if (ti->get_parent() == root->get_children()->get_next()->get_next()->get_next()) {
+	if (ti->get_parent() == root->get_children()->get_next()->get_next()->get_next()) {
 
 		member_type = MEMBER_GRAPH;
 		member_name = ti->get_text(0);
