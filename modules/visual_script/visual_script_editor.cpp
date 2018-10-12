@@ -472,13 +472,13 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 			}
 		}
 	}
-	if (script->has_function(edited_func) || script->has_graph(edited_graph)) {
+
+	if (!script->has_function(edited_func)) {
+		graph->hide();
+		select_func_text->show();
+		updating_graph = false;
 		return;
 	}
-
-	graph->hide();
-	select_func_text->show();
-	updating_graph = false;
 
 	graph->show();
 	select_func_text->hide();
