@@ -741,6 +741,15 @@ void VisualScript::rename_variable(const StringName &p_name, const StringName &p
 	variables.erase(p_name);
 }
 
+
+void VisualScript::get_graph_list(List<StringName> *r_graphs) const {
+	for (Map<StringName, Variable>::Element *E = graphs.front(); E; E = E->next()) {
+		r_graphs->push_back(E->key());
+	}
+
+	r_graphs->sort_custom<StringName::AlphCompare>();
+}
+
 void VisualScript::add_custom_signal(const StringName &p_name) {
 
 	ERR_FAIL_COND(instances.size());

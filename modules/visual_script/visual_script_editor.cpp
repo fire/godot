@@ -861,15 +861,23 @@ void VisualScriptEditor::_update_members() {
 			ti->select(0);
 	}
 
-	TreeItem *graph = members->create_item(root);
-	graph->set_selectable(0, false);
-	graph->set_text(0, TTR("Graph:"));
-	graph->set_custom_color(0, Control::get_color("mono_color", "Editor"));
+	TreeItem *graphs = members->create_item(root);
+	graphs->set_selectable(0, false);
+	graphs->set_text(0, TTR("Graphs:"));
+	graphs->add_button(0, Control::get_icon("Add", "EditorIcons"), 0);
+	graphs->set_custom_color(0, Control::get_color("mono_color", "Editor"));
 
-	TreeItem *graph_item = members->create_item(graph);
-	graph_item->set_text(0, "Graph");
-	graph_item->set_selectable(0, true);
-	graph_item->set_editable(0, true);
+	List<StringName> graph_names;
+	script->get_graph_list(&graph_names);
+	for (List<StringName>::Element *E = graph_names.front(); E; E = E->next()) {
+		TreeItem *ti = members->create_item(graphs);
+		ti->set_text(0, E->get());
+		ti->set_selectable(0, true);
+		ti->set_editable(0, true);
+		ti->set_metadata(0, E->get());
+		if (selected == E->get())
+			ti->select(0);
+	}
 
 	String base_type = script->get_instance_base_type();
 	String icon_type = base_type;

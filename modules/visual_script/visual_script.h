@@ -244,6 +244,7 @@ private:
 
 	Map<StringName, Function> functions;
 	Map<StringName, Variable> variables;
+	Map<StringName, Variable> graphs;
 	Map<StringName, Vector<Argument> > custom_signals;
 
 	Map<Object *, VisualScriptInstance *> instances;
@@ -306,6 +307,8 @@ public:
 	bool get_variable_export(const StringName &p_name) const;
 	void get_variable_list(List<StringName> *r_variables) const;
 	void rename_variable(const StringName &p_name, const StringName &p_new_name);
+
+	void get_graph_list(List<StringName> *r_graphs) const;
 
 	void add_custom_signal(const StringName &p_name);
 	bool has_custom_signal(const StringName &p_name) const;
