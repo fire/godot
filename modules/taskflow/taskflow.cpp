@@ -47,7 +47,7 @@ void Taskflow::preceeds(String src, String dest) {
 
 Variant Taskflow::transform_reduce(const Variant **p_args, int p_argcount, Variant::CallError &r_error) {
 	// Check Types
-	const int func_ref_start = 7;
+	const int func_ref_start = 8;
 	ERR_FAIL_COND_V(p_argcount < func_ref_start, Variant())
 	const int argcount = p_argcount - func_ref_start;
 	const String start_string = *p_args[0];
@@ -62,11 +62,11 @@ Variant Taskflow::transform_reduce(const Variant **p_args, int p_argcount, Varia
 		element = p_vec[i];
 		vec.push_back(element);
 	}
-	Object *reduce_object = *p_args[3];
-	String reduce_function = *p_args[4];
-	Object *transform_object = *p_args[5];
-	String transform_function = *p_args[6];
-	Variant result;
+	Object *reduce_object = *p_args[4];
+	String reduce_function = *p_args[5];
+	Object *transform_object = *p_args[6];
+	String transform_function = *p_args[7];
+	Variant result = *p_args[3];
 	auto [start, target] = taskflow.transform_reduce(vec.begin(),
 			vec.end(), result,
 			[reduce_object, reduce_function](Variant l, Variant r) {
@@ -83,7 +83,9 @@ Variant Taskflow::transform_reduce(const Variant **p_args, int p_argcount, Varia
 	target.name(convert_string(target_string));
 	tasks.insert(start_string, start);
 	tasks.insert(target_string, target);
-	taskflow.wait_for_all();
+	auto future = taskflow.dispatch();
+	future.get();
+	tasks.clear();
 	return result;
 }
 
@@ -116,23 +118,25 @@ Variant Taskflow::broadcast(const Variant **p_args, int p_argcount, Variant::Cal
 }
 
 void Taskflow::silent_dispatch() {
-	print_line(String(taskflow.dump().c_str()));
 	taskflow.silent_dispatch();
 	tasks.clear();
 }
 void Taskflow::dispatch() {
 	result_future = taskflow.dispatch();
-	print_line(String(taskflow.dump().c_str()));
 }
 
 void Taskflow::wait_for_all() {
-	print_line(String(taskflow.dump().c_str()));
 	taskflow.wait_for_all();
 	tasks.clear();
 }
 
 void Taskflow::blocking_get() {
 	result_future.get();
+}
+
+void Taskflow::dump_graph() {
+	String out = taskflow.dump().c_str();
+	print_line(out);
 }
 
 void Taskflow::_bind_methods() {
@@ -156,6 +160,7 @@ void Taskflow::_bind_methods() {
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "source"));
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "destination"));
 		mi.arguments.push_back(PropertyInfo(Variant::ARRAY, "work"));
+		mi.arguments.push_back(PropertyInfo(Variant::NIL, "default"));
 		mi.arguments.push_back(PropertyInfo(Variant::OBJECT, "instance"));
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "transform"));
 		mi.arguments.push_back(PropertyInfo(Variant::OBJECT, "instance"));
@@ -167,6 +172,7 @@ void Taskflow::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("wait_for_all"), &Taskflow::wait_for_all);
 	ClassDB::bind_method(D_METHOD("blocking_get"), &Taskflow::blocking_get);
 	ClassDB::bind_method(D_METHOD("dispatch"), &Taskflow::dispatch);
+	ClassDB::bind_method(D_METHOD("dump_graph"), &Taskflow::dump_graph);
 }
 
 Taskflow::Taskflow() :

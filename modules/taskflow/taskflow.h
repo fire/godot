@@ -26,6 +26,7 @@ public:
 	void dispatch();
 	void wait_for_all();
 	void blocking_get();
+	void dump_graph();
 	Taskflow();
 };
 #endif
