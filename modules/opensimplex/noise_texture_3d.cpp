@@ -84,7 +84,7 @@ Ref<Image> NoiseTexture3D::_generate_texture(const int p_layer) {
 	update_queued = false;
 
 	if (noise.is_null()) return Ref<Image>();
-	Ref<Image> image = noise->get_image_3d(size.x, size.y, p_layer);
+	Ref<Image> image = noise->get_image_3d(size.x, size.y, size.z, p_layer);
 
 	return image;
 }
@@ -133,7 +133,7 @@ void NoiseTexture3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_thread_done", "image"), &NoiseTexture3D::_thread_done);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "SimplexNoise"), "set_noise", "get_noise");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "OpenSimplexNoise"), "set_noise", "get_noise");
 }
 
 NoiseTexture3D::NoiseTexture3D() {
@@ -145,7 +145,7 @@ NoiseTexture3D::NoiseTexture3D() {
 	size = Vector3(128, 128, 128);
 	flags = FLAGS_DEFAULT;
 
-	noise = Ref<SimplexNoise>();
+	noise = Ref<OpenSimplexNoise>();
 
 	texture = VS::get_singleton()->texture_create();
 
@@ -156,7 +156,7 @@ NoiseTexture3D::~NoiseTexture3D() {
 	VS::get_singleton()->free(texture);
 }
 
-void NoiseTexture3D::set_noise(Ref<SimplexNoise> p_noise) {
+void NoiseTexture3D::set_noise(Ref<OpenSimplexNoise> p_noise) {
 	if (p_noise == noise)
 		return;
 	if (noise.is_valid()) {
@@ -169,7 +169,7 @@ void NoiseTexture3D::set_noise(Ref<SimplexNoise> p_noise) {
 	_queue_update();
 }
 
-Ref<SimplexNoise> NoiseTexture3D::get_noise() {
+Ref<OpenSimplexNoise> NoiseTexture3D::get_noise() {
 	return noise;
 }
 

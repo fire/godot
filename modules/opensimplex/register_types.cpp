@@ -30,7 +30,6 @@
 
 #include "register_types.h"
 #include "noise_texture.h"
-#include "simplex_noise.h"
 #include "open_simplex_noise.h"
 #include "noise_texture_3d.h"
 

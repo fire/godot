@@ -31,7 +31,7 @@
 #ifndef NOISE_TEXTURE_3D_H
 #define NOISE_TEXTURE_3D_H
 
-#include "simplex_noise.h"
+#include "open_simplex_noise.h"
 
 #include "core/core_string_names.h"
 #include "core/dvector.h"
@@ -61,7 +61,7 @@ private:
 	RID texture;
 	uint32_t flags;
 
-	Ref<SimplexNoise> noise;
+	Ref<OpenSimplexNoise> noise;
 	Vector3 size;
 
 	void _set_texture_data(const Ref<Image> &p_image, const int p_layer);
@@ -75,8 +75,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_noise(Ref<SimplexNoise> p_noise);
-	Ref<SimplexNoise> get_noise();
+	void set_noise(Ref<OpenSimplexNoise> p_noise);
+	Ref<OpenSimplexNoise> get_noise();
 	void set_width(int p_width);
 	void set_height(int p_height);
 	void set_length(int p_length);
