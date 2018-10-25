@@ -35,10 +35,13 @@
 OpenSimplexNoise::OpenSimplexNoise() {
 
 	seed = 0;
-	seamless_period_6 = Vector3();
+	period = Vector<int32_t>();
+	period.resize(4);
+	for (size_t i = 0; i < 4; i++) {
+		period.write[i] = 64;
+	}
 	persistence = 0.5;
 	octaves = 3;
-	period = 64;
 	lacunarity = 2.0;
 	_init_seeds();
 }
@@ -48,7 +51,7 @@ OpenSimplexNoise::~OpenSimplexNoise() {
 
 void OpenSimplexNoise::_init_seeds() {
 	for (int i = 0; i < 6; ++i) {
-		open_simplex_noise3_tileable(seed + i * 2, seamless_period_6.x, seamless_period_6.y, seamless_period_6.z, &(contexts[i]));
+		open_simplex_noise3_tileable(seed + i * 2, period[0] / 6.0f, period[1] / 6.0f, period[2] / 6.0f, &(contexts[i]));
 	}
 }
 
@@ -59,6 +62,10 @@ void OpenSimplexNoise::set_seed(int p_seed) {
 
 	seed = p_seed;
 
+	if (period.size() < 4) {
+		emit_changed();
+		return;
+	}
 	_init_seeds();
 
 	emit_changed();
@@ -75,10 +82,31 @@ void OpenSimplexNoise::set_octaves(int p_octaves) {
 	emit_changed();
 }
 
-void OpenSimplexNoise::set_period(float p_period) {
-	if (p_period == period) return;
-	period = p_period;
+void OpenSimplexNoise::set_period(const Vector<int32_t> p_period) {
+	if (period.size() < 5) {
+		return;
+	}
+	if (period.size() != p_period.size()) {
+		period.resize(p_period.size());
+	}
+	bool equal = true;
+	for (size_t i = 0; i < p_period.size(); i++) {
+		equal = equal && p_period[i] == period[i];
+	}
+	if (period.size() == p_period.size() && equal) {
+		return;
+	}
+	for (size_t i = 0; i < p_period.size(); i++) {
+		period.write[i] = p_period[i];
+	}
+
+	_init_seeds();
+
 	emit_changed();
+}
+
+Vector<int32_t> OpenSimplexNoise::get_period() const {
+	return period;
 }
 
 void OpenSimplexNoise::set_persistence(float p_persistence) {
@@ -187,9 +215,6 @@ void OpenSimplexNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_period", "period"), &OpenSimplexNoise::set_period);
 	ClassDB::bind_method(D_METHOD("get_period"), &OpenSimplexNoise::get_period);
 
-	ClassDB::bind_method(D_METHOD("set_seamless_period", "seamless_period_6"), &OpenSimplexNoise::set_seamless_period);
-	ClassDB::bind_method(D_METHOD("get_seamless_period"), &OpenSimplexNoise::get_seamless_period);
-
 	ClassDB::bind_method(D_METHOD("set_persistence", "persistence"), &OpenSimplexNoise::set_persistence);
 	ClassDB::bind_method(D_METHOD("get_persistence"), &OpenSimplexNoise::get_persistence);
 
@@ -208,17 +233,19 @@ void OpenSimplexNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_noise_3dv", "pos"), &OpenSimplexNoise::get_noise_3dv);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "seamless_period_6"), "set_seamless_period", "get_seamless_period");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "octaves", PROPERTY_HINT_RANGE, "1,6,1"), "set_octaves", "get_octaves");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "period", PROPERTY_HINT_RANGE, "0.1,256.0,0.1"), "set_period", "get_period");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "period"), "set_period", "get_period");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "persistence", PROPERTY_HINT_RANGE, "0.0,1.0,0.001"), "set_persistence", "get_persistence");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "lacunarity", PROPERTY_HINT_RANGE, "0.1,4.0,0.01"), "set_lacunarity", "get_lacunarity");
 }
 
 float OpenSimplexNoise::get_noise_2d(float x, float y) {
+	if (period.size() < 3) {
+		return 0.0f;
+	}
 
-	x /= period;
-	y /= period;
+	x /= period[0];
+	y /= period[1];
 
 	float amp = 1.0;
 	float max = 1.0;
@@ -237,10 +264,13 @@ float OpenSimplexNoise::get_noise_2d(float x, float y) {
 }
 
 float OpenSimplexNoise::get_noise_3d(float x, float y, float z) {
+	if (period.size() < 4) {
+		return 0.0f;
+	}
 
-	x /= period;
-	y /= period;
-	z /= period;
+	x /= period[0];
+	y /= period[1];
+	z /= period[2];
 
 	float amp = 1.0;
 	float max = 1.0;
@@ -260,11 +290,14 @@ float OpenSimplexNoise::get_noise_3d(float x, float y, float z) {
 }
 
 float OpenSimplexNoise::get_noise_4d(float x, float y, float z, float w) {
+	if (period.size() < 5) {
+		return 0.0f;
+	}
 
-	x /= period;
-	y /= period;
-	z /= period;
-	w /= period;
+	x /= period[0];
+	y /= period[1];
+	z /= period[2];
+	w /= period[3];
 
 	float amp = 1.0;
 	float max = 1.0;
