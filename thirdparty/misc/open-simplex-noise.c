@@ -15,7 +15,8 @@
  */
 
 // -- GODOT start --
-// Modified to work without allocating memory, also removed some unused function. 
+// Modified to work without allocating memory, also removed some unused function.
+// Modified to use tileable 3d version from https://gist.github.com/KdotJPG/f4db4491b341b8987f4a
 // -- GODOT end --
 
 #include <math.h>
@@ -176,6 +177,22 @@ int open_simplex_noise_init_perm(struct osn_context *ctx, int16_t p[], int nelem
  * swaps on a base array).  Uses a simple 64-bit LCG.
  */
 // -- GODOT start --
+
+//Initializes the class using a permutation array generated from a 64-bit seed.
+//Generates a proper permutation (i.e. doesn't merely perform N successive pair swaps on a base array)
+//Uses a simple 64-bit LCG.
+//
+// w6, h6, and d6 are each 1/6 of the repeating period.
+// for x, y, z respectively. If w6 = 2, h6 = 2, d6 = 2,
+// then the noise repeats in blocks of (0,0,0)->(12,12,12)
+int open_simplex_noise3_tileable(int64_t p_seed, int p_w6, int p_h6, int p_d6, struct osn_context *p_ctx) {
+	int16_t w6 = p_w6;
+	int16_t h6 = p_h6;
+	int16_t d6 = p_d6;
+	p_ctx->sOffset = max(w6, max(h6, d6)) * 6;
+	return open_simplex_noise(p_seed, p_ctx);
+}
+
 int open_simplex_noise(int64_t seed, struct osn_context *ctx)
 {
 	int rc;
@@ -386,6 +403,11 @@ double open_simplex_noise3(struct osn_context *ctx, double x, double y, double z
 	double dx0 = x - xb;
 	double dy0 = y - yb;
 	double dz0 = z - zb;
+
+	/* From here on out, these can't be negative. */
+	xsb += ctx->sOffset;
+	ysb += ctx->sOffset;
+	zsb += ctx->sOffset;		
 	
 	/* We'll be defining these inside the next block and using them afterwards. */
 	double dx_ext0, dy_ext0, dz_ext0;

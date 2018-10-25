@@ -64,7 +64,7 @@ private:
 	Ref<OpenSimplexNoise> noise;
 	Vector3 size;
 
-	void _set_texture_data(const Ref<Image> &p_image, const int p_layer);
+	void _set_texture_data(const Vector<Ref<Image> > data_layers);
 	void _thread_done(const Ref<Image> &p_image, const int p_layer);
 	static void _thread_function(void *p_ud);
 	void _queue_update();

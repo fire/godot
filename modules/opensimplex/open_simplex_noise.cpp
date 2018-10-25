@@ -35,11 +35,11 @@
 OpenSimplexNoise::OpenSimplexNoise() {
 
 	seed = 0;
+	seamless_period_6 = Vector3();
 	persistence = 0.5;
 	octaves = 3;
 	period = 64;
 	lacunarity = 2.0;
-
 	_init_seeds();
 }
 
@@ -48,7 +48,7 @@ OpenSimplexNoise::~OpenSimplexNoise() {
 
 void OpenSimplexNoise::_init_seeds() {
 	for (int i = 0; i < 6; ++i) {
-		open_simplex_noise(seed + i * 2, &(contexts[i]));
+		open_simplex_noise3_tileable(seed + i * 2, seamless_period_6.x, seamless_period_6.y, seamless_period_6.z, &(contexts[i]));
 	}
 }
 
@@ -116,25 +116,25 @@ Ref<Image> OpenSimplexNoise::get_image(int p_width, int p_height) {
 	return image;
 }
 
-Ref<Image> OpenSimplexNoise::get_image_3d(int p_x, int p_y, int p_z, int p_layer) {
+Ref<Image> OpenSimplexNoise::get_image_3d(int p_width, int p_height, int p_layer) {
 
 	PoolVector<uint8_t> data;
-	data.resize(p_x * p_y * 4);
-	Ref<Image> images;
+	data.resize(p_width * p_height * 4);
 
 	PoolVector<uint8_t>::Write wd8 = data.write();
-	for (int i = 0; i < p_y; i++) {
-		for (int j = 0; j < p_x; j++) {
+
+	for (int i = 0; i < p_height; i++) {
+		for (int j = 0; j < p_width; j++) {
 			float v = get_noise_3d(i, j, p_layer);
 			v = v * 0.5 + 0.5; // Normalize [0..1]
 			uint8_t value = uint8_t(CLAMP(v * 255.0, 0, 255));
-			wd8[(i * p_x + j) * 4 + 0] = value;
-			wd8[(i * p_x + j) * 4 + 1] = value;
-			wd8[(i * p_x + j) * 4 + 2] = value;
-			wd8[(i * p_x + j) * 4 + 3] = 255;
+			wd8[(i * p_width + j) * 4 + 0] = value;
+			wd8[(i * p_width + j) * 4 + 1] = value;
+			wd8[(i * p_width + j) * 4 + 2] = value;
+			wd8[(i * p_width + j) * 4 + 3] = 255;
 		}
 	}
-	Ref<Image> image = memnew(Image(p_x, p_y, false, Image::FORMAT_RGBA8, data));
+	Ref<Image> image = memnew(Image(p_width, p_height, false, Image::FORMAT_RGBA8, data));
 
 	return image;
 }
@@ -187,6 +187,9 @@ void OpenSimplexNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_period", "period"), &OpenSimplexNoise::set_period);
 	ClassDB::bind_method(D_METHOD("get_period"), &OpenSimplexNoise::get_period);
 
+	ClassDB::bind_method(D_METHOD("set_seamless_period", "seamless_period_6"), &OpenSimplexNoise::set_seamless_period);
+	ClassDB::bind_method(D_METHOD("get_seamless_period"), &OpenSimplexNoise::get_seamless_period);
+
 	ClassDB::bind_method(D_METHOD("set_persistence", "persistence"), &OpenSimplexNoise::set_persistence);
 	ClassDB::bind_method(D_METHOD("get_persistence"), &OpenSimplexNoise::get_persistence);
 
@@ -205,6 +208,7 @@ void OpenSimplexNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_noise_3dv", "pos"), &OpenSimplexNoise::get_noise_3dv);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "seamless_period_6"), "set_seamless_period", "get_seamless_period");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "octaves", PROPERTY_HINT_RANGE, "1,6,1"), "set_octaves", "get_octaves");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "period", PROPERTY_HINT_RANGE, "0.1,256.0,0.1"), "set_period", "get_period");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "persistence", PROPERTY_HINT_RANGE, "0.0,1.0,0.001"), "set_persistence", "get_persistence");

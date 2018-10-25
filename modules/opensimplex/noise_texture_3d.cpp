@@ -35,21 +35,18 @@
 #include "core/method_bind_ext.gen.inc"
 #include "noise_texture_3d.h"
 
-void NoiseTexture3D::_set_texture_data(const Ref<Image> &p_image, const int p_layer) {
-	if (data.size() != size.z) {
-		data.resize(size.z);
-		VS::get_singleton()->texture_allocate(texture, size.x, size.y, size.z, Image::FORMAT_RGBA8, VS::TEXTURE_TYPE_3D, flags);
+void NoiseTexture3D::_set_texture_data(const Vector<Ref<Image> > data_layers) {
+	data = data_layers;
+	VS::get_singleton()->texture_allocate(texture, size.x, size.y, size.z, Image::FORMAT_RGBA8, VS::TEXTURE_TYPE_3D, get_flags());
+	for (size_t i = 0; i < data_layers.size(); i++) {
+		VS::get_singleton()->texture_set_data(texture, data_layers[i], i);
 	}
-	if (p_image.is_valid()) {
-		data.insert(p_layer, p_image);
-		VS::get_singleton()->texture_set_data(texture, p_image, p_layer);
-		emit_changed();
-	}
+	emit_changed();
 }
 
 void NoiseTexture3D::_thread_done(const Ref<Image> &p_image, const int p_layer) {
-
-	_set_texture_data(p_image, p_layer);
+	// @TODO fixme
+	//_set_texture_data(p_image, p_layer);
 	Thread::wait_to_finish(noise_thread);
 	if (p_layer == size.z) {
 		memdelete(noise_thread);
@@ -82,15 +79,12 @@ void NoiseTexture3D::_queue_update() {
 Ref<Image> NoiseTexture3D::_generate_texture(const int p_layer) {
 
 	update_queued = false;
-
-	if (noise.is_null()) return Ref<Image>();
-	Ref<Image> image = noise->get_image_3d(size.x, size.y, size.z, p_layer);
-
-	return image;
+	return noise->get_image_3d(size.x, size.y, p_layer);
 }
 
 void NoiseTexture3D::_update_texture() {
-	bool use_thread = true;
+	// @TODO FIX THREADING
+	bool use_thread = false;
 	if (first_time) {
 		use_thread = false;
 		first_time = false;
@@ -98,8 +92,6 @@ void NoiseTexture3D::_update_texture() {
 #ifdef NO_THREADS
 	use_thread = false;
 #endif
-// @TODO FIX THREADING
-	use_thread = false;
 	if (use_thread) {
 
 		if (!noise_thread) {
@@ -110,10 +102,15 @@ void NoiseTexture3D::_update_texture() {
 		}
 
 	} else {
+		Vector<Ref<Image> > image_layers;
 		for (size_t i = 0; i < get_length(); i++) {
-			Ref<Image> image = _generate_texture(i);
-			_set_texture_data(image, i);
+			if (noise.is_null()) {
+				return;
+			}
+			Ref<Image> image_layer = _generate_texture(i);
+			image_layers.push_back(image_layer);
 		}
+		_set_texture_data(image_layers);
 	}
 }
 

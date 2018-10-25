@@ -47,6 +47,7 @@ class OpenSimplexNoise : public Resource {
 	float persistence; // Controls details, value in [0,1]. Higher increases grain, lower increases smoothness.
 	int octaves; // Number of noise layers
 	float period; // Distance above which we start to see similarities. The higher, the longer "hills" will be on a terrain.
+	Vector3 seamless_period_6;
 	float lacunarity; // Controls period change across octaves. 2 is usually a good value to address all detail levels.
 
 public:
@@ -57,6 +58,20 @@ public:
 
 	void set_seed(int seed);
 	int get_seed();
+
+	void set_seamless_period(const Vector3 p_seamless_period_6) {
+		if (seamless_period_6.x == p_seamless_period_6.x && seamless_period_6.y == p_seamless_period_6.y && seamless_period_6.z == p_seamless_period_6.z) return;
+
+		seamless_period_6 = p_seamless_period_6;
+
+		_init_seeds();
+
+		emit_changed();
+	}
+
+	Vector3 get_seamless_period() const {
+		return seamless_period_6;
+	}
 
 	void set_octaves(int p_octaves);
 	int get_octaves() const { return octaves; }
@@ -71,7 +86,7 @@ public:
 	float get_lacunarity() const { return lacunarity; }
 
 	Ref<Image> get_image(int p_width, int p_height);
-	Ref<Image> get_image_3d(int p_x, int p_y, int p_z, int p_layer);
+	Ref<Image> get_image_3d(int p_x, int p_y, int p_layer);
 	Ref<Image> get_seamless_image(int p_size);
 
 	float get_noise_2d(float x, float y);
