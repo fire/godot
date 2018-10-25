@@ -65,7 +65,7 @@ private:
 	Vector3 size;
 
 	void _set_texture_data(const Vector<Ref<Image> > data_layers);
-	void _thread_done(const Ref<Image> &p_image, const int p_layer);
+	void _thread_done();
 	static void _thread_function(void *p_ud);
 	void _queue_update();
 	Ref<Image> _generate_texture(const int p_layer);

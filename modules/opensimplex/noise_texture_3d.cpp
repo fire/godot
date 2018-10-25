@@ -44,14 +44,10 @@ void NoiseTexture3D::_set_texture_data(const Vector<Ref<Image> > data_layers) {
 	emit_changed();
 }
 
-void NoiseTexture3D::_thread_done(const Ref<Image> &p_image, const int p_layer) {
-	// @TODO fixme
-	//_set_texture_data(p_image, p_layer);
+void NoiseTexture3D::_thread_done() {
 	Thread::wait_to_finish(noise_thread);
-	if (p_layer == size.z) {
-		memdelete(noise_thread);
-		noise_thread = NULL;
-	}
+	memdelete(noise_thread);
+	noise_thread = NULL;
 	if (regen_queued) {
 		noise_thread = Thread::create(_thread_function, this);
 		regen_queued = false;
@@ -62,9 +58,17 @@ void NoiseTexture3D::_thread_function(void *p_ud) {
 
 	NoiseTexture3D *tex = (NoiseTexture3D *)p_ud;
 
+	Vector<Ref<Image> > image_layers;
 	for (size_t i = 0; i < tex->get_length(); i++) {
-		tex->call_deferred("_thread_done", tex->_generate_texture(i));
+		if (tex->noise.is_null()) {
+			return;
+		}
+		Ref<Image> image_layer = tex->_generate_texture(i);
+		image_layers.push_back(image_layer);
 	}
+	tex->_set_texture_data(image_layers);
+
+	tex->call_deferred("_thread_done");
 }
 
 void NoiseTexture3D::_queue_update() {
@@ -83,8 +87,7 @@ Ref<Image> NoiseTexture3D::_generate_texture(const int p_layer) {
 }
 
 void NoiseTexture3D::_update_texture() {
-	// @TODO FIX THREADING
-	bool use_thread = false;
+	bool use_thread = true;
 	if (first_time) {
 		use_thread = false;
 		first_time = false;
@@ -95,6 +98,7 @@ void NoiseTexture3D::_update_texture() {
 	if (use_thread) {
 
 		if (!noise_thread) {
+			data.clear();
 			noise_thread = Thread::create(_thread_function, this);
 			regen_queued = false;
 		} else {
@@ -127,7 +131,7 @@ void NoiseTexture3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_update_texture"), &NoiseTexture3D::_update_texture);
 	ClassDB::bind_method(D_METHOD("_generate_texture"), &NoiseTexture3D::_generate_texture);
-	ClassDB::bind_method(D_METHOD("_thread_done", "image"), &NoiseTexture3D::_thread_done);
+	ClassDB::bind_method(D_METHOD("_thread_done"), &NoiseTexture3D::_thread_done);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "noise", PROPERTY_HINT_RESOURCE_TYPE, "OpenSimplexNoise"), "set_noise", "get_noise");
