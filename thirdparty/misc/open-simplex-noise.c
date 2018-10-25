@@ -111,12 +111,21 @@ static double extrapolate2(struct osn_context *ctx, int xsb, int ysb, double dx,
 	
 static double extrapolate3(struct osn_context *ctx, int xsb, int ysb, int zsb, double dx, double dy, double dz)
 {
-	int16_t *perm = ctx->perm;	
-	int16_t *permGradIndex3D = ctx->permGradIndex3D;
-	int index = permGradIndex3D[(perm[(perm[xsb & 0xFF] + ysb) & 0xFF] + zsb) & 0xFF];
-	return gradients3D[index] * dx
-		+ gradients3D[index + 1] * dy
-		+ gradients3D[index + 2] * dz;
+
+	const int16_t h6 = ctx->h6;
+	const int16_t w6 = ctx->w6;
+	const int16_t d6 = ctx->d6;
+	const int bSum = xsb + ysb + zsb;
+	const int xc = (3 * xsb + bSum) / 18 / w6;
+	const int yc = (3 * ysb + bSum) / 18 / h6;
+	const int zc = (3 * zsb + bSum) / 18 / d6;
+	const int xsbm = (-5 * ctx->w6 * xc) + (h6 * yc) + (d6 * zc) + xsb;
+	const int ysbm = (w6 * xc) + (-5 * h6 * yc) + (d6 * zc) + ysb;
+	const int zsbm = (w6 * xc) + (h6 * yc) + (-5 * d6 * zc) + zsb;
+	const int16_t *perm = ctx->perm;
+	const int16_t *permGradIndex3D = ctx->permGradIndex3D;
+	const int index = permGradIndex3D[(perm[(perm[xsbm & 0xFF] + ysbm) & 0xFF] + zsbm) & 0xFF];
+	return gradients3D[index] * dx + gradients3D[index + 1] * dy + gradients3D[index + 2] * dz;
 }
 	
 static double extrapolate4(struct osn_context *ctx, int xsb, int ysb, int zsb, int wsb, double dx, double dy, double dz, double dw)
@@ -185,12 +194,13 @@ int open_simplex_noise_init_perm(struct osn_context *ctx, int16_t p[], int nelem
 // w6, h6, and d6 are each 1/6 of the repeating period.
 // for x, y, z respectively. If w6 = 2, h6 = 2, d6 = 2,
 // then the noise repeats in blocks of (0,0,0)->(12,12,12)
-int open_simplex_noise3_tileable(int64_t p_seed, int p_w6, int p_h6, int p_d6, struct osn_context *p_ctx) {
-	int16_t w6 = p_w6;
-	int16_t h6 = p_h6;
-	int16_t d6 = p_d6;
-	p_ctx->sOffset = max(w6, max(h6, d6)) * 6;
-	return open_simplex_noise(p_seed, p_ctx);
+int open_simplex_noise3_tileable(int64_t seed, int p_w6, int p_h6, int p_d6, struct osn_context *p_ctx)
+{
+	p_ctx->w6 = p_w6;
+	p_ctx->h6 = p_h6;
+	p_ctx->d6 = p_d6;
+	p_ctx->sOffset = max(p_w6, max(p_h6, p_d6)) * 6;
+	return open_simplex_noise(seed, p_ctx);
 }
 
 int open_simplex_noise(int64_t seed, struct osn_context *ctx)
@@ -407,8 +417,8 @@ double open_simplex_noise3(struct osn_context *ctx, double x, double y, double z
 	/* From here on out, these can't be negative. */
 	xsb += ctx->sOffset;
 	ysb += ctx->sOffset;
-	zsb += ctx->sOffset;		
-	
+	zsb += ctx->sOffset;
+
 	/* We'll be defining these inside the next block and using them afterwards. */
 	double dx_ext0, dy_ext0, dz_ext0;
 	double dx_ext1, dy_ext1, dz_ext1;

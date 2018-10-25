@@ -42,10 +42,13 @@ struct osn_context {
 	int16_t perm[256];
 	int16_t permGradIndex3D[256];
 	int32_t sOffset;
+	int16_t w6;
+	int16_t h6;
+	int16_t d6;
 };
 
 int open_simplex_noise(int64_t seed, struct osn_context *ctx);
-int open_simplex_noise3_tileable(int64_t p_seed, int p_w6, int p_h6, int p_d6, struct osn_context *p_ctx);
+int open_simplex_noise3_tileable(int64_t seed, int p_w6, int p_h6, int p_d6, struct osn_context *p_ctx);
 //int open_simplex_noise_init_perm(struct osn_context *ctx, int16_t p[], int nelements);
 // -- GODOT end --
 void open_simplex_noise_free(struct osn_context *ctx);
