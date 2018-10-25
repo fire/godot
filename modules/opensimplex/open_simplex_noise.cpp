@@ -36,8 +36,9 @@ OpenSimplexNoise::OpenSimplexNoise() {
 
 	seed = 0;
 	period = Vector<int32_t>();
-	period.resize(4);
-	for (size_t i = 0; i < 4; i++) {
+	const int32_t period_num = 4;
+	period.resize(period_num);
+	for (size_t i = 0; i < period_num; i++) {
 		period.write[i] = 64;
 	}
 	persistence = 0.5;
@@ -50,24 +51,18 @@ OpenSimplexNoise::~OpenSimplexNoise() {
 }
 
 void OpenSimplexNoise::_init_seeds() {
+	ERR_FAIL_COND(period.size() != 4)
 	for (int i = 0; i < 6; ++i) {
 		open_simplex_noise3_tileable(seed + i * 2, period[0] / 6.0f, period[1] / 6.0f, period[2] / 6.0f, &(contexts[i]));
 	}
 }
 
 void OpenSimplexNoise::set_seed(int p_seed) {
-
 	if (seed == p_seed)
 		return;
 
 	seed = p_seed;
-
-	if (period.size() < 4) {
-		emit_changed();
-		return;
-	}
 	_init_seeds();
-
 	emit_changed();
 }
 
@@ -83,25 +78,12 @@ void OpenSimplexNoise::set_octaves(int p_octaves) {
 }
 
 void OpenSimplexNoise::set_period(const Vector<int32_t> p_period) {
-	if (period.size() < 5) {
-		return;
-	}
-	if (period.size() != p_period.size()) {
-		period.resize(p_period.size());
-	}
-	bool equal = true;
-	for (size_t i = 0; i < p_period.size(); i++) {
-		equal = equal && p_period[i] == period[i];
-	}
-	if (period.size() == p_period.size() && equal) {
-		return;
-	}
+	ERR_FAIL_COND(p_period.size() != 4)
+	ERR_FAIL_COND(period.size() != 4)
 	for (size_t i = 0; i < p_period.size(); i++) {
 		period.write[i] = p_period[i];
 	}
-
 	_init_seeds();
-
 	emit_changed();
 }
 
@@ -116,6 +98,7 @@ void OpenSimplexNoise::set_persistence(float p_persistence) {
 }
 
 void OpenSimplexNoise::set_lacunarity(float p_lacunarity) {
+
 	if (p_lacunarity == lacunarity) return;
 	lacunarity = p_lacunarity;
 	emit_changed();
@@ -234,7 +217,7 @@ void OpenSimplexNoise::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "octaves", PROPERTY_HINT_RANGE, "1,6,1"), "set_octaves", "get_octaves");
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "period"), "set_period", "get_period");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "period", PROPERTY_HINT_RANGE, "4,4,0"), "set_period", "get_period");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "persistence", PROPERTY_HINT_RANGE, "0.0,1.0,0.001"), "set_persistence", "get_persistence");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "lacunarity", PROPERTY_HINT_RANGE, "0.1,4.0,0.01"), "set_lacunarity", "get_lacunarity");
 }
