@@ -41,6 +41,13 @@
 #define DEFAULT_SEED (0LL)
 
 // -- GODOT start --
+static int simplex_max(int a, int b) {
+	if (a > b)
+	{
+		return a;
+	}
+	return b;
+}
 /*struct osn_context {
 	int16_t *perm;
 	int16_t *permGradIndex3D;
@@ -199,7 +206,7 @@ int open_simplex_noise3_tileable(int64_t seed, int p_w6, int p_h6, int p_d6, str
 	p_ctx->w6 = p_w6;
 	p_ctx->h6 = p_h6;
 	p_ctx->d6 = p_d6;
-	p_ctx->sOffset = max(p_w6, max(p_h6, p_d6)) * 6;
+	p_ctx->sOffset = simplex_max(p_w6, simplex_max(p_h6, p_d6)) * 6;
 	return open_simplex_noise(seed, p_ctx);
 }
 
