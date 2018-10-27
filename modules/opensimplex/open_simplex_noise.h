@@ -46,8 +46,8 @@ class OpenSimplexNoise : public Resource {
 	int seed;
 	float persistence; // Controls details, value in [0,1]. Higher increases grain, lower increases smoothness.
 	int octaves; // Number of noise layers
-	Vector<int32_t> period; // Distance above which we start to see similarities. The higher, the longer "hills" will be on a terrain.
-	Vector<int32_t> size;
+	int32_t period; // Distance above which we start to see similarities. The higher, the longer "hills" will be on a terrain.
+	Vector<int32_t> seamless_period;
 	float lacunarity; // Controls period change across octaves. 2 is usually a good value to address all detail levels.
 
 public:
@@ -59,8 +59,11 @@ public:
 	void set_seed(int seed);
 	int get_seed();
 
-	void set_period(const Vector<int32_t> p_period);
-	Vector<int32_t> get_period() const;
+	void set_period(const int32_t p_seamless_period);
+	int32_t get_period() const;
+
+	void set_seamless_period(const Vector<int32_t> p_seamless_period);
+	Vector<int32_t> get_seamless_period() const;
 
 	void set_octaves(int p_octaves);
 	int get_octaves() const { return octaves; }
@@ -72,7 +75,7 @@ public:
 	float get_lacunarity() const { return lacunarity; }
 
 	Ref<Image> get_image(int p_width, int p_height);
-	Ref<Image> get_image_3d(Vector3 size, int p_x, int p_y, int p_layer);
+	Ref<Image> get_image_3d(int p_x, int p_y, int p_layer);
 	Ref<Image> get_seamless_image(int p_size);
 
 	float get_noise_2d(float x, float y);
@@ -80,7 +83,7 @@ public:
 	float get_noise_4d(float x, float y, float z, float w);
 
 	_FORCE_INLINE_ float _get_octave_noise_2d(int octave, float x, float y) { return open_simplex_noise2(&(contexts[octave]), x, y); }
-	_FORCE_INLINE_ float _get_octave_noise_3d(int octave, float x, float y, float z) { return open_simplex_noise3(&(contexts[octave]), x, y, z); }
+	_FORCE_INLINE_ float _get_octave_noise_3d(int octave, float x, float y, float z) { return open_simplex_noise3_tileable(&(contexts[octave]), x, y, z); }
 	_FORCE_INLINE_ float _get_octave_noise_4d(int octave, float x, float y, float z, float w) { return open_simplex_noise4(&(contexts[octave]), x, y, z, w); }
 
 	// Convenience

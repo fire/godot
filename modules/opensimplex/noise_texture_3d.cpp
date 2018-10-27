@@ -83,8 +83,14 @@ void NoiseTexture3D::_queue_update() {
 Ref<Image> NoiseTexture3D::_generate_texture(const int p_depth) {
 
 	update_queued = false;
-	Vector3 _size = size;
-	return noise->get_image_3d(size, size.x, size.y, p_depth);
+	Vector<int32_t> period = noise->get_seamless_period();
+	period.write[0] = size.x;
+	period.write[1] = size.y;
+	period.write[2] = size.z;
+	period.write[3] = MIN(period[3], 6);
+	noise->set_seamless_period(period);
+	emit_changed();
+	return noise->get_image_3d(size.x, size.y, p_depth);
 }
 
 void NoiseTexture3D::_update_texture() {
