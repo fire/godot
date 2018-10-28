@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  noise.cpp                                                            */
+/*  fractal_brownian_noise.cpp                                           */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,30 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "noise.h"
+#include "scene/resources/fractal_brownian_noise.h"
 
 #include "core/core_string_names.h"
 
-Noise::Noise() {
+FractalBrownianNoise::FractalBrownianNoise() {
 }
 
-Noise::~Noise() {
+FractalBrownianNoise::~FractalBrownianNoise() {
 }
 
-void Noise::_bind_methods() {
+void FractalBrownianNoise::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("get_seed"), &Noise::get_seed);
-	ClassDB::bind_method(D_METHOD("set_seed", "seed"), &Noise::set_seed);
+	ClassDB::bind_method(D_METHOD("set_octaves", "octave_count"), &FractalBrownianNoise::set_octaves);
+	ClassDB::bind_method(D_METHOD("get_octaves"), &FractalBrownianNoise::get_octaves);
 
-	ClassDB::bind_method(D_METHOD("get_image", "width", "height"), &Noise::get_image);
-	ClassDB::bind_method(D_METHOD("get_seamless_image", "size"), &Noise::get_seamless_image);
+	ClassDB::bind_method(D_METHOD("set_period", "period"), &FractalBrownianNoise::set_period);
+	ClassDB::bind_method(D_METHOD("get_period"), &FractalBrownianNoise::get_period);
 
-	ClassDB::bind_method(D_METHOD("get_noise_2d", "x", "y"), &Noise::get_noise_2d);
-	ClassDB::bind_method(D_METHOD("get_noise_3d", "x", "y", "z"), &Noise::get_noise_3d);
-	ClassDB::bind_method(D_METHOD("get_noise_4d", "x", "y", "z", "w"), &Noise::get_noise_4d);
+	ClassDB::bind_method(D_METHOD("set_persistence", "persistence"), &FractalBrownianNoise::set_persistence);
+	ClassDB::bind_method(D_METHOD("get_persistence"), &FractalBrownianNoise::get_persistence);
 
-	ClassDB::bind_method(D_METHOD("get_noise_2dv", "pos"), &Noise::get_noise_2dv);
-	ClassDB::bind_method(D_METHOD("get_noise_3dv", "pos"), &Noise::get_noise_3dv);
+	ClassDB::bind_method(D_METHOD("set_lacunarity", "lacunarity"), &FractalBrownianNoise::set_lacunarity);
+	ClassDB::bind_method(D_METHOD("get_lacunarity"), &FractalBrownianNoise::get_lacunarity);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "octaves", PROPERTY_HINT_RANGE, "1,6,1"), "set_octaves", "get_octaves");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "period"), "set_period", "get_period");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "persistence", PROPERTY_HINT_RANGE, "0.0,1.0,0.001"), "set_persistence", "get_persistence");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "lacunarity", PROPERTY_HINT_RANGE, "0.1,4.0,0.01"), "set_lacunarity", "get_lacunarity");
 }

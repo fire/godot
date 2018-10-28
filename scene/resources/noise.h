@@ -46,18 +46,6 @@ public:
 	virtual void set_seed(int seed) = 0;
 	virtual int get_seed() const = 0;
 
-	virtual void set_period(const float p_period) = 0;
-	virtual float get_period() const = 0;
-
-	virtual void set_octaves(int p_octaves) = 0;
-	virtual int get_octaves() const = 0;
-
-	virtual void set_persistence(float p_persistence) = 0;
-	virtual float get_persistence() const = 0;
-
-	virtual void set_lacunarity(float p_lacunarity) = 0;
-	virtual float get_lacunarity() const = 0;
-
 	virtual Ref<Image> get_image(int p_width, int p_height) = 0;
 	virtual Vector<Ref<Image> > get_image_3d(int p_x, int p_y, int p_z) = 0;
 	virtual Ref<Image> get_seamless_image(int p_size) = 0;

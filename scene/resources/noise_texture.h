@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  noise.cpp                                                            */
+/*  noise_texture.h                                                      */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,30 +28,73 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "noise.h"
+#ifndef NOISE_TEXTURE_H
+#define NOISE_TEXTURE_H
 
-#include "core/core_string_names.h"
+#include "core/image.h"
+#include "core/reference.h"
+#include "editor/editor_node.h"
+#include "editor/editor_plugin.h"
+#include "editor/property_editor.h"
+#include "scene/resources/noise.h"
 
-Noise::Noise() {
-}
+class NoiseTexture : public Texture {
+	GDCLASS(NoiseTexture, Texture)
 
-Noise::~Noise() {
-}
+private:
+	Ref<Image> data;
 
-void Noise::_bind_methods() {
+	Thread *noise_thread;
 
-	ClassDB::bind_method(D_METHOD("get_seed"), &Noise::get_seed);
-	ClassDB::bind_method(D_METHOD("set_seed", "seed"), &Noise::set_seed);
+	bool first_time;
+	bool update_queued;
+	bool regen_queued;
 
-	ClassDB::bind_method(D_METHOD("get_image", "width", "height"), &Noise::get_image);
-	ClassDB::bind_method(D_METHOD("get_seamless_image", "size"), &Noise::get_seamless_image);
+	RID texture;
+	uint32_t flags;
 
-	ClassDB::bind_method(D_METHOD("get_noise_2d", "x", "y"), &Noise::get_noise_2d);
-	ClassDB::bind_method(D_METHOD("get_noise_3d", "x", "y", "z"), &Noise::get_noise_3d);
-	ClassDB::bind_method(D_METHOD("get_noise_4d", "x", "y", "z", "w"), &Noise::get_noise_4d);
+	Ref<Noise> noise;
+	Vector2i size;
+	bool seamless;
+	bool as_normalmap;
 
-	ClassDB::bind_method(D_METHOD("get_noise_2dv", "pos"), &Noise::get_noise_2dv);
-	ClassDB::bind_method(D_METHOD("get_noise_3dv", "pos"), &Noise::get_noise_3dv);
+	void _thread_done(const Ref<Image> &p_image);
+	static void _thread_function(void *p_ud);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
-}
+	void _queue_update();
+	Ref<Image> _generate_texture();
+	void _update_texture();
+	void _set_texture_data(const Ref<Image> &p_image);
+
+protected:
+	static void _bind_methods();
+
+public:
+	void set_noise(Ref<Noise> p_noise);
+	Ref<Noise> get_noise();
+
+	void set_width(int p_width);
+	void set_height(int p_hieght);
+
+	void set_seamless(bool p_seamless);
+	bool get_seamless();
+
+	void set_as_normalmap(bool p_seamless);
+	bool is_normalmap();
+
+	int get_width() const;
+	int get_height() const;
+
+	virtual void set_flags(uint32_t p_flags);
+	virtual uint32_t get_flags() const;
+
+	virtual RID get_rid() const { return texture; }
+	virtual bool has_alpha() const { return false; }
+
+	virtual Ref<Image> get_data() const;
+
+	NoiseTexture();
+	virtual ~NoiseTexture();
+};
+
+#endif // NOISE_TEXTURE_H

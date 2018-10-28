@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  noise_texture_3d.h                                                   */
+/*  fractal_brownian_noise.h                                             */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,72 +28,39 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef NOISE_TEXTURE_3D_H
-#define NOISE_TEXTURE_3D_H
+#ifndef FRACTAL_BROWNIAN_NOISE_H
+#define FRACTAL_BROWNIAN_NOISE_H
 
-#include "open_simplex_noise.h"
-
-#include "core/core_string_names.h"
-#include "core/dvector.h"
 #include "core/image.h"
 #include "core/reference.h"
-#include "editor/editor_node.h"
-#include "editor/editor_plugin.h"
-#include "editor/property_editor.h"
+#include "scene/resources/noise.h"
+#include "scene/resources/texture.h"
 
-class NoiseTexture3D : public Texture3D {
-	GDCLASS(NoiseTexture3D, Texture3D)
+class FractalBrownianNoise : public Noise {
+	GDCLASS(FractalBrownianNoise, Noise)
+	OBJ_SAVE_TYPE(FractalBrownianNoise);
 
-private:
-	struct ImageLayer {
-		Ref<NoiseTexture3D> ref;
-		int layer;
-	} noise_thread_layer;
+public:
+	FractalBrownianNoise();
+	~FractalBrownianNoise();
 
-	Vector<Ref<Image> > data;
+	virtual void set_seed(int seed) = 0;
+	virtual int get_seed() const = 0;
 
-	Thread *noise_thread;
+	virtual void set_period(const float p_period) = 0;
+	virtual float get_period() const = 0;
 
-	bool first_time;
-	bool update_queued;
-	bool regen_queued;
-	bool seamless;
+	virtual void set_octaves(int p_octaves) = 0;
+	virtual int get_octaves() const = 0;
 
-	RID texture;
-	uint32_t flags;
+	virtual void set_persistence(float p_persistence) = 0;
+	virtual float get_persistence() const = 0;
 
-	Ref<Noise> noise;
-	Vector3 size;
-
-	void _set_texture_data(const Vector<Ref<Image> > data_layers);
-	void _thread_done();
-	static void _thread_function(void *p_ud);
-
-	void _queue_update();
-	Vector<Ref<Image>> _generate_texture();
-	void _update_texture();
+	virtual void set_lacunarity(float p_lacunarity) = 0;
+	virtual float get_lacunarity() const = 0;
 
 protected:
 	static void _bind_methods();
-
-public:
-	void set_noise(Ref<Noise> p_noise);
-	Ref<Noise> get_noise();
-	void set_width(int p_width);
-	void set_height(int p_height);
-	void set_length(int p_length);
-	void set_seamless(bool p_seamless);
-	bool get_seamless();
-	void set_size(Vector3 p_size);
-	Vector3 get_size();
-	int get_width() const;
-	int get_height() const;
-	int get_length() const;
-	void set_flags(uint32_t p_flags);
-	uint32_t get_flags() const;
-	Vector<Ref<Image> > get_data() const;
-	NoiseTexture3D();
-	~NoiseTexture3D();
 };
 
-#endif // NOISE_TEXTURE_3D_H
+#endif // FRACTAL_BROWNIAN_NOISE_H

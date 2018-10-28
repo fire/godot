@@ -36,10 +36,10 @@
 #include "scene/resources/texture.h"
 
 #include "thirdparty/misc/open-simplex-noise.h"
-#include "scene/resources/noise.h"
+#include "scene/resources/fractal_brownian_noise.h"
 
-class OpenSimplexNoise : public Noise {
-	GDCLASS(OpenSimplexNoise, Noise)
+class OpenSimplexNoise : public FractalBrownianNoise {
+	GDCLASS(OpenSimplexNoise, FractalBrownianNoise)
 	OBJ_SAVE_TYPE(OpenSimplexNoise);
 
 	osn_context contexts[6];

@@ -29,14 +29,10 @@
 /*************************************************************************/
 
 #include "register_types.h"
-#include "noise_texture.h"
 #include "open_simplex_noise.h"
-#include "noise_texture_3d.h"
 
 void register_opensimplex_types() {
 	ClassDB::register_class<OpenSimplexNoise>();
-	ClassDB::register_class<NoiseTexture>();
-	ClassDB::register_class<NoiseTexture3D>();
 }
 
 void unregister_opensimplex_types() {

@@ -151,7 +151,7 @@ NoiseTexture3D::NoiseTexture3D() {
 	size = Vector3(128, 128, 128);
 	flags = FLAGS_DEFAULT;
 
-	noise = Ref<Noise>();
+	noise = Ref<FractalBrownianNoise>();
 
 	texture = VS::get_singleton()->texture_create();
 
@@ -162,7 +162,7 @@ NoiseTexture3D::~NoiseTexture3D() {
 	VS::get_singleton()->free(texture);
 }
 
-void NoiseTexture3D::set_noise(Ref<Noise> p_noise) {
+void NoiseTexture3D::set_noise(Ref<FractalBrownianNoise> p_noise) {
 	if (p_noise == noise)
 		return;
 	if (noise.is_valid()) {
@@ -175,8 +175,7 @@ void NoiseTexture3D::set_noise(Ref<Noise> p_noise) {
 	_queue_update();
 }
 
-Ref<Noise> NoiseTexture3D::get_noise()
-{
+Ref<FractalBrownianNoise> NoiseTexture3D::get_noise() {
 	return noise;
 }
 

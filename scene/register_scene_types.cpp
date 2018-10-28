@@ -144,6 +144,7 @@
 #include "scene/resources/mesh_data_tool.h"
 #include "scene/resources/mesh_library.h"
 #include "scene/resources/noise.h"
+#include "scene/resources/fractal_brownian_noise.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/particles_material.h"
 #include "scene/resources/plane_shape.h"
@@ -159,6 +160,8 @@
 #include "scene/resources/surface_tool.h"
 #include "scene/resources/text_file.h"
 #include "scene/resources/texture.h"
+#include "scene/resources/noise_texture.h"
+#include "scene/resources/noise_texture_3d.h"
 #include "scene/resources/tile_set.h"
 #include "scene/resources/video_stream.h"
 #include "scene/resources/visual_shader.h"
@@ -608,6 +611,7 @@ void register_scene_types() {
 	ClassDB::register_class<MeshDataTool>();
 	
 	ClassDB::register_virtual_class<Noise>();
+	ClassDB::register_virtual_class<FractalBrownianNoise>();
 
 	OS::get_singleton()->yield(); //may take time to init
 
@@ -620,6 +624,8 @@ void register_scene_types() {
 	ClassDB::register_class<World2D>();
 	ClassDB::register_virtual_class<Texture>();
 	ClassDB::register_virtual_class<Sky>();
+	ClassDB::register_class<NoiseTexture>();
+	ClassDB::register_class<NoiseTexture3D>();
 	ClassDB::register_class<PanoramaSky>();
 	ClassDB::register_class<ProceduralSky>();
 	ClassDB::register_class<StreamTexture>();
