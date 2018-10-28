@@ -301,6 +301,7 @@ float OpenSimplexNoise::get_noise_4d(float x, float y, float z, float w) {
 	float sum = _get_octave_noise_4d(0, x, y, z, w);
 
 	int i = 0;
+
 	while (++i < octaves) {
 		x *= lacunarity;
 		y *= lacunarity;

@@ -60,13 +60,6 @@ void NoiseTexture3D::_thread_function(void *p_ud) {
 	NoiseTexture3D *tex = (NoiseTexture3D *)p_ud;
 
 	Vector<Ref<Image> > image_layers = tex->_generate_texture();
-	//for (size_t i = 1; i <= tex->get_length(); i++) {
-	//	if (tex->noise.is_null()) {
-	//		return;
-	//	}
-	//	Ref<Image> image_layer = tex->_generate_texture(i);
-	//	image_layers.push_back(image_layer);
-	//}
 	tex->_set_texture_data(image_layers);
 
 	tex->call_deferred("_thread_done");
@@ -122,13 +115,6 @@ void NoiseTexture3D::_update_texture() {
 
 	} else {
 		Vector<Ref<Image> > image_layers = _generate_texture();
-		//for (size_t i = 1; i <= get_length(); i++) {
-		//	if (noise.is_null()) {
-		//		return;
-		//	}
-		//	Ref<Image> image_layer = ;
-		//	image_layers.push_back(image_layer);
-		//}
 		_set_texture_data(image_layers);
 	}
 }
