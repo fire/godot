@@ -96,10 +96,6 @@ Vector<Ref<Image>> NoiseTexture3D::_generate_texture() {
 
 void NoiseTexture3D::_update_texture() {
 	bool use_thread = true;
-	if (first_time) {
-		use_thread = false;
-		first_time = false;
-	}
 #ifdef NO_THREADS
 	use_thread = false;
 #endif
@@ -145,7 +141,6 @@ NoiseTexture3D::NoiseTexture3D() {
 	update_queued = false;
 	noise_thread = NULL;
 	regen_queued = false;
-	first_time = true;
 	bool seamless = true;
 
 	size = Vector3(128, 128, 128);

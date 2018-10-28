@@ -36,7 +36,6 @@ NoiseTexture::NoiseTexture() {
 	update_queued = false;
 	noise_thread = NULL;
 	regen_queued = false;
-	first_time = true;
 
 	size = Vector2i(512, 512);
 	seamless = false;
@@ -137,10 +136,6 @@ Ref<Image> NoiseTexture::_generate_texture() {
 
 void NoiseTexture::_update_texture() {
 	bool use_thread = true;
-	if (first_time) {
-		use_thread = false;
-		first_time = false;
-	}
 #ifdef NO_THREADS
 	use_thread = false;
 #endif

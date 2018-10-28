@@ -46,7 +46,6 @@ private:
 
 	Thread *noise_thread;
 
-	bool first_time;
 	bool update_queued;
 	bool regen_queued;
 
