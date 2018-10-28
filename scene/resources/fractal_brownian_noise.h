@@ -47,8 +47,11 @@ public:
 	virtual void set_seed(int seed) = 0;
 	virtual int get_seed() const = 0;
 
-	virtual void set_period(const float p_period) = 0;
+	virtual void set_period(float p_period) = 0;
 	virtual float get_period() const = 0;
+
+	virtual void set_size(Vector<int32_t> p_size) = 0;
+	virtual Vector<int32_t> get_size() const = 0;
 
 	virtual void set_octaves(int p_octaves) = 0;
 	virtual int get_octaves() const = 0;

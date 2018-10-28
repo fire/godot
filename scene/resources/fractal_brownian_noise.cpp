@@ -46,6 +46,9 @@ void FractalBrownianNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_period", "period"), &FractalBrownianNoise::set_period);
 	ClassDB::bind_method(D_METHOD("get_period"), &FractalBrownianNoise::get_period);
 
+	ClassDB::bind_method(D_METHOD("set_size", "size"), &FractalBrownianNoise::set_size);
+	ClassDB::bind_method(D_METHOD("get_size"), &FractalBrownianNoise::get_size);
+
 	ClassDB::bind_method(D_METHOD("set_persistence", "persistence"), &FractalBrownianNoise::set_persistence);
 	ClassDB::bind_method(D_METHOD("get_persistence"), &FractalBrownianNoise::get_persistence);
 
@@ -53,7 +56,7 @@ void FractalBrownianNoise::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_lacunarity"), &FractalBrownianNoise::get_lacunarity);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "octaves", PROPERTY_HINT_RANGE, "1,6,1"), "set_octaves", "get_octaves");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "period"), "set_period", "get_period");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "period", PROPERTY_HINT_RANGE, "1.0,8096,1.0"), "set_period", "get_period");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "persistence", PROPERTY_HINT_RANGE, "0.0,1.0,0.001"), "set_persistence", "get_persistence");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "lacunarity", PROPERTY_HINT_RANGE, "0.1,4.0,0.01"), "set_lacunarity", "get_lacunarity");
 }

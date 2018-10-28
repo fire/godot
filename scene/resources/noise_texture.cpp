@@ -43,7 +43,7 @@ NoiseTexture::NoiseTexture() {
 	as_normalmap = false;
 	flags = FLAGS_DEFAULT;
 
-	noise = Ref<Noise>();
+	noise = Ref<FractalBrownianNoise>();
 
 	texture = VS::get_singleton()->texture_create();
 
@@ -122,6 +122,14 @@ Ref<Image> NoiseTexture::_generate_texture() {
 
 	Ref<Image> image;
 
+	Vector<int32_t> size_list;
+	size_list.push_back(size.x);
+	size_list.push_back(size.y);
+	size_list.push_back(1);
+	size_list.push_back(1);
+
+	noise->set_size(size_list);
+
 	if (seamless) {
 		image = noise->get_seamless_image(size.x);
 	} else {
@@ -159,7 +167,7 @@ void NoiseTexture::_update_texture() {
 	}
 }
 
-void NoiseTexture::set_noise(Ref<Noise> p_noise) {
+void NoiseTexture::set_noise(Ref<FractalBrownianNoise> p_noise) {
 	if (p_noise == noise)
 		return;
 	if (noise.is_valid()) {
@@ -172,7 +180,7 @@ void NoiseTexture::set_noise(Ref<Noise> p_noise) {
 	_queue_update();
 }
 
-Ref<Noise> NoiseTexture::get_noise() {
+Ref<FractalBrownianNoise> NoiseTexture::get_noise() {
 	return noise;
 }
 

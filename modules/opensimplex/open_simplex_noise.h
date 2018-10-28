@@ -45,6 +45,7 @@ class OpenSimplexNoise : public FractalBrownianNoise {
 	osn_context contexts[6];
 
 	int seed;
+	Vector<int32_t> size;
 	float persistence; // Controls details, value in [0,1]. Higher increases grain, lower increases smoothness.
 	int octaves; // Number of noise layers
 	float period; // Distance above which we start to see similarities. The higher, the longer "hills" will be on a terrain.
@@ -59,6 +60,10 @@ public:
 
 	void set_seed(int seed);
 	int get_seed() const;
+
+	void set_size(Vector<int32_t> p_size);;
+	Vector<int32_t> get_size() const;;
+
 
 	void set_period(float p_period);
 	float get_period() const;

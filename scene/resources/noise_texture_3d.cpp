@@ -88,6 +88,12 @@ void NoiseTexture3D::_queue_update() {
 Vector<Ref<Image>> NoiseTexture3D::_generate_texture() {
 	ERR_FAIL_COND_V(noise == NULL, Vector<Ref<Image> >());
 	update_queued = false;
+	Vector<int32_t> size_list;
+	size_list.push_back(size.x);
+	size_list.push_back(size.y);
+	size_list.push_back(size.z);
+	size_list.push_back(1);
+	noise->set_size(size_list);
 	if (seamless) {
 		return noise->get_seamless_image_3d(size.x);
 	};

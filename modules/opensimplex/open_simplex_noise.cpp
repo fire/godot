@@ -33,7 +33,10 @@
 #include "core/core_string_names.h"
 
 OpenSimplexNoise::OpenSimplexNoise() {
-
+	size.resize(4);
+	for (size_t i = 0; i < size.size(); i++) {
+		size.write[i] = 1;
+	}
 	seed = 0;
 	period = 64.0f;
 	const int32_t size_num = 4;
@@ -72,6 +75,15 @@ int OpenSimplexNoise::get_seed() const {
 	return seed;
 }
 
+void OpenSimplexNoise::set_size(Vector<int32_t> p_size) {
+	ERR_FAIL_COND(p_size.size() < 4);
+	size = p_size;
+}
+
+Vector<int32_t> OpenSimplexNoise::get_size() const {
+	return size;
+}
+
 void OpenSimplexNoise::set_octaves(int p_octaves) {
 	if (p_octaves == octaves) return;
 	octaves = CLAMP(p_octaves, 1, 6);
@@ -84,8 +96,7 @@ void OpenSimplexNoise::set_period(float p_period) {
 	emit_changed();
 }
 
-float OpenSimplexNoise::get_period() const
-{
+float OpenSimplexNoise::get_period() const {
 	return period;
 }
 
