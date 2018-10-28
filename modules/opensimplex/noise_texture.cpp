@@ -172,8 +172,7 @@ void NoiseTexture::set_noise(Ref<Noise> p_noise) {
 	_queue_update();
 }
 
-Ref<Noise> NoiseTexture::get_noise()
-{
+Ref<Noise> NoiseTexture::get_noise() {
 	return noise;
 }
 

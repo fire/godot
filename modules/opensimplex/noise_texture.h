@@ -40,7 +40,6 @@
 #include "editor/property_editor.h"
 #include "scene/resources/noise.h"
 
-
 class NoiseTexture : public Texture {
 	GDCLASS(NoiseTexture, Texture)
 
