@@ -143,6 +143,7 @@
 #include "scene/resources/mesh.h"
 #include "scene/resources/mesh_data_tool.h"
 #include "scene/resources/mesh_library.h"
+#include "scene/resources/noise.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/particles_material.h"
 #include "scene/resources/plane_shape.h"
@@ -605,6 +606,8 @@ void register_scene_types() {
 
 	ClassDB::register_class<SurfaceTool>();
 	ClassDB::register_class<MeshDataTool>();
+	
+	ClassDB::register_virtual_class<Noise>();
 
 	OS::get_singleton()->yield(); //may take time to init
 
