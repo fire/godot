@@ -40,7 +40,6 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "editor/property_editor.h"
-#include "../anl/anl_noise.h"
 
 class NoiseTexture3D : public Texture3D {
 	GDCLASS(NoiseTexture3D, Texture3D)

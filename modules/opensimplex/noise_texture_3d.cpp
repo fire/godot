@@ -34,6 +34,7 @@
 #include "core/core_string_names.h"
 #include "core/method_bind_ext.gen.inc"
 #include "noise_texture_3d.h"
+#include "scene/resources/noise.h"
 
 void NoiseTexture3D::_set_texture_data(const Vector<Ref<Image> > data_layers) {
 	data = data_layers;
