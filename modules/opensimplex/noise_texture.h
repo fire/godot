@@ -38,7 +38,8 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "editor/property_editor.h"
-#include "../anl/anl_noise.h"
+#include "scene/resources/noise.h"
+
 
 class NoiseTexture : public Texture {
 	GDCLASS(NoiseTexture, Texture)
