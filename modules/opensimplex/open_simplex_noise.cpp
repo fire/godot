@@ -243,10 +243,6 @@ Ref<Image> OpenSimplexNoise::get_seamless_image(int p_size) {
 }
 
 void OpenSimplexNoise::_bind_methods() {
-
-	ClassDB::bind_method(D_METHOD("get_noise_2d", "x", "y"), &OpenSimplexNoise::get_noise_2d);
-	ClassDB::bind_method(D_METHOD("get_noise_3d", "x", "y", "z"), &OpenSimplexNoise::get_noise_3d);
-	ClassDB::bind_method(D_METHOD("get_noise_4d", "x", "y", "z", "w"), &OpenSimplexNoise::get_noise_4d);
 }
 
 float OpenSimplexNoise::get_noise_2d(float x, float y) {
