@@ -133,7 +133,6 @@ void NoiseTexture3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_noise"), &NoiseTexture3D::get_noise);
 
 	ClassDB::bind_method(D_METHOD("_update_texture"), &NoiseTexture3D::_update_texture);
-	//ClassDB::bind_method(D_METHOD("_generate_texture"), &NoiseTexture3D::_generate_texture);
 	ClassDB::bind_method(D_METHOD("_thread_done"), &NoiseTexture3D::_thread_done);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
