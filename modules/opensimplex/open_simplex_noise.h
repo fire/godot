@@ -36,9 +36,10 @@
 #include "scene/resources/texture.h"
 
 #include "thirdparty/misc/open-simplex-noise.h"
+#include "noise.h"
 
-class OpenSimplexNoise : public Resource {
-	GDCLASS(OpenSimplexNoise, Resource)
+class OpenSimplexNoise : public Noise {
+	GDCLASS(OpenSimplexNoise, Noise)
 	OBJ_SAVE_TYPE(OpenSimplexNoise);
 
 	osn_context contexts[6];
@@ -57,12 +58,12 @@ public:
 	void _init_seeds();
 
 	void set_seed(int seed);
-	int get_seed();
+	int get_seed() const;
 
-	void set_period(const int32_t p_seamless_period);
+	void set_period(int32_t p_period);
 	int32_t get_period() const;
 
-	void set_seamless_period(const Vector<int32_t> p_seamless_period);
+	void set_seamless_period(Vector<int32_t> p_seamless_period);
 	Vector<int32_t> get_seamless_period() const;
 
 	void set_octaves(int p_octaves);
@@ -75,8 +76,9 @@ public:
 	float get_lacunarity() const { return lacunarity; }
 
 	Ref<Image> get_image(int p_width, int p_height);
-	Ref<Image> get_image_3d(int p_x, int p_y, int p_layer);
+	Vector<Ref<Image>> get_image_3d(int p_x, int p_y, int p_z);
 	Ref<Image> get_seamless_image(int p_size);
+	Vector<Ref<Image> > get_seamless_image_3d(int p_size);
 
 	float get_noise_2d(float x, float y);
 	float get_noise_3d(float x, float y, float z);

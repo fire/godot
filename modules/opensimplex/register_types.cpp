@@ -34,7 +34,7 @@
 #include "noise_texture_3d.h"
 
 void register_opensimplex_types() {
-
+	ClassDB::register_virtual_class<Noise>();
 	ClassDB::register_class<OpenSimplexNoise>();
 	ClassDB::register_class<NoiseTexture>();
 	ClassDB::register_class<NoiseTexture3D>();

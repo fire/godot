@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  noise_texture.h                                                      */
+/*  noise.h                                                              */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,75 +28,49 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef NOISE_TEXTURE_H
-#define NOISE_TEXTURE_H
-
-#include "open_simplex_noise.h"
+#ifndef NOISE_H
+#define NOISE_H
 
 #include "core/image.h"
 #include "core/reference.h"
-#include "editor/editor_node.h"
-#include "editor/editor_plugin.h"
-#include "editor/property_editor.h"
-#include "../anl/anl_noise.h"
+#include "scene/resources/texture.h"
 
-class NoiseTexture : public Texture {
-	GDCLASS(NoiseTexture, Texture)
+class Noise : public Resource {
+	GDCLASS(Noise, Resource)
+	OBJ_SAVE_TYPE(Noise);
 
-private:
-	Ref<Image> data;
+public:
+	Noise();
+	~Noise();
 
-	Thread *noise_thread;
+	virtual void set_seed(int seed) = 0;
+	virtual int get_seed() const = 0;
 
-	bool first_time;
-	bool update_queued;
-	bool regen_queued;
+	virtual void set_period(const int32_t p_period) = 0;
+	virtual int32_t get_period() const = 0;
 
-	RID texture;
-	uint32_t flags;
+	virtual void set_octaves(int p_octaves) = 0;
+	virtual int get_octaves() const = 0;
 
-	Ref<Noise> noise;
-	Vector2i size;
-	bool seamless;
-	bool as_normalmap;
+	virtual void set_persistence(float p_persistence) = 0;
+	virtual float get_persistence() const = 0;
 
-	void _thread_done(const Ref<Image> &p_image);
-	static void _thread_function(void *p_ud);
+	virtual void set_lacunarity(float p_lacunarity) = 0;
+	virtual float get_lacunarity() const = 0;
 
-	void _queue_update();
-	Ref<Image> _generate_texture();
-	void _update_texture();
-	void _set_texture_data(const Ref<Image> &p_image);
+	virtual Ref<Image> get_image(int p_width, int p_height) = 0;
+	virtual Vector<Ref<Image> > get_image_3d(int p_x, int p_y, int p_z) = 0;
+	virtual Ref<Image> get_seamless_image(int p_size) = 0;
+	virtual Vector<Ref<Image> > get_seamless_image_3d(int p_size) = 0;
+	virtual float get_noise_2d(float x, float y) = 0;
+	virtual float get_noise_3d(float x, float y, float z) = 0;
+	virtual float get_noise_4d(float x, float y, float z, float w) = 0;
+
+	_FORCE_INLINE_ float get_noise_2dv(Vector2 v) { return get_noise_2d(v.x, v.y); }
+	_FORCE_INLINE_ float get_noise_3dv(Vector3 v) { return get_noise_3d(v.x, v.y, v.z); }
 
 protected:
 	static void _bind_methods();
-
-public:
-	void set_noise(Ref<Noise> p_noise);
-	Ref<Noise> get_noise();
-
-	void set_width(int p_width);
-	void set_height(int p_hieght);
-
-	void set_seamless(bool p_seamless);
-	bool get_seamless();
-
-	void set_as_normalmap(bool p_seamless);
-	bool is_normalmap();
-
-	int get_width() const;
-	int get_height() const;
-
-	virtual void set_flags(uint32_t p_flags);
-	virtual uint32_t get_flags() const;
-
-	virtual RID get_rid() const { return texture; }
-	virtual bool has_alpha() const { return false; }
-
-	virtual Ref<Image> get_data() const;
-
-	NoiseTexture();
-	virtual ~NoiseTexture();
 };
 
-#endif // NOISE_TEXTURE_H
+#endif // NOISE_H
