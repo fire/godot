@@ -76,7 +76,7 @@
 #include "editor/editor_settings.h"
 #include "editor/project_manager.h"
 #endif
-
+#include "thirdparty/tracy/Tracy.hpp"
 /* Static members */
 
 // Singletons
@@ -328,6 +328,7 @@ void Main::print_help(const char *p_binary) {
  */
 
 Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_phase) {
+	ZoneScoped;
 	RID_OwnerBase::init_rid();
 
 	OS::get_singleton()->initialize_core();
@@ -1902,6 +1903,37 @@ static uint64_t physics_process_max = 0;
 static uint64_t idle_process_max = 0;
 
 bool Main::iteration() {
+	ZoneScoped;
+
+	TracyPlot("FPS", Engine::get_singleton()->get_frames_per_second());
+	TracyPlot("Memory Static", (int64_t)Memory::get_mem_usage());
+	TracyPlot("Memory Static Max", (int64_t)Memory::get_mem_max_usage());
+	TracyPlot("Memory Dynamic Max", (int64_t)MemoryPool::max_memory);
+	TracyPlot("Object Count", (int64_t)ObjectDB::get_object_count());
+	TracyPlot("Object Resource Count", (int64_t)ResourceCache::get_cached_resource_count())
+	MainLoop *ml = OS::get_singleton()->get_main_loop();
+	SceneTree *sml = Object::cast_to<SceneTree>(ml);
+	if (!sml) {
+		TracyPlot("Node Count", (int64_t)0);
+	} else {
+		TracyPlot("Node Count", (int64_t)sml->get_node_count());
+	}	
+	TracyPlot("Objects in Frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_OBJECTS_IN_FRAME));
+	TracyPlot("Vertices in Frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_VERTICES_IN_FRAME));
+	TracyPlot("Material Changes in Frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_MATERIAL_CHANGES_IN_FRAME));
+	TracyPlot("Shader Changes in Frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_SHADER_CHANGES_IN_FRAME));
+	TracyPlot("Surface Changes in Frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_SURFACE_CHANGES_IN_FRAME));
+	TracyPlot("DrawCalls in frame", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_DRAW_CALLS_IN_FRAME));
+	TracyPlot("Video Mem Used", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_VIDEO_MEM_USED));
+	TracyPlot("Texture Mem Used", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_TEXTURE_MEM_USED));
+	TracyPlot("Vertex Mem Used", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_VERTEX_MEM_USED));
+	TracyPlot("Video Mem Total", (int64_t)VS::get_singleton()->get_render_info(VS::INFO_USAGE_VIDEO_MEM_TOTAL));
+	TracyPlot("Physics 2D Active Objects", (int64_t)Physics2DServer::get_singleton()->get_process_info(Physics2DServer::INFO_ACTIVE_OBJECTS));
+	TracyPlot("Physics 2D Collision Pairs", (int64_t)Physics2DServer::get_singleton()->get_process_info(Physics2DServer::INFO_COLLISION_PAIRS));
+	TracyPlot("Physics 2D Island Count", (int64_t)Physics2DServer::get_singleton()->get_process_info(Physics2DServer::INFO_ISLAND_COUNT));
+	TracyPlot("Physics 3D Active Objects", (int64_t)PhysicsServer::get_singleton()->get_process_info(PhysicsServer::INFO_ACTIVE_OBJECTS));
+	TracyPlot("Physics 3D Collision Pairs", (int64_t)PhysicsServer::get_singleton()->get_process_info(PhysicsServer::INFO_COLLISION_PAIRS));
+	TracyPlot("Physics 3D Island Count", (int64_t)PhysicsServer::get_singleton()->get_process_info(PhysicsServer::INFO_ISLAND_COUNT));
 
 	//for now do not error on this
 	//ERR_FAIL_COND_V(iterating, false);

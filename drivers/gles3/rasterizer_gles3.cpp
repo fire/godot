@@ -32,6 +32,9 @@
 
 #include "core/os/os.h"
 #include "core/project_settings.h"
+#include "thirdparty/tracy/Tracy.hpp"
+
+#include "thirdparty/tracy/Tracy.hpp"
 
 RasterizerStorage *RasterizerGLES3::get_storage() {
 
@@ -389,7 +392,7 @@ void RasterizerGLES3::output_lens_distorted_to_screen(RID p_render_target, const
 }
 
 void RasterizerGLES3::end_frame(bool p_swap_buffers) {
-
+	ZoneScoped;
 	if (OS::get_singleton()->is_layered_allowed()) {
 		if (OS::get_singleton()->get_window_per_pixel_transparency_enabled()) {
 #if (defined WINDOWS_ENABLED) && !(defined UWP_ENABLED)

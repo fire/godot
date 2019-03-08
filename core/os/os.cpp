@@ -40,6 +40,8 @@
 
 #include <stdarg.h>
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 OS *OS::singleton = NULL;
 
 OS *OS::get_singleton() {
@@ -489,6 +491,7 @@ void OS::make_rendering_thread() {
 }
 
 void OS::swap_buffers() {
+	FrameMark;
 }
 
 String OS::get_unique_id() const {

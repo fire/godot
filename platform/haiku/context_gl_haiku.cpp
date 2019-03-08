@@ -30,6 +30,8 @@
 
 #include "context_gl_haiku.h"
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 #if defined(OPENGL_ENABLED)
 
 ContextGL_Haiku::ContextGL_Haiku(HaikuDirectWindow *p_window) {
@@ -62,6 +64,7 @@ void ContextGL_Haiku::make_current() {
 
 void ContextGL_Haiku::swap_buffers() {
 	view->SwapBuffers(use_vsync);
+	FrameMark;
 }
 
 int ContextGL_Haiku::get_window_width() {

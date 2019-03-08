@@ -38,6 +38,8 @@
 #include "core/print_string.h"
 #include "core/variant.h"
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 typedef uint32_t OctreeElementID;
 
 #define OCTREE_ELEMENT_INVALID_ID 0
@@ -420,7 +422,7 @@ int Octree<T, use_pairs, AL>::get_subindex(OctreeElementID p_id) const {
 
 template <class T, bool use_pairs, class AL>
 void Octree<T, use_pairs, AL>::_insert_element(Element *p_element, Octant *p_octant) {
-
+	ZoneScoped;
 	real_t element_size = p_element->aabb.get_longest_axis_size() * 1.01; // avoid precision issues
 
 	if (p_octant->aabb.size.x / OCTREE_DIVISOR < element_size) {
@@ -828,7 +830,7 @@ OctreeElementID Octree<T, use_pairs, AL>::create(T *p_userdata, const AABB &p_aa
 
 template <class T, bool use_pairs, class AL>
 void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const AABB &p_aabb) {
-
+	ZoneScoped;
 #ifdef DEBUG_ENABLED
 	// check for AABB validity
 	ERR_FAIL_COND(p_aabb.position.x > 1e15 || p_aabb.position.x < -1e15);
@@ -1287,7 +1289,7 @@ void Octree<T, use_pairs, AL>::_cull_point(Octant *p_octant, const Vector3 &p_po
 
 template <class T, bool use_pairs, class AL>
 int Octree<T, use_pairs, AL>::cull_convex(const Vector<Plane> &p_convex, T **p_result_array, int p_result_max, uint32_t p_mask) {
-
+	ZoneScoped;
 	if (!root)
 		return 0;
 
@@ -1308,7 +1310,7 @@ int Octree<T, use_pairs, AL>::cull_convex(const Vector<Plane> &p_convex, T **p_r
 
 template <class T, bool use_pairs, class AL>
 int Octree<T, use_pairs, AL>::cull_aabb(const AABB &p_aabb, T **p_result_array, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
-
+	ZoneScoped;
 	if (!root)
 		return 0;
 
@@ -1321,7 +1323,7 @@ int Octree<T, use_pairs, AL>::cull_aabb(const AABB &p_aabb, T **p_result_array, 
 
 template <class T, bool use_pairs, class AL>
 int Octree<T, use_pairs, AL>::cull_segment(const Vector3 &p_from, const Vector3 &p_to, T **p_result_array, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
-
+	ZoneScoped;
 	if (!root)
 		return 0;
 

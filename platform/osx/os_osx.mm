@@ -83,6 +83,8 @@
 #define NSAppKitVersionNumber10_14 1671
 #endif
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 static void get_key_modifier_state(unsigned int p_osx_state, Ref<InputEventWithModifiers> state) {
 
 	state->set_shift((p_osx_state & NSEventModifierFlagShift));
@@ -2271,6 +2273,7 @@ void OS_OSX::swap_buffers() {
 	}
 
 	[context flushBuffer];
+	FrameMark;
 }
 
 void OS_OSX::wm_minimized(bool p_minimized) {

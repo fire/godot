@@ -96,6 +96,19 @@ thirdparty_minizip_sources = [
 thirdparty_minizip_sources = [thirdparty_minizip_dir + file for file in thirdparty_minizip_sources]
 env_thirdparty.add_source_files(env.core_sources, thirdparty_minizip_sources)
 
+if (not env.msvc):
+    env.Append(CXXFLAGS=['-std=c++14'])
+
+# tracy library
+thirdparty_tracy_dir = "#thirdparty/tracy/"
+thirdparty_tracy_sources = [
+    "TracyClient.cpp",
+]
+
+env.Append(CPPDEFINES="TRACY_ENABLE")
+thirdparty_tracy_sources = [thirdparty_tracy_dir + file for file in thirdparty_tracy_sources]
+env.add_source_files(env.core_sources, thirdparty_tracy_sources)
+
 # Zstd library, can be unbundled in theory
 # though we currently use some private symbols
 # https://github.com/godotengine/godot/issues/17374

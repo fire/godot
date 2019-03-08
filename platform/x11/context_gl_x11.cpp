@@ -43,6 +43,8 @@
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 typedef GLXContext (*GLXCREATECONTEXTATTRIBSARBPROC)(Display *, GLXFBConfig, GLXContext, Bool, const int *);
 
 struct ContextGL_X11_Private {
@@ -63,6 +65,7 @@ void ContextGL_X11::make_current() {
 void ContextGL_X11::swap_buffers() {
 
 	glXSwapBuffers(x11_display, x11_window);
+	FrameMark;
 }
 
 static bool ctxErrorOccurred = false;

@@ -36,6 +36,9 @@
 #include "scene/resources/audio_stream_sample.h"
 #include "servers/audio/audio_driver_dummy.h"
 #include "servers/audio/effects/audio_effect_compressor.h"
+
+#include "thirdparty/tracy/Tracy.hpp"
+
 #ifdef TOOLS_ENABLED
 
 #define MARK_EDITED set_edited(true);
@@ -58,7 +61,7 @@ void AudioDriver::set_singleton() {
 }
 
 void AudioDriver::audio_server_process(int p_frames, int32_t *p_buffer, bool p_update_mix_time) {
-
+	TracyPlot("Audio Output Latency", AudioServer::get_singleton()->get_output_latency());	
 	if (p_update_mix_time)
 		update_mix_time(p_frames);
 

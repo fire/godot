@@ -34,6 +34,8 @@
 
 #include "context_gl_windows.h"
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 #define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define WGL_CONTEXT_FLAGS_ARB 0x2094
@@ -66,6 +68,7 @@ int ContextGL_Windows::get_window_height() {
 void ContextGL_Windows::swap_buffers() {
 
 	SwapBuffers(hDC);
+	FrameMark;
 }
 
 void ContextGL_Windows::set_use_vsync(bool p_use) {

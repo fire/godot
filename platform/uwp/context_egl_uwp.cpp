@@ -32,6 +32,8 @@
 
 #include "EGL/eglext.h"
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 using Platform::Exception;
 
 void ContextEGL_UWP::release_current() {
@@ -72,6 +74,7 @@ void ContextEGL_UWP::swap_buffers() {
 
 		// tell rasterizer to reload textures and stuff?
 	}
+	FrameMark;
 };
 
 Error ContextEGL_UWP::initialize() {
