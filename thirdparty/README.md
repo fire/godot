@@ -1,5 +1,18 @@
 # Third party libraries
 
+## alembic
+
+- Upstream: https://github.com/alembic/alembic.git
+- Version: 1.7.10
+- License: Modified BSD License
+
+## assimp
+
+- Upstream: https://github.com/assimp
+- Version: git (933fe5eb43ff665807c180c245df7969642987cd) with modifications
+- License: bsd
+
+Added custom alembic import.
 
 ## b2d_convexdecomp
 
@@ -405,7 +418,6 @@ Collection of single-file libraries used in Godot components.
   * Version: 1.15
   * License: Public Domain (Unlicense) or MIT
 
-
 ## nanosvg
 
 - Upstream: https://github.com/memononen/nanosvg
@@ -417,6 +429,11 @@ Files extracted from the upstream source:
 - All .h files in `src/`
 - LICENSE.txt
 
+## openexr's IlmBase
+
+- Upstream: https://github.com/openexr/openexr/tree/release/2.3/IlmBase
+- Version: v2.3.0
+- License: Modified BSD License
 
 ## opus
 
