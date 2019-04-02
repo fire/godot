@@ -60,7 +60,6 @@ public:
 		IMPORT_FAIL_ON_MISSING_DEPENDENCIES = 512,
 		IMPORT_MATERIALS_IN_INSTANCES = 1024,
 		IMPORT_USE_COMPRESSION = 2048
-
 	};
 
 	virtual uint32_t get_import_flags() const;

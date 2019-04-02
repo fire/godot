@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+Import('env')
+
+env_assimp = env.Clone()
+#env_assimp.disable_warnings()
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Importer/StepFile/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Importer/IFC/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/contrib/irrXML/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/contrib/openddlparser/code/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/godot/thirdparty/assimp/contrib/unzip/*.c'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Iex/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IexMath/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Imath/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThread.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutex.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPool.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphore.cpp'))
+
+if(env['platform'] == 'windows'):
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexWin32.cpp'))
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphoreWin32.cpp'))
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadWin32.cpp'))
+else:
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexPosix.cpp'))
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPosix.cpp'))
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosixCompat.cpp'))
+    env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosix.cpp'))
+
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/config/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Abc/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCollection/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreAbstract/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreFactory/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreLayer/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreOgawa/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcGeom/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcMaterial/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Ogawa/*.cpp'))
+env_assimp.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Util/*.cpp'))
+env_assimp.Append(CPPPATH=['#thirdparty/alembic/lib'])
+env_assimp.Append(CPPPATH=['#thirdparty/alembic/lib/Alembic/Util'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/include'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/contrib/irrXML/'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/contrib/unzip/'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/'])
+env_assimp.Append(CPPPATH=['#thirdparty/zlib/'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/contrib/openddlparser/include'])
+env_assimp.Append(CPPPATH=['#thirdparty/assimp/contrib/rapidjson/include'])
+env_assimp.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Iex'])
+env_assimp.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Half'])
+env_assimp.Append(CPPPATH=['#thirdparty/openexr/IlmBase/IexMath'])
+env_assimp.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Imath'])
+env_assimp.Append(CPPPATH=['#thirdparty/openexr/IlmBase/lex'])
+env_assimp.Append(CPPPATH=['ilmbase'])
+env_assimp.Append(CPPPATH=['.'])
+#env_assimp.Append(CPPFLAGS=['-DASSIMP_DOUBLE_PRECISION']) # TODO default to what godot is compiled with for future double support
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_BOOST_WORKAROUND'])
+env_assimp.Append(CPPFLAGS=['-DOPENDDLPARSER_BUILD'])
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_OWN_ZLIB'])
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_C4D_IMPORTER']) # Licensed
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_IFC_IMPORTER']) # assimp_pch required?
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_STEP_IMPORTER']) # dependency
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_3MF_IMPORTER']) # zip isn't working
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_3MF_EXPORTER']) # zip isn't working
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_NO_EXPORT'])
+env_assimp.Append(CPPFLAGS=['-DASSIMP_BUILD_SINGLETHREADED'])
+
+if (env.msvc == False):
+    env_assimp.Append(CXXFLAGS="-std=c++11")
+elif (env.msvc == False and env['platform'] == 'windows' ):
+     env_assimp.Append(LDFLAGS="-pthread")
+
+if(env['platform'] == 'windows'):
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM_WINDOWS'])
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM=WINDOWS'])
+elif(env['platform'] == 'x11'):
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM_LINUX'])
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM=LINUX'])
+elif(env['platform'] == 'osx'):
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM_DARWIN'])
+    env_assimp.Append(CPPFLAGS=['-DPLATFORM=DARWIN'])
+
+# Godot's own source files
+env_assimp.add_source_files(env.modules_sources, "*.cpp")

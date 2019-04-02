@@ -265,7 +265,6 @@ Array SurfaceTool::commit_to_arrays() {
 
 				w = PoolVector<Vector3>::Write();
 				a[i] = array;
-
 			} break;
 
 			case Mesh::ARRAY_TEX_UV:

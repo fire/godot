@@ -619,7 +619,6 @@ public:
 			GLsizei stride;
 			uint32_t offset;
 		};
-
 		Attrib attribs[VS::ARRAY_MAX];
 
 		Mesh *mesh;

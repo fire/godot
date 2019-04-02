@@ -608,7 +608,8 @@ void VisualServerScene::instance_set_blend_shape_weight(RID p_instance, int p_sh
 	if (instance->update_item.in_list()) {
 		_update_dirty_instance(instance);
 	}
-
+	//let it grow as big as possible, we don't want to lose values on resize
+	instance->blend_values.resize(MAX(instance->blend_values.size(), p_shape + 1));
 	ERR_FAIL_INDEX(p_shape, instance->blend_values.size());
 	instance->blend_values.write[p_shape] = p_weight;
 }
