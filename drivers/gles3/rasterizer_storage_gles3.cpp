@@ -4131,6 +4131,9 @@ void RasterizerStorageGLES3::mesh_render_blend_shapes(Surface *s, const float *p
 	for (int ti = 0; ti < mtc; ti++) {
 		float weight = p_weights[ti];
 
+		if (weight < 0.00001) //not bother with this one
+			continue;
+
 		glBindVertexArray(s->blend_shapes[ti].array_id);
 		glBindBuffer(GL_ARRAY_BUFFER, resources.transform_feedback_buffers[0]);
 		glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, resources.transform_feedback_buffers[1]);
