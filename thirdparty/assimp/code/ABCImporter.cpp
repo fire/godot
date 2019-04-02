@@ -303,9 +303,9 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 	{
 		size_t begIndex = 0;
 		const Imath::Vec3<float> *abc_positions = mesh_samp.getPositions()->get();
-		for (int i = 0; i < polyCount; i++) {
+		for (size_t i = 0; i < polyCount; i++) {
 			const int *face_indices = mesh_samp.getFaceIndices()->get();
-			int faceCount = mesh_samp.getFaceCounts()->get()[i];
+			size_t faceCount = mesh_samp.getFaceCounts()->get()[i];
 			if (faceCount > 2) {
 				for (int j = faceCount - 1; j >= 0; --j) {
 					int face_index = face_indices[begIndex + j];
@@ -394,11 +394,11 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 		{
 			std::vector<int32_t> facesetFaces;
 			// TODO(Ernest) multi material
-			for (int i = 0; i < faceSetNames.size(); i++) {
-				if (schema.hasFaceSet(faceSetNames[i]) == false) {
+			for (size_t k = 0; k < faceSetNames.size(); k++) {
+				if (schema.hasFaceSet(faceSetNames[k]) == false) {
 					continue;
 				}
-				IFaceSetSchema faceSet = schema.getFaceSet(faceSetNames[i]).getSchema();
+				IFaceSetSchema faceSet = schema.getFaceSet(faceSetNames[k]).getSchema();
 				IFaceSetSchema::Sample faceSetSamp;
 				faceSet.get(faceSetSamp);
 				const int *abcFacesetFaces = faceSetSamp.getFaces()->get();
@@ -414,24 +414,24 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 					iUVs.getExpanded(uvSamp);
 				}
 				const Imath::Vec2<float> *abc_uvs = uvSamp.getVals()->get();
-				for (size_t i = 0; i < mesh->mNumVertices; i++) {
+				for (size_t l = 0; l < mesh->mNumVertices; l++) {
 					aiVector2D ai_uv;
-					ai_uv.x = abc_uvs[i].x;
-					ai_uv.y = 1.0f - abc_uvs[i].y;
+					ai_uv.x = abc_uvs[l].x;
+					ai_uv.y = 1.0f - abc_uvs[l].y;
 					uvs.push_back(ai_uv);
 				}
 				std::reverse(uvs.begin(), uvs.end());
 				const size_t texture_coords = 1;
-				for (unsigned int i = 0; i < texture_coords; ++i) {
+				for (size_t n = 0; n < texture_coords; ++n) {
 					if (uvs.empty()) {
 						break;
 					}
 					aiVector3D *out_uv = new aiVector3D[vertices.size()];
-					for (size_t j = 0; j < uvs.size(); j++) {
-						out_uv[j] = aiVector3D(uvs[j].x, uvs[j].y, 0.0f);
+					for (size_t m = 0; m < uvs.size(); m++) {
+						out_uv[m] = aiVector3D(uvs[m].x, uvs[m].y, 0.0f);
 					}
-					mesh->mTextureCoords[i] = out_uv;
-					mesh->mNumUVComponents[i] = 2;
+					mesh->mTextureCoords[n] = out_uv;
+					mesh->mNumUVComponents[n] = 2;
 				}
 			}
 		}
@@ -497,10 +497,10 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 
 		TimeSamplingPtr ts = schema.getTimeSampling();
 		size_t numChannels = schema.getNumSamples();
-		for (size_t i = 0; i < numChannels; i++) {
+		for (size_t o = 0; o < numChannels; o++) {
 			SampleTimeSet sampleTimes;
 			MatrixSampleMap xformSamples;
-			GetRelevantSampleTimes(i, 12.0, 0.0, 0.0, ts, numChannels, sampleTimes);
+			GetRelevantSampleTimes(o, 12.0, 0.0, 0.0, ts, numChannels, sampleTimes);
 
 			//MatrixSampleMap localXformSamples;
 			//MatrixSampleMap *localXformSamplesToFill = 0;
@@ -523,9 +523,9 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 				size_t polyCount = animMeshSamp.getFaceCounts()->size();
 				size_t begIndex = 0;
 				std::vector<aiVector3D> animVertices;
-				for (int i = 0; i < polyCount; i++) {
+				for (size_t p = 0; p < polyCount; p++) {
 					const int *animFaceIndices = animMeshSamp.getFaceIndices()->get();
-					int faceCount = animMeshSamp.getFaceCounts()->get()[i];
+					int faceCount = animMeshSamp.getFaceCounts()->get()[p];
 					if (faceCount > 2) {
 						for (int j = faceCount - 1; j >= 0; --j) {
 							int face_index = animFaceIndices[begIndex + j];
@@ -547,7 +547,7 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 		}
 		{
 			size_t keys = 6;
-			for (size_t j = 0; j < numChannels; j++) {
+			for (size_t q = 0; q < numChannels; q++) {
 				aiMeshMorphAnim *meshMorphAnim = new aiMeshMorphAnim();
 				aiString name = current->mName;
 				name.Append("*");
@@ -562,7 +562,7 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 				meshMorphAnim->mKeys[0].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[0].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[0].mValues[0] = j;
+				meshMorphAnim->mKeys[0].mValues[0] = q;
 				meshMorphAnim->mKeys[0].mWeights[0] = 0.0f;
 				meshMorphAnim->mKeys[0].mTime = 0.0f;
 
@@ -570,39 +570,39 @@ unsigned int Assimp::ABCImporter::ConvertMeshSingleMaterial(AbcG::IPolyMesh poly
 				meshMorphAnim->mKeys[1].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[1].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[1].mValues[0] = j;
+				meshMorphAnim->mKeys[1].mValues[0] = q;
 				meshMorphAnim->mKeys[1].mWeights[0] = 0.0f;
-				meshMorphAnim->mKeys[1].mTime = j - 0.01f;
+				meshMorphAnim->mKeys[1].mTime = q - 0.01f;
 
 				meshMorphAnim->mKeys[2].mNumValuesAndWeights = 1;
 				meshMorphAnim->mKeys[2].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[2].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[2].mValues[0] = j;
+				meshMorphAnim->mKeys[2].mValues[0] = q;
 				meshMorphAnim->mKeys[2].mWeights[0] = 1.0f;
-				meshMorphAnim->mKeys[2].mTime = j;
+				meshMorphAnim->mKeys[2].mTime = q;
 
 				meshMorphAnim->mKeys[3].mNumValuesAndWeights = 1;
 				meshMorphAnim->mKeys[3].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[3].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[3].mValues[0] = j;
+				meshMorphAnim->mKeys[3].mValues[0] = q;
 				meshMorphAnim->mKeys[3].mWeights[0] = 1.0f;
-				meshMorphAnim->mKeys[3].mTime = j + 1;
+				meshMorphAnim->mKeys[3].mTime = q + 1;
 
 				meshMorphAnim->mKeys[4].mNumValuesAndWeights = 1;
 				meshMorphAnim->mKeys[4].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[4].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[4].mValues[0] = j;
+				meshMorphAnim->mKeys[4].mValues[0] = q;
 				meshMorphAnim->mKeys[4].mWeights[0] = 0.0f;
-				meshMorphAnim->mKeys[4].mTime = j + 1.01;
+				meshMorphAnim->mKeys[4].mTime = q + 1.01;
 
 				meshMorphAnim->mKeys[5].mNumValuesAndWeights = 1;
 				meshMorphAnim->mKeys[5].mValues = new unsigned int[1];
 				meshMorphAnim->mKeys[5].mWeights = new double[1];
 
-				meshMorphAnim->mKeys[5].mValues[0] = j;
+				meshMorphAnim->mKeys[5].mValues[0] = q;
 				meshMorphAnim->mKeys[5].mWeights[0] = 0.0f;
 				meshMorphAnim->mKeys[5].mTime = numChannels;
 
