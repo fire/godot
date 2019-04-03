@@ -231,8 +231,8 @@ public:
         return (unsigned int)(current - buffer);
     }
 
-    void SetCurrentPos(size_t _pos) {
-        SetPtr(buffer + _pos);
+    void SetCurrentPos(size_t pos) {
+        SetPtr(buffer + pos);
     }
 
     // ---------------------------------------------------------------------
