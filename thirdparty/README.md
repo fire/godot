@@ -1,11 +1,5 @@
 # Third party libraries
 
-## alembic
-
-- Upstream: https://github.com/alembic/alembic.git
-- Version: 1.7.10
-- License: Modified BSD License
-
 ## assimp
 
 - Upstream: https://github.com/assimp
@@ -428,12 +422,6 @@ Files extracted from the upstream source:
 
 - All .h files in `src/`
 - LICENSE.txt
-
-## openexr's IlmBase
-
-- Upstream: https://github.com/openexr/openexr/tree/release/2.3/IlmBase
-- Version: v2.3.0
-- License: Modified BSD License
 
 ## opus
 
