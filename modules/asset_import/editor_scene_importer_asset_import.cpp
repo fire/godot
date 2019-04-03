@@ -530,18 +530,27 @@ Spatial *EditorSceneImporterAssetImport::_generate_scene(const String &p_path, c
 	Set<String> bone_names;
 	Set<String> light_names;
 	Set<String> camera_names;
+	real_t factor = 1.0f;
+	String ext = p_path.get_file().get_extension().to_lower();
+	if ((ext == "fbx")) {
+		if (scene->mMetaData != NULL) {
+			scene->mMetaData->Get("UnitScaleFactor", factor);
+			factor = factor * 0.01f;
+		}
+	}
 	for (size_t l = 0; l < scene->mNumLights; l++) {
 		Light *light = NULL;
 		aiLight *ai_light = scene->mLights[l];
 		ERR_CONTINUE(ai_light == NULL);
 		if (ai_light->mType == aiLightSource_DIRECTIONAL) {
 			light = memnew(DirectionalLight);
-			Vector3 dir = Vector3(ai_light->mDirection.x, ai_light->mDirection.y, ai_light->mDirection.z);
+			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
 			dir.normalize();
 			Transform xform;
 			Quat quat;
 			quat.set_euler(dir);
 			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
+			pos = factor * pos;
 			xform.origin = pos;
 			light->set_transform(xform);
 		} else if (ai_light->mType == aiLightSource_POINT) {
@@ -549,15 +558,17 @@ Spatial *EditorSceneImporterAssetImport::_generate_scene(const String &p_path, c
 			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
 			Transform xform;
 			xform.origin = pos;
+			pos = factor * pos;
 			light->set_transform(xform);
 			// No idea for energy
 			light->set_param(Light::PARAM_ATTENUATION, 0.0f);
 		} else if (ai_light->mType == aiLightSource_SPOT) {
 			light = memnew(SpotLight);
 			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
+			pos = factor * pos;
 			Transform xform;
 			xform.origin = pos;
-			Vector3 dir = Vector3(ai_light->mDirection.x, ai_light->mDirection.y, ai_light->mDirection.z);
+			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
 			dir.normalize();
 			Quat quat;
 			quat.set_euler(dir);
@@ -583,7 +594,7 @@ Spatial *EditorSceneImporterAssetImport::_generate_scene(const String &p_path, c
 		camera->set_perspective(Math::rad2deg(ai_camera->mHorizontalFOV) * 2.0f, near, ai_camera->mClipPlaneFar);
 		Vector3 pos = Vector3(ai_camera->mPosition.x, ai_camera->mPosition.y, ai_camera->mPosition.z);
 
-		Vector3 look_at = Vector3(ai_camera->mLookAt.x, ai_camera->mLookAt.y, ai_camera->mLookAt.z).normalized();
+		Vector3 look_at = Vector3(ai_camera->mLookAt.y, ai_camera->mLookAt.x, ai_camera->mLookAt.z).normalized();
 		Quat quat;
 		quat.set_euler(look_at);
 		Transform xform;
@@ -1341,21 +1352,22 @@ void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const 
 		return;
 	}
 	String node_name = _ai_string_to_string(p_node->mName);
+	real_t factor = 1.0f;
+	String ext = p_path.get_file().get_extension().to_lower();
+	if (ext == "fbx") {
+		if (p_scene->mMetaData != NULL) {
+			p_scene->mMetaData->Get("UnitScaleFactor", factor);
+			factor = factor * 0.01f;
+		}
+	}
 	{
 		Transform xform = _ai_matrix_transform(p_node->mTransformation);
-		String ext = p_path.get_file().get_extension().to_lower();
 
 		child_node = memnew(Spatial);
 		p_parent->add_child(child_node);
 		child_node->set_owner(p_owner);
-
 		if (p_node == p_scene->mRootNode) {
 			if ((ext == "fbx") && p_node == p_scene->mRootNode) {
-				real_t factor = 1.0f;
-				if (p_scene->mMetaData != NULL) {
-					p_scene->mMetaData->Get("UnitScaleFactor", factor);
-				}
-				factor = factor * 0.01f;
 				xform = xform.scaled(Vector3(factor, factor, factor));
 				Transform format_xform = _format_rot_xform(p_path, p_scene);
 				xform = format_xform * xform;
@@ -1419,7 +1431,8 @@ void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const 
 			p_parent->add_child(light_node);
 		}
 		light_node->set_owner(p_owner);
-		light_node->set_transform(child_node->get_transform() * light_node->get_transform());
+		light_node->set_transform(child_node->get_transform().scaled(Vector3(factor, factor, factor)) *
+			light_node->get_transform().scaled(Vector3(factor, factor, factor)));
 		child_node->get_parent()->remove_child(child_node);
 		memdelete(child_node);
 		child_node = light_node;
@@ -1430,7 +1443,9 @@ void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const 
 			p_parent->add_child(camera_node);
 		}
 		camera_node->set_owner(p_owner);
-		camera_node->set_transform(child_node->get_transform() * camera_node->get_transform());
+		camera_node->set_transform(child_node->get_transform().scaled(Vector3(factor, factor, factor)) *
+								   camera_node->get_transform().scaled(Vector3(factor, factor, factor)));
+		camera_node->scale(Vector3(factor, factor, factor));
 		child_node->get_parent()->remove_child(child_node);
 		memdelete(child_node);
 		child_node = camera_node;
