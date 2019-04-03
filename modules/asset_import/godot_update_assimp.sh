@@ -239,4 +239,10 @@ rm -rf contrib/zlib
 rm -rf contrib/android-cmake
 rm -rf contrib/gtest
 rm -rf contrib/clipper
+rm -rf contrib/irrXML
+rm -rf contrib/Open3DGC
+rm -rf contrib/openddlparser
+rm -rf contrib/poly2tri
+rm -rf contrib/rapidjson
+rm -rf contrib/unzip
 rm .travis*
