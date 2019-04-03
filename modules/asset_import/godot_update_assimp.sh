@@ -246,6 +246,5 @@ rm -rf contrib/poly2tri
 rm -rf contrib/rapidjson
 rm -rf contrib/unzip
 rm -rf contrib/zip
-rm -rf contrib/utf8cpp
-rm -rf contrib
+rm -rf contrib/stb_image
 rm .travis*
