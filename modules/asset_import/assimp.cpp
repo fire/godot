@@ -37,7 +37,7 @@
 #include "core/io/image_loader.h"
 #include "editor/editor_file_system.h"
 #include "editor/import/resource_importer_scene.h"
-#include "editor_scene_importer_asset_import.h"
+#include "assimp.h"
 #include "editor_settings.h"
 #include "scene/3d/camera.h"
 #include "scene/3d/light.h"
@@ -49,7 +49,7 @@
 #include "zutil.h"
 #include <string>
 
-void EditorSceneImporterAssetImport::get_extensions(List<String> *r_extensions) const {
+void EditorSceneImporterASSIMP::get_extensions(List<String> *r_extensions) const {
 
 	const String import_setting_string = "filesystem/import/open_asset_import/";
 
@@ -71,7 +71,7 @@ void EditorSceneImporterAssetImport::get_extensions(List<String> *r_extensions) 
 	}
 }
 
-void EditorSceneImporterAssetImport::_register_project_setting_import(const String generic, const String import_setting_string, const Vector<String> &exts, List<String> *r_extensions, const bool p_enabled) const {
+void EditorSceneImporterASSIMP::_register_project_setting_import(const String generic, const String import_setting_string, const Vector<String> &exts, List<String> *r_extensions, const bool p_enabled) const {
 	const String use_generic = "use_" + generic;
 	_GLOBAL_DEF(import_setting_string + use_generic, p_enabled, true);
 	if (ProjectSettings::get_singleton()->get(import_setting_string + use_generic)) {
@@ -81,7 +81,7 @@ void EditorSceneImporterAssetImport::_register_project_setting_import(const Stri
 	}
 }
 
-uint32_t EditorSceneImporterAssetImport::get_import_flags() const {
+uint32_t EditorSceneImporterASSIMP::get_import_flags() const {
 	return IMPORT_SCENE;
 }
 
@@ -97,10 +97,10 @@ void AssimpStream::write(const char *message) {
 	print_verbose(String("Open Asset Importer: ") + String(message).strip_edges());
 }
 
-void EditorSceneImporterAssetImport::_bind_methods() {
+void EditorSceneImporterASSIMP::_bind_methods() {
 }
 
-Node *EditorSceneImporterAssetImport::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+Node *EditorSceneImporterASSIMP::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Assimp::Importer importer;
 	std::wstring w_path = ProjectSettings::get_singleton()->globalize_path(p_path).c_str();
 	std::string s_path(w_path.begin(), w_path.end());
@@ -203,7 +203,7 @@ struct EditorSceneImporterAssetImportInterpolate<Quat> {
 };
 
 template <class T>
-T EditorSceneImporterAssetImport::_interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, float p_time, AssetImportAnimation::Interpolation p_interp) {
+T EditorSceneImporterASSIMP::_interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, float p_time, AssetImportAnimation::Interpolation p_interp) {
 	//could use binary search, worth it?
 	int idx = -1;
 	for (int i = 0; i < p_times.size(); i++) {
@@ -275,7 +275,7 @@ T EditorSceneImporterAssetImport::_interpolate_track(const Vector<float> &p_time
 	ERR_FAIL_V(p_values[0]);
 }
 
-Spatial *EditorSceneImporterAssetImport::_generate_scene(const String &p_path, const aiScene *scene, const uint32_t p_flags, int p_bake_fps, const int32_t p_max_bone_weights) {
+Spatial *EditorSceneImporterASSIMP::_generate_scene(const String &p_path, const aiScene *scene, const uint32_t p_flags, int p_bake_fps, const int32_t p_max_bone_weights) {
 	ERR_FAIL_COND_V(scene == NULL, NULL);
 	Spatial *root = memnew(Spatial);
 	AnimationPlayer *ap = NULL;
@@ -394,7 +394,7 @@ Spatial *EditorSceneImporterAssetImport::_generate_scene(const String &p_path, c
 	return root;
 }
 
-void EditorSceneImporterAssetImport::_fill_kept_node(Set<Node *> &keep_nodes) {
+void EditorSceneImporterASSIMP::_fill_kept_node(Set<Node *> &keep_nodes) {
 	for (Set<Node *>::Element *E = keep_nodes.front(); E; E = E->next()) {
 		Node *node = E->get();
 		while (node != NULL) {
@@ -406,7 +406,7 @@ void EditorSceneImporterAssetImport::_fill_kept_node(Set<Node *> &keep_nodes) {
 	}
 }
 
-String EditorSceneImporterAssetImport::_find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root) {
+String EditorSceneImporterASSIMP::_find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root) {
 	for (Map<Skeleton *, MeshInstance *>::Element *E = skeletons.front(); E; E = E->next()) {
 		if (meshes.has(E->get())) {
 			String name = meshes[E->get()];
@@ -418,7 +418,7 @@ String EditorSceneImporterAssetImport::_find_skeleton_bone_root(Map<Skeleton *, 
 	return "";
 }
 
-void EditorSceneImporterAssetImport::_set_bone_parent(Skeleton *s, Node *p_owner, aiNode *p_node) {
+void EditorSceneImporterASSIMP::_set_bone_parent(Skeleton *s, Node *p_owner, aiNode *p_node) {
 	for (size_t j = 0; j < s->get_bone_count(); j++) {
 		String bone_name = s->get_bone_name(j);
 		const aiNode *ai_bone_node = _ai_find_node(p_node, bone_name);
@@ -439,7 +439,7 @@ void EditorSceneImporterAssetImport::_set_bone_parent(Skeleton *s, Node *p_owner
 	}
 }
 
-void EditorSceneImporterAssetImport::_insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
+void EditorSceneImporterASSIMP::_insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
 
 	if (track->mNumRotationKeys || track->mNumPositionKeys || track->mNumScalingKeys) {
 		//make transform track
@@ -582,7 +582,7 @@ void EditorSceneImporterAssetImport::_insert_animation_track(const aiScene *p_sc
 	}
 }
 
-void EditorSceneImporterAssetImport::_import_animation(const String p_path, const Vector<MeshInstance *> p_meshes, const aiScene *p_scene, AnimationPlayer *ap, int32_t p_index, int p_bake_fps, Map<Skeleton *, MeshInstance *> p_skeletons, const Set<String> p_removed_nodes, const Set<String> removed_bones, const Map<String, Map<uint32_t, String> > p_path_morph_mesh_names) {
+void EditorSceneImporterASSIMP::_import_animation(const String p_path, const Vector<MeshInstance *> p_meshes, const aiScene *p_scene, AnimationPlayer *ap, int32_t p_index, int p_bake_fps, Map<Skeleton *, MeshInstance *> p_skeletons, const Set<String> p_removed_nodes, const Set<String> removed_bones, const Map<String, Map<uint32_t, String> > p_path_morph_mesh_names) {
 	String name = "Animation";
 	aiAnimation const *anim = NULL;
 	if (p_index != -1) {
@@ -773,7 +773,7 @@ void EditorSceneImporterAssetImport::_import_animation(const String p_path, cons
 	}
 }
 
-void EditorSceneImporterAssetImport::_insert_pivot_anim_track(const Vector<MeshInstance *> p_meshes, const String p_node_name, Vector<const aiNodeAnim *> F, AnimationPlayer *ap, Skeleton *sk, float &length, float ticks_per_second, Ref<Animation> animation, int p_bake_fps, const String &p_path, const aiScene *p_scene) {
+void EditorSceneImporterASSIMP::_insert_pivot_anim_track(const Vector<MeshInstance *> p_meshes, const String p_node_name, Vector<const aiNodeAnim *> F, AnimationPlayer *ap, Skeleton *sk, float &length, float ticks_per_second, Ref<Animation> animation, int p_bake_fps, const String &p_path, const aiScene *p_scene) {
 	NodePath node_path;
 	if (sk != NULL) {
 		const String path = ap->get_owner()->get_path_to(sk);
@@ -949,7 +949,7 @@ void EditorSceneImporterAssetImport::_insert_pivot_anim_track(const Vector<MeshI
 	}
 }
 
-float EditorSceneImporterAssetImport::_get_fbx_fps(int32_t time_mode, const aiScene *p_scene) {
+float EditorSceneImporterASSIMP::_get_fbx_fps(int32_t time_mode, const aiScene *p_scene) {
 	switch (time_mode) {
 		case AssetImportFbx::TIME_MODE_DEFAULT: return 24; //hack
 		case AssetImportFbx::TIME_MODE_120: return 120;
@@ -973,7 +973,7 @@ float EditorSceneImporterAssetImport::_get_fbx_fps(int32_t time_mode, const aiSc
 	return 0;
 }
 
-Transform EditorSceneImporterAssetImport::_get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node) {
+Transform EditorSceneImporterASSIMP::_get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node) {
 	aiNode const *current_node = p_current_node;
 	Transform xform;
 	while (current_node != NULL) {
@@ -983,7 +983,7 @@ Transform EditorSceneImporterAssetImport::_get_global_ai_node_transform(const ai
 	return xform;
 }
 
-void EditorSceneImporterAssetImport::_generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
+void EditorSceneImporterASSIMP::_generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
@@ -1007,7 +1007,7 @@ void EditorSceneImporterAssetImport::_generate_node_bone(const aiScene *p_scene,
 	}
 }
 
-void EditorSceneImporterAssetImport::_generate_node_bone_parents(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const MeshInstance *p_mi) {
+void EditorSceneImporterASSIMP::_generate_node_bone_parents(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const MeshInstance *p_mi) {
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
@@ -1039,7 +1039,7 @@ void EditorSceneImporterAssetImport::_generate_node_bone_parents(const aiScene *
 		}
 	}
 }
-void EditorSceneImporterAssetImport::_calculate_skeleton_root(Skeleton *s, const aiScene *p_scene, aiNode *&p_ai_skeleton_root, Map<String, bool> &mesh_bones, const aiNode *p_node) {
+void EditorSceneImporterASSIMP::_calculate_skeleton_root(Skeleton *s, const aiScene *p_scene, aiNode *&p_ai_skeleton_root, Map<String, bool> &mesh_bones, const aiNode *p_node) {
 	if (s->get_bone_count() > 0) {
 		String bone_name = s->get_bone_name(0);
 		p_ai_skeleton_root = _ai_find_node(p_scene->mRootNode, bone_name);
@@ -1064,7 +1064,7 @@ void EditorSceneImporterAssetImport::_calculate_skeleton_root(Skeleton *s, const
 	p_ai_skeleton_root = _ai_find_node(p_scene->mRootNode, _ai_string_to_string(p_ai_skeleton_root->mName).split(ASSIMP_FBX_KEY)[0]);
 }
 
-void EditorSceneImporterAssetImport::_fill_skeleton(const aiScene *p_scene, const aiNode *p_node, Spatial *p_current, Node *p_owner, Skeleton *p_skeleton, const Map<String, bool> p_mesh_bones, const Map<String, Transform> &p_bone_rests, Set<String> p_tracks, const String p_path, Set<String> &r_removed_bones) {
+void EditorSceneImporterASSIMP::_fill_skeleton(const aiScene *p_scene, const aiNode *p_node, Spatial *p_current, Node *p_owner, Skeleton *p_skeleton, const Map<String, bool> p_mesh_bones, const Map<String, Transform> &p_bone_rests, Set<String> p_tracks, const String p_path, Set<String> &r_removed_bones) {
 	String node_name = _ai_string_to_string(p_node->mName);
 	if (p_mesh_bones.find(node_name) != NULL && p_skeleton->find_bone(node_name) == -1) {
 		r_removed_bones.insert(node_name);
@@ -1080,7 +1080,7 @@ void EditorSceneImporterAssetImport::_fill_skeleton(const aiScene *p_scene, cons
 	}
 }
 
-void EditorSceneImporterAssetImport::_keep_node(const String &p_path, Node *p_current, Node *p_owner, Set<Node *> &r_keep_nodes) {
+void EditorSceneImporterASSIMP::_keep_node(const String &p_path, Node *p_current, Node *p_owner, Set<Node *> &r_keep_nodes) {
 	if (p_current == p_owner) {
 		r_keep_nodes.insert(p_current);
 	}
@@ -1094,7 +1094,7 @@ void EditorSceneImporterAssetImport::_keep_node(const String &p_path, Node *p_cu
 	}
 }
 
-void EditorSceneImporterAssetImport::_filter_node(const String &p_path, Node *p_current, Node *p_owner, const Set<Node *> p_keep_nodes, Set<String> &r_removed_nodes) {
+void EditorSceneImporterASSIMP::_filter_node(const String &p_path, Node *p_current, Node *p_owner, const Set<Node *> p_keep_nodes, Set<String> &r_removed_nodes) {
 	if (p_keep_nodes.has(p_current) == false) {
 		r_removed_nodes.insert(p_current->get_name());
 		p_current->queue_delete();
@@ -1104,7 +1104,7 @@ void EditorSceneImporterAssetImport::_filter_node(const String &p_path, Node *p_
 	}
 }
 
-void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const aiScene *p_scene, const aiNode *p_node, Node *p_parent, Node *p_owner, Set<String> &r_bone_name, Set<String> p_light_names, Set<String> p_camera_names, Map<Skeleton *, MeshInstance *> &r_skeletons, const Map<String, Transform> &p_bone_rests, Vector<MeshInstance *> &r_mesh_instances, int32_t &r_mesh_count, Skeleton *p_skeleton, const int32_t p_max_bone_weights, Set<String> &r_removed_bones, Map<String, Map<uint32_t, String> > &r_name_morph_mesh_names) {
+void EditorSceneImporterASSIMP::_generate_node(const String &p_path, const aiScene *p_scene, const aiNode *p_node, Node *p_parent, Node *p_owner, Set<String> &r_bone_name, Set<String> p_light_names, Set<String> p_camera_names, Map<Skeleton *, MeshInstance *> &r_skeletons, const Map<String, Transform> &p_bone_rests, Vector<MeshInstance *> &r_mesh_instances, int32_t &r_mesh_count, Skeleton *p_skeleton, const int32_t p_max_bone_weights, Set<String> &r_removed_bones, Map<String, Map<uint32_t, String> > &r_name_morph_mesh_names) {
 	Spatial *child_node = NULL;
 	if (p_node == NULL) {
 		return;
@@ -1214,7 +1214,7 @@ void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const 
 	}
 }
 
-aiNode *EditorSceneImporterAssetImport::_ai_find_node(aiNode *ai_child_node, const String bone_name) {
+aiNode *EditorSceneImporterASSIMP::_ai_find_node(aiNode *ai_child_node, const String bone_name) {
 
 	if (_ai_string_to_string(ai_child_node->mName) == bone_name) {
 		return ai_child_node;
@@ -1230,7 +1230,7 @@ aiNode *EditorSceneImporterAssetImport::_ai_find_node(aiNode *ai_child_node, con
 	return target;
 }
 
-Transform EditorSceneImporterAssetImport::_format_rot_xform(const String p_path, const aiScene *p_scene) {
+Transform EditorSceneImporterASSIMP::_format_rot_xform(const String p_path, const aiScene *p_scene) {
 	String ext = p_path.get_file().get_extension().to_lower();
 
 	Transform xform;
@@ -1314,7 +1314,7 @@ Transform EditorSceneImporterAssetImport::_format_rot_xform(const String p_path,
 	return xform;
 }
 
-void EditorSceneImporterAssetImport::_get_track_set(const aiScene *p_scene, Set<String> &tracks) {
+void EditorSceneImporterASSIMP::_get_track_set(const aiScene *p_scene, Set<String> &tracks) {
 	for (size_t i = 0; i < p_scene->mNumAnimations; i++) {
 		for (size_t j = 0; j < p_scene->mAnimations[i]->mNumChannels; j++) {
 			aiString ai_name = p_scene->mAnimations[i]->mChannels[j]->mNodeName;
@@ -1324,7 +1324,7 @@ void EditorSceneImporterAssetImport::_get_track_set(const aiScene *p_scene, Set<
 	}
 }
 
-void EditorSceneImporterAssetImport::_add_mesh_to_mesh_instance(const aiNode *p_node, const aiScene *p_scene, Skeleton *s, const String &p_path, MeshInstance *p_mesh_instance, Node *p_owner, Set<String> &r_bone_name, int32_t &r_mesh_count, int32_t p_max_bone_weights, Map<String, Map<uint32_t, String> > &r_name_morph_mesh_names) {
+void EditorSceneImporterASSIMP::_add_mesh_to_mesh_instance(const aiNode *p_node, const aiScene *p_scene, Skeleton *s, const String &p_path, MeshInstance *p_mesh_instance, Node *p_owner, Set<String> &r_bone_name, int32_t &r_mesh_count, int32_t p_max_bone_weights, Map<String, Map<uint32_t, String> > &r_name_morph_mesh_names) {
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
@@ -1965,7 +1965,7 @@ void EditorSceneImporterAssetImport::_add_mesh_to_mesh_instance(const aiNode *p_
 	p_mesh_instance->set_mesh(mesh);
 }
 
-Ref<Texture> EditorSceneImporterAssetImport::_load_texture(const aiScene *p_scene, String p_path) {
+Ref<Texture> EditorSceneImporterASSIMP::_load_texture(const aiScene *p_scene, String p_path) {
 	Vector<String> split_path = p_path.get_basename().split("*");
 	if (split_path.size() == 2) {
 		int32_t texture_idx = split_path[1].to_int();
@@ -2025,7 +2025,7 @@ Ref<Texture> EditorSceneImporterAssetImport::_load_texture(const aiScene *p_scen
 	return p_texture;
 }
 
-void EditorSceneImporterAssetImport::_calc_tangent_from_mesh(const aiMesh *ai_mesh, int i, int tri_index, int index, PoolColorArray::Write &w) {
+void EditorSceneImporterASSIMP::_calc_tangent_from_mesh(const aiMesh *ai_mesh, int i, int tri_index, int index, PoolColorArray::Write &w) {
 	const aiVector3D normals = ai_mesh->mAnimMeshes[i]->mNormals[tri_index];
 	const Vector3 godot_normal = Vector3(normals.x, normals.y, normals.z);
 	const aiVector3D tangent = ai_mesh->mAnimMeshes[i]->mTangents[tri_index];
@@ -2037,7 +2037,7 @@ void EditorSceneImporterAssetImport::_calc_tangent_from_mesh(const aiMesh *ai_me
 	w[index] = plane_tangent;
 }
 
-void EditorSceneImporterAssetImport::_set_texture_mapping_mode(aiTextureMapMode *map_mode, Ref<Texture> texture) {
+void EditorSceneImporterASSIMP::_set_texture_mapping_mode(aiTextureMapMode *map_mode, Ref<Texture> texture) {
 	ERR_FAIL_COND(map_mode == NULL);
 	aiTextureMapMode tex_mode = aiTextureMapMode::aiTextureMapMode_Wrap;
 	//for (size_t i = 0; i < 3; i++) {
@@ -2054,7 +2054,7 @@ void EditorSceneImporterAssetImport::_set_texture_mapping_mode(aiTextureMapMode 
 	texture->set_flags(flags);
 }
 
-void EditorSceneImporterAssetImport::_find_texture_path(const String &r_p_path, String &r_path, bool &r_found) {
+void EditorSceneImporterASSIMP::_find_texture_path(const String &r_p_path, String &r_path, bool &r_found) {
 
 	_Directory dir;
 
@@ -2083,7 +2083,7 @@ void EditorSceneImporterAssetImport::_find_texture_path(const String &r_p_path, 
 	}
 }
 
-void EditorSceneImporterAssetImport::_find_texture_path(const String &p_path, _Directory &dir, String &path, bool &found, String extension) {
+void EditorSceneImporterASSIMP::_find_texture_path(const String &p_path, _Directory &dir, String &path, bool &found, String extension) {
 	String name = path.get_basename() + extension;
 	if (dir.file_exists(name)) {
 		found = true;
@@ -2124,7 +2124,7 @@ void EditorSceneImporterAssetImport::_find_texture_path(const String &p_path, _D
 	}
 }
 
-String EditorSceneImporterAssetImport::_ai_string_to_string(const aiString p_string) const {
+String EditorSceneImporterASSIMP::_ai_string_to_string(const aiString p_string) const {
 	Vector<char> raw_name;
 	raw_name.resize(p_string.length);
 	memcpy(raw_name.ptrw(), p_string.C_Str(), p_string.length);
@@ -2143,7 +2143,7 @@ String EditorSceneImporterAssetImport::_ai_string_to_string(const aiString p_str
 	return name;
 }
 
-String EditorSceneImporterAssetImport::_ai_anim_string_to_string(const aiString p_string) const {
+String EditorSceneImporterASSIMP::_ai_anim_string_to_string(const aiString p_string) const {
 	Vector<char> raw_name;
 	raw_name.resize(p_string.length);
 	memcpy(raw_name.ptrw(), p_string.C_Str(), p_string.length);
@@ -2157,7 +2157,7 @@ String EditorSceneImporterAssetImport::_ai_anim_string_to_string(const aiString 
 	return name;
 }
 
-String EditorSceneImporterAssetImport::_ai_raw_string_to_string(const aiString p_string) const {
+String EditorSceneImporterASSIMP::_ai_raw_string_to_string(const aiString p_string) const {
 	Vector<char> raw_name;
 	raw_name.resize(p_string.length);
 	memcpy(raw_name.ptrw(), p_string.C_Str(), p_string.length);
@@ -2166,11 +2166,11 @@ String EditorSceneImporterAssetImport::_ai_raw_string_to_string(const aiString p
 	return name;
 }
 
-Ref<Animation> EditorSceneImporterAssetImport::import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) {
+Ref<Animation> EditorSceneImporterASSIMP::import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) {
 	return Ref<Animation>();
 }
 
-const Transform EditorSceneImporterAssetImport::_ai_matrix_transform(const aiMatrix4x4 p_matrix) {
+const Transform EditorSceneImporterASSIMP::_ai_matrix_transform(const aiMatrix4x4 p_matrix) {
 	aiMatrix4x4 matrix = p_matrix;
 	Transform xform;
 	xform.set(matrix.a1, matrix.b1, matrix.c1, matrix.a2, matrix.b2, matrix.c2, matrix.a3, matrix.b3, matrix.c3, matrix.a4, matrix.b4, matrix.c4);

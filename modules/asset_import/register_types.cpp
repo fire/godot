@@ -34,7 +34,7 @@
 #include "editor/import/editor_scene_importer_gltf.h"
 #include "editor/import/resource_importer_obj.h"
 #include "editor/import/resource_importer_scene.h"
-#include "editor_scene_importer_asset_import.h"
+#include "assimp.h"
 void register_asset_import_types() {
 
 #ifdef TOOLS_ENABLED
@@ -42,7 +42,7 @@ void register_asset_import_types() {
 	import_scene.instance();
 	ResourceFormatImporter::get_singleton()->add_importer(import_scene);
 	{
-		Ref<EditorSceneImporterAssetImport> import_asset_import;
+		Ref<EditorSceneImporterASSIMP> import_asset_import;
 		import_asset_import.instance();
 		import_scene->add_importer(import_asset_import);
 		//TODO(Ernest) Fix hack

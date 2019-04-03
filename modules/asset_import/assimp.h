@@ -90,9 +90,9 @@ public:
 #define AI_MATKEY_FBX_MAYA_STINGRAY_AO_TEXTURE "$raw.Maya|TEX_ao_map|file", aiTextureType_UNKNOWN, 0
 #define AI_MATKEY_FBX_MAYA_STINGRAY_AO_UV_XFORM "$raw.Maya|TEX_ao_map|uvtrafo", aiTextureType_UNKNOWN, 0
 
-class EditorSceneImporterAssetImport : public EditorSceneImporter {
+class EditorSceneImporterASSIMP : public EditorSceneImporter {
 private:
-	GDCLASS(EditorSceneImporterAssetImport, EditorSceneImporter);
+	GDCLASS(EditorSceneImporterASSIMP, EditorSceneImporter);
 	const String ASSIMP_FBX_KEY = "_$AssimpFbx$";
 
 	struct AssetImportAnimation {
@@ -180,12 +180,12 @@ protected:
 	static void _bind_methods();
 
 public:
-	EditorSceneImporterAssetImport() {
+	EditorSceneImporterASSIMP() {
 		Assimp::DefaultLogger::create("", Assimp::Logger::VERBOSE);
 		unsigned int severity = Assimp::Logger::Info | Assimp::Logger::Err | Assimp::Logger::Warn;
 		Assimp::DefaultLogger::get()->attachStream(new AssimpStream(), severity);
 	}
-	~EditorSceneImporterAssetImport() {
+	~EditorSceneImporterASSIMP() {
 		Assimp::DefaultLogger::kill();
 	}
 
