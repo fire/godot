@@ -184,6 +184,7 @@ rm -rf code/SMDLoader.cpp
 # rm -rf code/SplitLargeMeshes.h
 # rm -rf code/StdOStreamLogStream.h
 rm -rf code/StepExporter.h
+rm -rf code/StepExporter.cpp
 rm -rf code/STLExporter.cpp
 rm -rf code/STLExporter.h
 rm -rf code/STLLoader.h
@@ -224,6 +225,7 @@ rm -rf code/XFileParser.h
 rm -rf code/XFileParser.cpp
 rm -rf code/XGLLoader.h
 rm -rf code/XGLLoader.cpp
+rm -rf code/Importer
 rm -rf .git
 rm -rf cmake-modules
 rm -rf doc
@@ -236,4 +238,5 @@ rm -rf tools
 rm -rf contrib/zlib
 rm -rf contrib/android-cmake
 rm -rf contrib/gtest
+rm -rf contrib/clipper
 rm .travis*

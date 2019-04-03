@@ -63,14 +63,8 @@ void EditorSceneImporterAssetImport::get_extensions(List<String> *r_extensions) 
 	{
 		Vector<String> exts;
 		exts.push_back("pmx");
-		ImportFormat import = { exts, false };
+		ImportFormat import = { exts, true };
 		import_format.insert("mmd", import);
-	}
-	{
-		Vector<String> exts;
-		exts.push_back("stp");
-		ImportFormat import = { exts, false };
-		import_format.insert("stp", import);
 	}
 	for (Map<String, ImportFormat>::Element *E = import_format.front(); E; E = E->next()) {
 		_register_project_setting_import(E->key(), import_setting_string, E->get().extensions, r_extensions, E->get().is_default);
@@ -1196,7 +1190,7 @@ void EditorSceneImporterAssetImport::_generate_node(const String &p_path, const 
 		}
 		light_node->set_owner(p_owner);
 		light_node->set_transform(child_node->get_transform().scaled(Vector3(factor, factor, factor)) *
-			light_node->get_transform().scaled(Vector3(factor, factor, factor)));
+								  light_node->get_transform().scaled(Vector3(factor, factor, factor)));
 		child_node->get_parent()->remove_child(child_node);
 		memdelete(child_node);
 		child_node = light_node;
