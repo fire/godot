@@ -217,9 +217,6 @@ void OS_Windows::initialize_debugging() {
 }
 
 void OS_Windows::initialize_core() {
-
-	crash_handler.initialize();
-
 	last_button_state = 0;
 
 	//RedirectIOToConsole();
@@ -1256,7 +1253,7 @@ int OS_Windows::get_current_video_driver() const {
 }
 
 Error OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
-
+	crash_handler.initialize();
 	main_loop = NULL;
 	outside = true;
 	window_has_focus = true;

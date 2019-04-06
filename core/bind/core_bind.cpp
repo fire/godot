@@ -183,6 +183,12 @@ _ResourceSaver::_ResourceSaver() {
 	singleton = this;
 }
 
+void _OS::debug_crash() const {
+	// From breakpad https://stackoverflow.com/a/39920519/381724
+	volatile int *a = reinterpret_cast<volatile int *>(NULL);
+	*a = 1;
+}
+
 /////////////////OS
 
 void _OS::global_menu_add_item(const String &p_menu, const String &p_label, const Variant &p_signal, const Variant &p_meta) {
@@ -1194,6 +1200,8 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("global_menu_add_separator", "menu"), &_OS::global_menu_add_separator);
 	ClassDB::bind_method(D_METHOD("global_menu_remove_item", "menu", "idx"), &_OS::global_menu_remove_item);
 	ClassDB::bind_method(D_METHOD("global_menu_clear", "menu"), &_OS::global_menu_clear);
+
+	ClassDB::bind_method(D_METHOD("debug_crash"), &_OS::debug_crash);
 
 	ClassDB::bind_method(D_METHOD("get_video_driver_count"), &_OS::get_video_driver_count);
 	ClassDB::bind_method(D_METHOD("get_video_driver_name", "driver"), &_OS::get_video_driver_name);

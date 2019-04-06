@@ -143,6 +143,7 @@ public:
 		MONTH_NOVEMBER,
 		MONTH_DECEMBER
 	};
+	void debug_crash() const;
 
 	void global_menu_add_item(const String &p_menu, const String &p_label, const Variant &p_signal, const Variant &p_meta);
 	void global_menu_add_separator(const String &p_menu);

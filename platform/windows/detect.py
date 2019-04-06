@@ -259,6 +259,8 @@ def configure_msvc(env, manual_msvc_config):
     env['BUILDERS']['ProgramOriginal'] = env['BUILDERS']['Program']
     env['BUILDERS']['Program'] = methods.precious_program
 
+    env['AS'] = "ml64"
+
 def configure_mingw(env):
     # Workaround for MinGW. See:
     # http://www.scons.org/wiki/LongCmdLinesOnWin32

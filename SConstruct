@@ -115,6 +115,8 @@ opts.Add(EnumVariable('optimize', "Optimization type", 'speed', ('speed', 'size'
 opts.Add(BoolVariable('tools', "Build the tools (a.k.a. the Godot editor)", True))
 opts.Add(BoolVariable('use_lto', 'Use link-time optimization', False))
 opts.Add(BoolVariable('use_precise_math_checks', 'Math checks use very precise epsilon (useful to debug the engine)', False))
+opts.Add('crashpad_url', "Set crashpad crash reporter url", "")
+opts.Add('crashpad_handler_path', "Set crashpad crash reporter handler path", "res://crashpad_handler.com")
 
 # Components
 opts.Add(BoolVariable('deprecated', "Enable deprecated features", True))
@@ -468,6 +470,10 @@ if selected_platform in platform_list:
     env["LIBSUFFIX"] = suffix + env["LIBSUFFIX"]
     env["SHLIBSUFFIX"] = suffix + env["SHLIBSUFFIX"]
 
+    if env['crashpad_url']:
+        env.Append(CPPDEFINES=['DEFAULT_CRASHPAD_SERVER_URL=\"' + env['crashpad_url'] + '\"'])
+    if env['crashpad_handler_path']:
+        env.Append(CPPDEFINES=['DEFAULT_CRASHPAD_HANDLER_PATH=\"' + env['crashpad_handler_path'] + '\"'])
     if (env.use_ptrcall):
         env.Append(CPPDEFINES=['PTRCALL_ENABLED'])
     if env['tools']:
