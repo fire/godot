@@ -1,0 +1,9 @@
+#define __TBB_VERSION_STRINGS(N) \
+#N ": BUILD_HOST\t\tGODOT" ENDL \
+#N ": BUILD_OS\t\tMicrosoft Windows [Version 10.0.17763.379]" ENDL \
+#N ": BUILD_CL\t\tMicrosoft (R) C/C++ Optimizing Compiler Version 19.16.27030.1 for x64" ENDL \
+#N ": BUILD_COMPILER\t\tMicrosoft (R) C/C++ Optimizing Compiler Version 19.16.27030.1 for x64" ENDL \
+#N ": BUILD_TARGET\tia32" ENDL \
+#N ": BUILD_COMMAND\tg++ -g -O0 -DTBB_USE_DEBUG -DUSE_WINTHREAD -D_WIN32_WINNT=0x0502 -DMINGW_HAS_SECURE_API=1 -D__MSVCRT_VERSION__=0x0700 -msse -mthreads -m32 -march=i686  -D__TBB_BUILD=1 -Wall -Wno-parentheses -Wno-uninitialized " ENDL
+#define __TBB_DATETIME "Tue, 23 Apr 2019 13:48:45 UTC"
+#define __TBB_VERSION_YMD 2019, 0423
