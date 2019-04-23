@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+Import('env')
+Import('env_modules')
+
+env_tbb = env_modules.Clone()
+env_tbb.Append(CPPPATH=['#thirdparty/tbb/'])
+# env_tbb.Append(CPPPATH=['#thirdparty/tbb/src/tbb'])
+env_tbb.Append(CPPPATH=['#thirdparty/tbb/src'])
+env_tbb.Append(CPPPATH=['#thirdparty/tbb/src/rml/include'])
+env_tbb.Append(CPPPATH=['#thirdparty/tbb/include'])
+# env_tbb.Append(CPPFLAGS=['-fno-rtti'])
+# env_tbb.Append(CPPFLAGS=['-fno-exceptions'])
+# env_tbb.Append(CPPFLAGS=['-fno-schedule-insns2'])
+env_tbb.Append(CPPFLAGS=['-D__TBB_BUILD=1'])
+env_tbb.Append(CPPFLAGS=['-D__TBB_DYNAMIC_LOAD_ENABLED=0'])
+env_tbb.Append(CPPFLAGS=['-D__TBB_SOURCE_DIRECTLY_INCLUDED=1'])
+# env_tbb.Append(CPPFLAGS=['-DDO_ITT_NOTIFY=1'])
+# env_tbb.Append(CPPFLAGS=['-D_WIN32_WINNT=0x0502'])
+if (not env.msvc):
+    env_tbb.Append(CXXFLAGS=['-std=c++11'])
+elif (env.msvc == False and env['platform'] == 'windows'):
+    env_tbb.Append(LDFLAGS=['-pthread'])
+
+if(env['platform'] == 'windows'):
+    env_tbb.Append(CPPFLAGS=['-DUSE_WINTHREAD'])
+elif(env['platform'] == 'x11'):
+    env_tbb.Append(CPPFLAGS=['-DUSE_PTHREAD'])
+elif(env['platform'] == 'osx'):
+    env_tbb.Append(CPPFLAGS=['-DUSE_PTHREAD'])
+    
+env_thirdparty = env_tbb.Clone()
+env_thirdparty.disable_warnings()
+
+# thirdparty_dir = "#thirdparty/tbb/"
+# thirdparty_sources = [
+#     "src/tbbmalloc/frontend.cpp",    
+#     'src/tbbmalloc/frontend.cpp',
+#     'src/tbbmalloc/backref.cpp',
+#     'src/tbbmalloc/tbbmalloc.cpp',
+#     'src/tbbmalloc/large_objects.cpp',
+#     'src/tbbmalloc/backend.cpp',
+#     'src/rml/client/rml_tbb.cpp',
+# ]
+# thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/tbb/src/tbb/*.cpp'))
+# env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
+
+# Godot's own source files
+env_tbb.add_source_files(env.modules_sources, "*.cpp")
