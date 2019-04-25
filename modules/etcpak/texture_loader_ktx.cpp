@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  texture_loader_ktx.cpp                                               */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,31 +28,72 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
-
-#include "image_etc.h"
 #include "texture_loader_ktx.h"
-#include "texture_loader_pkm.h"
 
-static Ref<ResourceFormatKTX> resource_loader_ktx;
-static Ref<ResourceFormatPKM> resource_loader_pkm;
+#include "core/os/file_access.h"
+#include <string.h>
+#include "../etcpak/BlockData.hpp"
+#include "core/project_settings.h"
 
-void register_etcpak_types() {
+RES ResourceFormatKTX::load(const String &p_path, const String &p_original_path, Error *r_error) {
 
-	resource_loader_ktx.instance();
-	ResourceLoader::add_resource_format_loader(resource_loader_ktx);
+	//if (r_error)
+	//	*r_error = ERR_CANT_OPEN;
 
-	resource_loader_pkm.instance();
-	ResourceLoader::add_resource_format_loader(resource_loader_pkm);
+	//Error err;
+	//FileAccess *f = FileAccess::open(p_path, FileAccess::READ, &err);
+	//if (!f)
+	//	return RES();
 
-	_register_etc_compress_func();
+	//FileAccessRef fref(f);
+	//if (r_error)
+	//	*r_error = ERR_FILE_CORRUPT;
+
+	//ERR_EXPLAIN("Unable to open PKM texture file: " + p_path);
+	//ERR_FAIL_COND_V(err != OK, RES());
+
+	//PoolByteArray buffer;
+	//buffer.resize(f->get_len());
+	//f->get_buffer(buffer.write().ptr(), f->get_len());
+	BlockData bd = BlockData(ProjectSettings::get_singleton()->globalize_path(p_path).utf8().ptr());
+	BitmapPtr bmp = bd.Decode();
+	uint32_t *data = bmp->Data();
+	PoolVector<uint8_t> src_data;
+
+	uint32_t size =  bmp->Size().x * bmp->Size().y / 16;
+	src_data.resize(size);
+	PoolVector<uint8_t>::Write wb = src_data.write();
+	memcpy(wb.ptr(), data, size);
+	wb = PoolVector<uint8_t>::Write();
+
+	int mipmaps = true;
+	int width = bmp->Size().x ;
+	int height = bmp->Size().y;
+
+	Ref<Image> img = memnew(Image(width, height, mipmaps, Image::FORMAT_RGBA8, src_data));
+
+	Ref<ImageTexture> texture = memnew(ImageTexture);
+	texture->create_from_image(img);
+
+	if (r_error)
+		*r_error = OK;
+
+	return texture;
 }
 
-void unregister_etcpak_types() {
+void ResourceFormatKTX::get_recognized_extensions(List<String> *p_extensions) const {
 
-	ResourceLoader::remove_resource_format_loader(resource_loader_ktx);
-	resource_loader_ktx.unref();
+	p_extensions->push_back("ktx");
+}
 
-	ResourceLoader::remove_resource_format_loader(resource_loader_pkm);
-	resource_loader_pkm.unref();
+bool ResourceFormatKTX::handles_type(const String &p_type) const {
+
+	return ClassDB::is_parent_class(p_type, "Texture");
+}
+
+String ResourceFormatKTX::get_resource_type(const String &p_path) const {
+
+	if (p_path.get_extension().to_lower() == "ktx")
+		return "ImageTexture";
+	return "";
 }

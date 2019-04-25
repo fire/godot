@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  texture_loader_ktx.h                                                 */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,31 +28,21 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
+#ifndef TEXTURE_LOADER_KTX_H
+#define TEXTURE_LOADER_KTX_H
 
-#include "image_etc.h"
-#include "texture_loader_ktx.h"
-#include "texture_loader_pkm.h"
+#include "core/io/resource_loader.h"
+#include "scene/resources/texture.h"
 
-static Ref<ResourceFormatKTX> resource_loader_ktx;
-static Ref<ResourceFormatPKM> resource_loader_pkm;
+class ResourceFormatKTX : public ResourceFormatLoader {
+	GDCLASS(ResourceFormatKTX, ResourceFormatLoader)
+public:
+	virtual RES load(const String &p_path, const String &p_original_path = "", Error *r_error = NULL);
+	virtual void get_recognized_extensions(List<String> *p_extensions) const;
+	virtual bool handles_type(const String &p_type) const;
+	virtual String get_resource_type(const String &p_path) const;
 
-void register_etcpak_types() {
+	virtual ~ResourceFormatKTX() {}
+};
 
-	resource_loader_ktx.instance();
-	ResourceLoader::add_resource_format_loader(resource_loader_ktx);
-
-	resource_loader_pkm.instance();
-	ResourceLoader::add_resource_format_loader(resource_loader_pkm);
-
-	_register_etc_compress_func();
-}
-
-void unregister_etcpak_types() {
-
-	ResourceLoader::remove_resource_format_loader(resource_loader_ktx);
-	resource_loader_ktx.unref();
-
-	ResourceLoader::remove_resource_format_loader(resource_loader_pkm);
-	resource_loader_pkm.unref();
-}
+#endif // TEXTURE_LOADER_PKM_H
