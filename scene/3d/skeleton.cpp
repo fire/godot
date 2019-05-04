@@ -43,7 +43,12 @@ bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
 	if (!path.begins_with("bones/"))
 		return false;
 
-	int which = path.get_slicec('/', 1).to_int();
+	int which = -1;
+	if (!path.get_slicec('/', 1).get_slicec('_', 1).empty()) {
+		which = path.get_slicec('/', 1).split("_")[0].to_int();
+	} else {
+		which = path.get_slicec('/', 1).to_int();
+	}
 	String what = path.get_slicec('/', 2);
 
 	if (which == bones.size() && what == "name") {
@@ -85,13 +90,16 @@ bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
 }
 
 bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
-
 	String path = p_path;
-
-	if (!path.begins_with("bones/"))
+	if (!path.begins_with("bones/")) {
 		return false;
-
-	int which = path.get_slicec('/', 1).to_int();
+	}
+	int which = -1;
+	if (!path.get_slicec('/', 1).get_slicec('_', 1).empty()) {
+		which = path.get_slicec('/', 1).split("_")[0].to_int();
+	} else {
+		which = path.get_slicec('/', 1).to_int();
+	}
 	String what = path.get_slicec('/', 2);
 
 	ERR_FAIL_INDEX_V(which, bones.size(), false);
@@ -122,14 +130,13 @@ bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
 		r_ret = children;
 	} else
 		return false;
-
 	return true;
 }
 void Skeleton::_get_property_list(List<PropertyInfo> *p_list) const {
 
 	for (int i = 0; i < bones.size(); i++) {
 
-		String prep = "bones/" + itos(i) + "/";
+		String prep = "bones/" + itos(i) + "_(_" + bones[i].name + "_)/";
 		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name"));
 		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1"));
 		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest"));
