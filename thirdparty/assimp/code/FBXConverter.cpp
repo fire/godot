@@ -67,6 +67,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 #include <iomanip>
 
+
 namespace Assimp {
     namespace FBX {
 
@@ -76,20 +77,21 @@ namespace Assimp {
 
 #define CONVERT_FBX_TIME(time) static_cast<double>(time) / 46186158000L
 
-        FBXConverter::FBXConverter(aiScene* out, const Document& doc)
-            : defaultMaterialIndex()
-            , lights()
-            , cameras()
-            , textures()
-            , materials_converted()
-            , textures_converted()
-            , meshes_converted()
-            , node_anim_chain_bits()
-            , mNodeNameInstances()
-            , mNodeNames()
-            , anim_fps()
-            , out(out)
-            , doc(doc) {
+        FBXConverter::FBXConverter(aiScene* out, const Document& doc, bool removeEmptyBones, FbxUnit unit )
+        : defaultMaterialIndex()
+        , lights()
+        , cameras()
+        , textures()
+        , materials_converted()
+        , textures_converted()
+        , meshes_converted()
+        , node_anim_chain_bits()
+        , mNodeNames()
+        , anim_fps()
+        , out(out)
+        , doc(doc)
+        , mRemoveEmptyBones( removeEmptyBones )
+        , mCurrentUnit(FbxUnit::cm) {
             // animations need to be converted first since this will
             // populate the node_anim_chain_bits map, which is needed
             // to determine which nodes need to be generated.
@@ -117,6 +119,7 @@ namespace Assimp {
 
             ConvertGlobalSettings();
             TransferDataToScene();
+            ConvertToUnitScale(unit);
 
             // if we didn't read any meshes set the AI_SCENE_FLAGS_INCOMPLETE
             // to make sure the scene passes assimp's validation. FBX files
@@ -138,10 +141,44 @@ namespace Assimp {
 
         void FBXConverter::ConvertRootNode() {
             out->mRootNode = new aiNode();
-            out->mRootNode->mName.Set("RootNode");
+            std::string unique_name;
+            GetUniqueName("RootNode", unique_name);
+            out->mRootNode->mName.Set(unique_name);
 
             // root has ID 0
             ConvertNodes(0L, *out->mRootNode);
+        }
+
+        static std::string getAncestorBaseName(const aiNode* node)
+        {
+            const char* nodeName = nullptr;
+            size_t length = 0;
+            while (node && (!nodeName || length == 0))
+            {
+                nodeName = node->mName.C_Str();
+                length = node->mName.length;
+                node = node->mParent;
+            }
+
+            if (!nodeName || length == 0)
+            {
+                return {};
+            }
+            // could be std::string_view if c++17 available
+            return std::string(nodeName, length);
+        }
+
+        // Make unique name
+        std::string FBXConverter::MakeUniqueNodeName(const Model* const model, const aiNode& parent)
+        {
+            std::string original_name = FixNodeName(model->Name());
+            if (original_name.empty())
+            {
+                original_name = getAncestorBaseName(&parent);
+            }
+            std::string unique_name;
+            GetUniqueName(original_name, unique_name);
+            return unique_name;
         }
 
         void FBXConverter::ConvertNodes(uint64_t id, aiNode& parent, const aiMatrix4x4& parent_transform) {
@@ -175,35 +212,18 @@ namespace Assimp {
 
                         aiMatrix4x4 new_abs_transform = parent_transform;
 
+                        std::string unique_name = MakeUniqueNodeName(model, parent);
+
                         // even though there is only a single input node, the design of
                         // assimp (or rather: the complicated transformation chain that
                         // is employed by fbx) means that we may need multiple aiNode's
                         // to represent a fbx node's transformation.
-                        GenerateTransformationNodeChain(*model, nodes_chain, post_nodes_chain);
+                        const bool need_additional_node = GenerateTransformationNodeChain(*model, unique_name, nodes_chain, post_nodes_chain);
 
                         ai_assert(nodes_chain.size());
 
-                        std::string original_name = FixNodeName(model->Name());
-
-                        // check if any of the nodes in the chain has the name the fbx node
-                        // is supposed to have. If there is none, add another node to
-                        // preserve the name - people might have scripts etc. that rely
-                        // on specific node names.
-                        aiNode* name_carrier = NULL;
-                        for (aiNode* prenode : nodes_chain) {
-                            if (!strcmp(prenode->mName.C_Str(), original_name.c_str())) {
-                                name_carrier = prenode;
-                                break;
-                            }
-                        }
-
-                        if (!name_carrier) {
-                            std::string old_original_name = original_name;
-                            GetUniqueName(old_original_name, original_name);
-                            nodes_chain.push_back(new aiNode(original_name));
-                        }
-                        else {
-                            original_name = nodes_chain.back()->mName.C_Str();
+                        if (need_additional_node) {
+                            nodes_chain.push_back(new aiNode(unique_name));
                         }
 
                         //setup metadata on newest node
@@ -265,11 +285,11 @@ namespace Assimp {
                         ConvertNodes(model->ID(), *last_parent, new_abs_transform);
 
                         if (doc.Settings().readLights) {
-                            ConvertLights(*model, original_name);
+                            ConvertLights(*model, unique_name);
                         }
 
                         if (doc.Settings().readCameras) {
-                            ConvertCameras(*model, original_name);
+                            ConvertCameras(*model, unique_name);
                         }
 
                         nodes.push_back(nodes_chain.front());
@@ -387,6 +407,7 @@ namespace Assimp {
                 break;
             default:
                 ai_assert(false);
+                break;
             }
         }
 
@@ -421,21 +442,16 @@ namespace Assimp {
         void FBXConverter::GetUniqueName(const std::string &name, std::string &uniqueName)
         {
             uniqueName = name;
-            int i = 0;
-            auto it = mNodeNameInstances.find(name); // duplicate node name instance count
-            if (it != mNodeNameInstances.end())
+            auto it_pair = mNodeNames.insert({ name, 0 }); // duplicate node name instance count
+            unsigned int& i = it_pair.first->second;
+            while (!it_pair.second)
             {
-                i = it->second;
-                while (mNodeNames.find(uniqueName) != mNodeNames.end())
-                {
-                    i++;
-                    std::stringstream ext;
-                    ext << name << std::setfill('0') << std::setw(3) << i;
-                    uniqueName = ext.str();
-                }
+                i++;
+                std::ostringstream ext;
+                ext << name << std::setfill('0') << std::setw(3) << i;
+                uniqueName = ext.str();
+                it_pair = mNodeNames.insert({ uniqueName, 0 });
             }
-            mNodeNameInstances[name] = i;
-            mNodeNames.insert(uniqueName);
         }
 
         const char* FBXConverter::NameTransformationComp(TransformationComp comp) {
@@ -667,7 +683,7 @@ namespace Assimp {
             return name + std::string(MAGIC_NODE_TAG) + "_" + NameTransformationComp(comp);
         }
 
-        void FBXConverter::GenerateTransformationNodeChain(const Model& model, std::vector<aiNode*>& output_nodes,
+        bool FBXConverter::GenerateTransformationNodeChain(const Model& model, const std::string& name, std::vector<aiNode*>& output_nodes,
             std::vector<aiNode*>& post_output_nodes) {
             const PropertyTable& props = model.Props();
             const Model::RotOrder rot = model.RotationOrder();
@@ -782,8 +798,6 @@ namespace Assimp {
             // not be guaranteed.
             ai_assert(NeedsComplexTransformationChain(model) == is_complex);
 
-            std::string name = FixNodeName(model.Name());
-
             // now, if we have more than just Translation, Scaling and Rotation,
             // we need to generate a full node chain to accommodate for assimp's
             // lack to express pivots and offsets.
@@ -825,20 +839,20 @@ namespace Assimp {
                 }
 
                 ai_assert(output_nodes.size());
-                return;
+                return true;
             }
 
             // else, we can just multiply the matrices together
             aiNode* nd = new aiNode();
             output_nodes.push_back(nd);
-            std::string uniqueName;
-            GetUniqueName(name, uniqueName);
 
-            nd->mName.Set(uniqueName);
+            // name passed to the method is already unique
+            nd->mName.Set(name);
 
             for (const auto &transform : chain) {
                 nd->mTransformation = nd->mTransformation * transform;
             }
+            return false;
         }
 
         void FBXConverter::SetupNodeMetadata(const Model& model, aiNode& nd)
@@ -977,7 +991,9 @@ namespace Assimp {
             unsigned int epcount = 0;
             for (unsigned i = 0; i < indices.size(); i++)
             {
-                if (indices[i] < 0) epcount++;
+                if (indices[i] < 0) {
+                    epcount++;
+                }
             }
             unsigned int pcount = static_cast<unsigned int>( indices.size() );
             unsigned int scount = out_mesh->mNumFaces = pcount - epcount;
@@ -1407,7 +1423,7 @@ namespace Assimp {
 
                     const WeightIndexArray& indices = cluster->GetIndices();
 
-                    if (indices.empty()) {
+                    if (indices.empty() && mRemoveEmptyBones ) {
                         continue;
                     }
 
@@ -1439,13 +1455,11 @@ namespace Assimp {
 
                                 if (index_out_indices.back() == no_index_sentinel) {
                                     index_out_indices.back() = out_indices.size();
-
                                 }
 
                                 if (no_mat_check) {
                                     out_indices.push_back(out_idx[i]);
-                                }
-                                else {
+                                } else {
                                     // this extra lookup is in O(logn), so the entire algorithm becomes O(nlogn)
                                     const std::vector<unsigned int>::iterator it = std::lower_bound(
                                         outputVertStartIndices->begin(),
@@ -1461,7 +1475,7 @@ namespace Assimp {
                             }
                         }
                     }
-
+                    
                     // if we found at least one, generate the output bones
                     // XXX this could be heavily simplified by collecting the bone
                     // data in a single step.
@@ -1594,6 +1608,13 @@ namespace Assimp {
             if (name.length()) {
                 str.Set(name);
                 out_mat->AddProperty(&str, AI_MATKEY_NAME);
+            }
+
+            // Set the shading mode as best we can: The FBX specification only mentions Lambert and Phong, and only Phong is mentioned in Assimp's aiShadingMode enum.
+            if (material.GetShadingModel() == "phong")
+            {
+                aiShadingMode shadingMode = aiShadingMode_Phong;
+                out_mat->AddProperty<aiShadingMode>(&shadingMode, 1, AI_MATKEY_SHADING_MODEL);               
             }
 
             // shading stuff and colors
@@ -3407,8 +3428,9 @@ void FBXConverter::SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTa
 
             na->mNumScalingKeys = static_cast<unsigned int>(keys.size());
             na->mScalingKeys = new aiVectorKey[keys.size()];
-            if (keys.size() > 0)
+            if (keys.size() > 0) {
                 InterpolateKeys(na->mScalingKeys, keys, inputs, aiVector3D(1.0f, 1.0f, 1.0f), maxTime, minTime);
+            }
         }
 
         void FBXConverter::ConvertTranslationKeys(aiNodeAnim* na, const std::vector<const AnimationCurveNode*>& nodes,
@@ -3472,6 +3494,46 @@ void FBXConverter::SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTa
             out->mMetaData->Set(14, "CustomFrameRate", doc.GlobalSettings().CustomFrameRate());
         }
 
+        void FBXConverter::ConvertToUnitScale( FbxUnit unit ) {
+            if (mCurrentUnit == unit) {
+                return;
+            }
+
+            ai_real scale = 1.0;
+            if (mCurrentUnit == FbxUnit::cm) {
+                if (unit == FbxUnit::m) {
+                    scale = (ai_real)0.01;
+                } else if (unit == FbxUnit::km) {
+                    scale = (ai_real)0.00001;
+                }
+            } else if (mCurrentUnit == FbxUnit::m) {
+                if (unit == FbxUnit::cm) {
+                    scale = (ai_real)100.0;
+                } else if (unit == FbxUnit::km) {
+                    scale = (ai_real)0.001;
+                }
+            } else if (mCurrentUnit == FbxUnit::km) {
+                if (unit == FbxUnit::cm) {
+                    scale = (ai_real)100000.0;
+                } else if (unit == FbxUnit::m) {
+                    scale = (ai_real)1000.0;
+                }
+            }
+            
+            for (auto mesh : meshes) {
+                if (nullptr == mesh) {
+                    continue;
+                }
+
+                if (mesh->HasPositions()) {
+                    for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+                        aiVector3D &pos = mesh->mVertices[i];
+                        pos *= scale;
+                    }
+                }
+            }
+        }
+
         void FBXConverter::TransferDataToScene()
         {
             ai_assert(!out->mMeshes);
@@ -3525,9 +3587,9 @@ void FBXConverter::SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTa
         }
 
         // ------------------------------------------------------------------------------------------------
-        void ConvertToAssimpScene(aiScene* out, const Document& doc)
+        void ConvertToAssimpScene(aiScene* out, const Document& doc, bool removeEmptyBones, FbxUnit unit)
         {
-            FBXConverter converter(out, doc);
+            FBXConverter converter(out, doc, removeEmptyBones, unit);
         }
 
     } // !FBX

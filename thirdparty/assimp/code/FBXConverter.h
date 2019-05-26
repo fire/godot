@@ -76,12 +76,22 @@ namespace FBX {
 
 class Document;
 
+enum class FbxUnit {
+    cm = 0,
+    m,
+    km,
+    NumUnits,
+
+    Undefined
+};
+
 /** 
  *  Convert a FBX #Document to #aiScene
  *  @param out Empty scene to be populated
- *  @param doc Parsed FBX document 
+ *  @param doc Parsed FBX document
+ *  @param removeEmptyBones Will remove bones, which do not have any references to vertices.
  */
-void ConvertToAssimpScene(aiScene* out, const Document& doc);
+void ConvertToAssimpScene(aiScene* out, const Document& doc, bool removeEmptyBones, FbxUnit unit);
 
 /** Dummy class to encapsulate the conversion process */
 class FBXConverter {
@@ -112,7 +122,7 @@ public:
     };
 
 public:
-    FBXConverter(aiScene* out, const Document& doc);
+    FBXConverter(aiScene* out, const Document& doc, bool removeEmptyBones, FbxUnit unit);
     ~FBXConverter();
 
 private:
@@ -145,6 +155,11 @@ private:
     const char* NameTransformationComp(TransformationComp comp);
 
     // ------------------------------------------------------------------------------------------------
+    // Returns an unique name for a node or traverses up a hierarchy until a non-empty name is found and
+    // then makes this name unique
+    std::string MakeUniqueNodeName(const Model* const model, const aiNode& parent);
+
+    // ------------------------------------------------------------------------------------------------
     // note: this returns the REAL fbx property names
     const char* NameTransformationCompProperty(TransformationComp comp);
 
@@ -167,7 +182,7 @@ private:
     /**
     *  note: memory for output_nodes will be managed by the caller
     */
-    void GenerateTransformationNodeChain(const Model& model, std::vector<aiNode*>& output_nodes, std::vector<aiNode*>& post_output_nodes);
+    bool GenerateTransformationNodeChain(const Model& model, const std::string& name, std::vector<aiNode*>& output_nodes, std::vector<aiNode*>& post_output_nodes);
 
     // ------------------------------------------------------------------------------------------------
     void SetupNodeMetadata(const Model& model, aiNode& nd);
@@ -415,6 +430,10 @@ private:
     void ConvertGlobalSettings();
 
     // ------------------------------------------------------------------------------------------------
+    //  Will perform the conversion from a given unit to the requested unit.
+    void ConvertToUnitScale(FbxUnit unit);
+
+    // ------------------------------------------------------------------------------------------------
     // copy generated meshes, animations, lights, cameras and textures to the output scene
     void TransferDataToScene();
 
@@ -443,16 +462,17 @@ private:
     NodeAnimBitMap node_anim_chain_bits;
 
     // number of nodes with the same name
-    using NodeAnimNameMap = std::unordered_map<std::string, unsigned int>;
-    NodeAnimNameMap mNodeNameInstances;
-
-    using NodeNameCache = std::unordered_set<std::string>;
+    using NodeNameCache = std::unordered_map<std::string, unsigned int>;
     NodeNameCache mNodeNames;
 
     double anim_fps;
 
     aiScene* const out;
     const FBX::Document& doc;
+
+    bool mRemoveEmptyBones;
+
+    FbxUnit mCurrentUnit;
 };
 
 }

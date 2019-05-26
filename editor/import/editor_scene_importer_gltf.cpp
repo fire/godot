@@ -178,6 +178,9 @@ Error EditorSceneImporterGLTF::_parse_scenes(GLTFState &state) {
 
 	ERR_FAIL_COND_V(!state.json.has("scenes"), ERR_FILE_CORRUPT);
 	Array scenes = state.json["scenes"];
+	if (scenes.size() < 1) {
+		return FAILED;
+	}
 	for (int i = 0; i < 1; i++) { //only first scene is imported
 		Dictionary s = scenes[i];
 		ERR_FAIL_COND_V(!s.has("nodes"), ERR_UNAVAILABLE);
@@ -1385,6 +1388,7 @@ Error EditorSceneImporterGLTF::_parse_materials(GLTFState &state) {
 			String am = d["alphaMode"];
 			if (am != "OPAQUE") {
 				material->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+				material->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
 			}
 		}
 
@@ -1434,16 +1438,9 @@ Error EditorSceneImporterGLTF::_parse_skins(GLTFState &state) {
 			skin.bones.push_back(bone);
 		}
 
-		print_verbose("glTF: Skin has skeleton? " + itos(d.has("skeleton")));
 		if (d.has("skeleton")) {
-			int skeleton = d["skeleton"];
-			ERR_FAIL_INDEX_V(skeleton, state.nodes.size(), ERR_PARSE_ERROR);
-			print_verbose("glTF: Setting skeleton skin to" + itos(skeleton));
-			skin.skeleton = skeleton;
-			if (!state.skeleton_nodes.has(skeleton)) {
-				state.skeleton_nodes[skeleton] = Vector<int>();
-			}
-			state.skeleton_nodes[skeleton].push_back(i);
+			// Do nothing. This element is ignored.
+			// https://github.com/KhronosGroup/glTF/issues/1270
 		}
 
 		if (d.has("name")) {
@@ -1808,13 +1805,13 @@ void EditorSceneImporterGLTF::_generate_bone(GLTFState &state, int p_node, Vecto
 		const GLTFNode *gltf_bone_node = state.nodes[state.skins[skin].bones[n->joints[i].bone].node];
 		const String bone_name = gltf_bone_node->name;
 		const int parent = gltf_bone_node->parent;
-		const int parent_index = s->find_bone(state.nodes[parent]->name);
-
-		const int bone_index = s->find_bone(bone_name);
-		s->set_bone_parent(bone_index, parent_index);
-
-		n->godot_nodes.push_back(s);
-		n->joints.write[i].godot_bone_index = bone_index;
+		if (parent != -1) {
+			const int parent_index = s->find_bone(state.nodes[parent]->name);
+			const int bone_index = s->find_bone(bone_name);
+			s->set_bone_parent(bone_index, parent_index);
+			n->godot_nodes.push_back(s);
+			n->joints.write[i].godot_bone_index = bone_index;
+		}
 	}
 
 	for (int i = 0; i < n->children.size(); i++) {
@@ -2146,6 +2143,7 @@ Spatial *EditorSceneImporterGLTF::_generate_scene(GLTFState &state, int p_bake_f
 		skeletons.push_back(s);
 	}
 	for (int i = 0; i < state.root_nodes.size(); i++) {
+		ERR_CONTINUE(state.root_nodes[i] == -1);
 		if (state.nodes[state.root_nodes[i]]->joints.size()) {
 			_generate_bone(state, state.root_nodes[i], skeletons, root);
 		} else {

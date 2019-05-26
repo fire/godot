@@ -10,6 +10,7 @@
 		- Smoothing Groups
 		- Smooth Mesh
 		- Triangluate (for meshes with blend shapes)
+		- Resample as Euler Interpolation
 		- Bake Animation
 		- Resample All
 		- Deformed Models
