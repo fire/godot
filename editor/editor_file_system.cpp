@@ -1380,7 +1380,9 @@ EditorFileSystemDirectory *EditorFileSystem::get_filesystem_path(const String &p
 void EditorFileSystem::_save_late_updated_files() {
 	//files that already existed, and were modified, need re-scanning for dependencies upon project restart. This is done via saving this special file
 	String fscache = EditorSettings::get_singleton()->get_project_settings_dir().plus_file("filesystem_update4");
-	FileAccessRef f = FileAccess::open(fscache, FileAccess::WRITE);
+	Error err;
+	FileAccessRef f = FileAccess::open(fscache, FileAccess::WRITE, &err);
+	ERR_FAIL_COND(err != OK);
 	for (Set<String>::Element *E = late_update_files.front(); E; E = E->next()) {
 		f->store_line(E->get());
 	}
