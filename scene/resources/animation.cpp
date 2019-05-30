@@ -2998,12 +2998,136 @@ void Animation::_transform_track_optimize(int p_idx, float p_allowed_linear_err,
 	}
 }
 
+bool Animation::_value_track_optimize_key(const TKey<Variant> &t0, const TKey<Variant> &t1, const TKey<Variant> &t2, float p_alowed_linear_err) {
+
+	real_t c = (t1.time - t0.time) / (t2.time - t0.time);
+	real_t t[3] = { -1, -1, -1 };
+
+	{
+
+		const real_t &v0 = t0.value;
+		const real_t &v1 = t1.value;
+		const real_t &v2 = t2.value;
+		if ((v2 - v0) < CMP_EPSILON) {
+			//0 and 2 are close, let's see if 1 is close
+			if ((v1 - v0) > CMP_EPSILON) {
+				//not close, not optimizable
+				return false;
+			}
+
+		} else {
+
+			if (v1 < v0 || v1 > v2) {
+				return false;
+			}
+
+			real_t s[2] = { v0, v2 };
+
+			real_t d = (v2 - v0);
+
+			if (d > d * p_alowed_linear_err) {
+				return false; //beyond allowed error
+			}
+
+			t[0] = (v1 - v0) / (v2 - v0);
+		}
+	}
+
+	bool erase = false;
+	if (t[0] == -1 && t[1] == -1 && t[2] == -1) {
+
+		erase = true;
+	} else {
+
+		erase = true;
+		real_t lt = -1;
+		for (int j = 0; j < 3; j++) {
+			//search for t on first, one must be it
+			if (t[j] != -1) {
+				lt = t[j]; //official t
+				//validate rest
+				for (int k = j + 1; k < 3; k++) {
+					if (t[k] == -1)
+						continue;
+
+					if (Math::abs(lt - t[k]) > p_alowed_linear_err) {
+						erase = false;
+						break;
+					}
+				}
+				break;
+			}
+		}
+
+		ERR_FAIL_COND_V(lt == -1, false);
+
+		if (erase) {
+
+			if (Math::abs(lt - c) > p_alowed_linear_err) {
+				//todo, evaluate changing the transition if this fails?
+				//this could be done as a second pass and would be
+				//able to optimize more
+				erase = false;
+			} else {
+			}
+		}
+	}
+
+	return erase;
+}
+
+void Animation::_value_track_optimize(int p_idx, float p_allowed_linear_err) {
+
+	ERR_FAIL_INDEX(p_idx, tracks.size());
+	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_VALUE);
+	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
+	bool prev_erased = false;
+	TKey<Variant> first_erased;
+
+	for (int i = 1; i < vt->values.size() - 1; i++) {
+		if (vt->values[i].value) {
+			break;
+		}
+		Variant::Type type = vt->values[i].value.get_type();
+		if (type != Variant::REAL && type != Variant::INT) {
+			break;
+		}
+		TKey<Variant> &t0 = vt->values.write[i - 1];
+		TKey<Variant> &t1 = vt->values.write[i];
+		TKey<Variant> &t2 = vt->values.write[i + 1];
+
+		bool erase = _value_track_optimize_key(t0, t1, t2, p_allowed_linear_err);
+
+		if (prev_erased && !_value_track_optimize_key(t0, first_erased, t2, p_allowed_linear_err)) {
+			//avoid error to go beyond first erased key
+			erase = false;
+		}
+
+		if (erase) {
+
+			if (!prev_erased) {
+				first_erased = t1;
+				prev_erased = true;
+			}
+
+			vt->values.remove(i);
+			i--;
+
+		} else {
+			prev_erased = false;
+		}
+	}
+}
+
 void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
 
 	for (int i = 0; i < tracks.size(); i++) {
 
-		if (tracks[i]->type == TYPE_TRANSFORM)
+		if (tracks[i]->type == TYPE_TRANSFORM) {
 			_transform_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+		} else if (tracks[i]->type == TYPE_VALUE) {
+			_value_track_optimize(i, p_allowed_linear_err);
+		}
 	}
 }
 
