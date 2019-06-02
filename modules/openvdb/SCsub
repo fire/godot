@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+Import('env')
+
+env_openvdb = env.Clone()
+#env_openvdb.disable_warnings()
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Iex/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IexMath/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Imath/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThread.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutex.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPool.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphore.cpp'))
+
+if(env['platform'] == 'windows'):
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexWin32.cpp'))
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphoreWin32.cpp'))
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadWin32.cpp'))
+else:
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexPosix.cpp'))
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPosix.cpp'))
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosixCompat.cpp'))
+    env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosix.cpp'))
+
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/config/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Abc/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCollection/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreAbstract/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreFactory/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreLayer/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreOgawa/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcGeom/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcMaterial/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Ogawa/*.cpp'))
+env_openvdb.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Util/*.cpp'))
+env_openvdb.Append(CPPPATH=['#thirdparty/alembic/lib'])
+env_openvdb.Append(CPPPATH=['#thirdparty/alembic/lib/Alembic/Util'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/include'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/contrib/irrXML/'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/contrib/unzip/'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/'])
+env_openvdb.Append(CPPPATH=['#thirdparty/zlib/'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/contrib/openddlparser/include'])
+env_openvdb.Append(CPPPATH=['#thirdparty/assimp/contrib/rapidjson/include'])
+env_openvdb.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Iex'])
+env_openvdb.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Half'])
+env_openvdb.Append(CPPPATH=['#thirdparty/openexr/IlmBase/IexMath'])
+env_openvdb.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Imath'])
+env_openvdb.Append(CPPPATH=['#thirdparty/openexr/IlmBase/lex'])
+env_openvdb.Append(CPPPATH=['ilmbase'])
+env_openvdb.Append(CPPPATH=['.'])
+
+
+if (env.msvc == False):
+    env_openvdb.Append(CXXFLAGS="-std=c++11")
+elif (env.msvc == False and env['platform'] == 'windows' ):
+     env_openvdb.Append(LDFLAGS="-pthread")
+
+if(env['platform'] == 'windows'):
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM_WINDOWS'])
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM=WINDOWS'])
+elif(env['platform'] == 'x11'):
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM_LINUX'])
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM=LINUX'])
+elif(env['platform'] == 'osx'):
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM_DARWIN'])
+    env_openvdb.Append(CPPFLAGS=['-DPLATFORM=DARWIN'])
+
+# Godot's own source files
+env_openvdb.add_source_files(env.modules_sources, "*.cpp")
