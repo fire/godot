@@ -32,6 +32,9 @@
 
 #include "core/io/resource_saver.h"
 #include "editor/editor_node.h"
+#include "scene/resources/packed_scene.h"
+
+#include "scene/3d/bone_attachment.h"
 #include "scene/3d/collision_shape.h"
 #include "scene/3d/mesh_instance.h"
 #include "scene/3d/navigation.h"
@@ -1163,6 +1166,8 @@ void ResourceImporterScene::get_import_options(List<ImportOption> *r_options, in
 	r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "nodes/root_scale", PROPERTY_HINT_RANGE, "0.001,1000,0.001"), 1.0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "nodes/custom_script", PROPERTY_HINT_FILE, script_ext_hint), ""));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "nodes/storage", PROPERTY_HINT_ENUM, "Single Scene,Instanced Sub-Scenes"), scenes_out ? 1 : 0));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "nodes/optimizer/remove_empty_spatials", PROPERTY_HINT_NONE), true));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "nodes/optimizer/move_skeletons_to_root", PROPERTY_HINT_NONE), false));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/location", PROPERTY_HINT_ENUM, "Node,Mesh"), (meshes_out || materials_out) ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/storage", PROPERTY_HINT_ENUM, "Built-In,Files (.material),Files (.tres)", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), materials_out ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "materials/keep_on_reimport"), materials_out));
@@ -1265,6 +1270,98 @@ Ref<Animation> ResourceImporterScene::import_animation_from_other_importer(Edito
 	return importer->import_animation(p_path, p_flags, p_bake_fps);
 }
 
+void ResourceImporterScene::_animation_player_move(Node *scene, Map<MeshInstance *, Skeleton *> &r_moved_meshes) {
+	Set<Node *> skeletons;
+	for (Map<MeshInstance *, Skeleton *>::Element *E = r_moved_meshes.front(); E; E = E->next()) {
+		skeletons.insert(E->get());
+	}
+	for (int32_t i = 0; i < scene->get_child_count(); i++) {
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(scene->get_child(i));
+		if (!ap) {
+			continue;
+		}
+		List<StringName> animations;
+		ap->get_animation_list(&animations);
+		for (List<StringName>::Element *E = animations.front(); E; E = E->next()) {
+			Ref<Animation> animation = ap->get_animation(E->get());
+			for (int32_t k = 0; k < animation->get_track_count(); k++) {
+				NodePath path = animation->track_get_path(k);
+				Node *node = scene->get_node_or_null(path);
+				if (skeletons.has(node)) {
+					String property;
+					Vector<String> split_path = String(path).split(":");
+					String name = node->get_name();
+					if (split_path.size() == 2) {
+						property = split_path[1];
+						animation->track_set_path(k, name + ":" + property);
+					} else {
+						animation->track_set_path(k, name);
+					}
+				}
+			}
+		}
+	}
+}
+
+void ResourceImporterScene::_move_nodes(Node *scene, const Map<MeshInstance *, Skeleton *> moved_meshes, const Map<BoneAttachment *, Skeleton *> moved_attachments) {
+	Map<Skeleton *, Set<MeshInstance *> > new_meshes_location;
+	for (Map<MeshInstance *, Skeleton *>::Element *E = moved_meshes.front(); E; E = E->next()) {
+		if (new_meshes_location.find(E->get())) {
+			Set<MeshInstance *> meshes = new_meshes_location[E->get()];
+			meshes.insert(E->key());
+			new_meshes_location.insert(E->get(), meshes);
+		} else {
+			Set<MeshInstance *> meshes;
+			meshes.insert(E->key());
+			new_meshes_location.insert(E->get(), meshes);
+		}
+		E->key()->queue_delete();
+	}
+
+	for (Map<Skeleton *, Set<MeshInstance *> >::Element *new_mesh_i = new_meshes_location.front(); new_mesh_i; new_mesh_i = new_mesh_i->next()) {
+		Skeleton *skel = Object::cast_to<Skeleton>(new_mesh_i->key()->duplicate());
+		scene->add_child(skel);
+		skel->set_owner(scene);
+		for (Set<MeshInstance *>::Element *mesh_i = new_mesh_i->get().front(); mesh_i; mesh_i = mesh_i->next()) {
+			MeshInstance *mi = Object::cast_to<MeshInstance>(mesh_i->get()->duplicate());
+			if (!new_mesh_i->key()->is_a_parent_of(mesh_i->get())) {
+				mi->set_transform(mi->get_global_transform().affine_inverse() * mesh_i->get()->get_global_transform());
+			}
+			skel->add_child(mi);
+			mi->set_owner(scene);
+			mi->set_skeleton_path(NodePath(".."));
+		}
+		for (Map<BoneAttachment *, Skeleton *>::Element *attachment_i = moved_attachments.front(); attachment_i; attachment_i = attachment_i->next()) {
+			BoneAttachment *attachment = Object::cast_to<BoneAttachment>(attachment_i->get()->duplicate());
+			skel->add_child(attachment);
+			attachment->set_owner(scene);
+			attachment_i->get()->queue_delete();
+		}
+		new_mesh_i->key()->queue_delete();
+	}
+}
+
+void ResourceImporterScene::_moved_mesh_and_attachments(Node *p_current, Node *p_owner, Map<MeshInstance *, Skeleton *> &r_moved_meshes,
+		Map<BoneAttachment *, Skeleton *> &r_moved_attachments) {
+	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current);
+	if (mi) {
+		Skeleton *skeleton = Object::cast_to<Skeleton>(mi->get_node_or_null(mi->get_skeleton_path()));
+		if (skeleton) {
+			r_moved_meshes.insert(mi, skeleton);
+		}
+	}
+	BoneAttachment *bone_attachment = Object::cast_to<BoneAttachment>(p_current);
+	if (bone_attachment) {
+		Skeleton *skeleton = Object::cast_to<Skeleton>(mi->get_node_or_null(mi->get_skeleton_path()));
+		if (skeleton) {
+			r_moved_attachments.insert(bone_attachment, skeleton);
+		}
+	}
+
+	for (int i = 0; i < p_current->get_child_count(); i++) {
+		_moved_mesh_and_attachments(p_current->get_child(i), p_owner, r_moved_meshes, r_moved_attachments);
+	}
+}
 Error ResourceImporterScene::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 
 	const String &src_path = p_source_file;
@@ -1372,6 +1469,10 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		_optimize_animations(scene, anim_optimizer_linerr, anim_optimizer_angerr, anim_optimizer_maxang);
 	}
 
+	if (p_options["nodes/optimizer/remove_unused_nodes"]) {
+		_optimize_scene(scene);
+	}
+
 	Array animation_clips;
 	{
 
@@ -1461,6 +1562,36 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		_make_external_resources(scene, base_path, external_animations, external_animations_as_text, keep_custom_tracks, external_materials, external_materials_as_text, keep_materials, external_meshes, external_meshes_as_text, anim_map, mat_map, mesh_map);
 	}
 
+	bool move_skeleton_to_root_optimizer = p_options["nodes/optimizer/move_skeletons_to_root"];
+	if (move_skeleton_to_root_optimizer) {
+		Map<MeshInstance *, Skeleton *> moved_meshes;
+		Map<BoneAttachment *, Skeleton *> moved_attachments;
+
+		_moved_mesh_and_attachments(scene, scene, moved_meshes, moved_attachments);
+		_animation_player_move(scene, moved_meshes);
+		_move_nodes(scene, moved_meshes, moved_attachments);
+	}
+
+	bool scene_optimizer = p_options["nodes/optimizer/remove_empty_spatials"];
+	if (scene_optimizer) {
+		_remove_empty_spatials(scene);
+	}
+
+	bool move_skeleton_to_root_optimizer = p_options["nodes/optimizer/move_skeletons_to_root"];
+	if (move_skeleton_to_root_optimizer) {
+		Map<MeshInstance *, Skeleton *> moved_meshes;
+		Map<BoneAttachment *, Skeleton *> moved_attachments;
+
+		_moved_mesh_and_attachments(scene, scene, moved_meshes, moved_attachments);
+		_animation_player_move(scene, moved_meshes);
+		_move_nodes(scene, moved_meshes, moved_attachments);
+	}
+
+	bool scene_optimizer = p_options["nodes/optimizer/remove_empty_spatials"];
+	if (scene_optimizer) {
+		_remove_empty_spatials(scene);
+	}
+
 	progress.step(TTR("Running Custom Script..."), 2);
 
 	String post_import_script_path = p_options["nodes/custom_script"];
@@ -1534,6 +1665,68 @@ ResourceImporterScene *ResourceImporterScene::singleton = NULL;
 ResourceImporterScene::ResourceImporterScene() {
 	singleton = this;
 }
+
+void ResourceImporterScene::_mark_nodes(Node *p_current, Node *p_owner, Vector<Node *> &r_nodes) {
+	Array queue;
+	queue.push_back(p_current);
+	while (queue.size()) {
+		Node *node = queue.pop_back();
+		if (node->is_queued_for_deletion()) {
+			continue;
+		}
+		r_nodes.push_back(node);
+		for (int32_t i = 0; i < node->get_child_count(); i++) {
+			queue.push_back(node->get_child(node->get_child_count() - 1 - i));
+		}
+	}
+}
+
+void ResourceImporterScene::_remove_empty_spatials(Node *scene) {
+	Vector<Node *> nodes;
+	_mark_nodes(scene, scene, nodes);
+	nodes.invert();
+	_clean_animation_player(scene);
+	_remove_nodes(scene, nodes);
+}
+
+void ResourceImporterScene::_clean_animation_player(Node *scene) {
+	for (int32_t i = 0; i < scene->get_child_count(); i++) {
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(scene->get_child(i));
+		if (!ap) {
+			continue;
+		}
+		List<StringName> animations;
+		ap->get_animation_list(&animations);
+		for (List<StringName>::Element *E = animations.front(); E; E = E->next()) {
+			Ref<Animation> animation = ap->get_animation(E->get());
+			for (int32_t k = 0; k < animation->get_track_count(); k++) {
+				NodePath path = animation->track_get_path(k);
+				if (!scene->has_node(path)) {
+					animation->remove_track(k);
+				}
+			}
+		}
+	}
+}
+
+void ResourceImporterScene::_remove_nodes(Node *scene, Vector<Node *> &r_nodes) {
+	for (int32_t i = 0; i < r_nodes.size(); i++) {
+		int32_t count = 0;
+		for (int32_t i = 0; i < r_nodes[i]->get_child_count(); i++) {
+			count++;
+			if (r_nodes[i]->get_child(i)->is_queued_for_deletion()) {
+				count--;
+			}
+		}
+		if (r_nodes[i] != scene && r_nodes[i]->get_class_name() == Spatial().get_class_name() && !count) {
+			print_verbose("ResourceImporterScene extra node \"" + r_nodes[i]->get_name() + "\" was removed");
+			r_nodes[i]->queue_delete();
+		} else {
+			print_verbose("ResourceImporterScene node \"" + r_nodes[i]->get_name() + "\" was kept");
+		}
+	}
+}
+
 ///////////////////////////////////////
 
 uint32_t EditorSceneImporterESCN::get_import_flags() const {
