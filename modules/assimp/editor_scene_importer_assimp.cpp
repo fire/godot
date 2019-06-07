@@ -1063,7 +1063,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			if (mi) {
 				state.meshes.push_back(mi);
 			}
-			_add_mesh_to_mesh_instance(p_node, state.scene, state.skeleton, state.path, mesh_node, p_owner, state.bone_names, state.mesh_count, state.max_bone_weights);
+			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 		}
 
 		if (state.skeleton->get_bone_count() > 0) {
@@ -1294,13 +1294,13 @@ void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<Strin
 	}
 }
 
-void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node, const aiScene *p_scene, Skeleton *s, const String &p_path, MeshInstance *p_mesh_instance, Node *p_owner, Set<String> &r_bone_name, int32_t &r_mesh_count, int32_t p_max_bone_weights) {
+void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner) {
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
-		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
+		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
 
 		Map<uint32_t, Vector<float> > vertex_weight;
 		Map<uint32_t, Vector<String> > vertex_bone_name;
@@ -1369,20 +1369,20 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 				}
 			}
 
-			if (s != NULL && s->get_bone_count() > 0) {
+			if (state.skeleton != NULL && state.skeleton->get_bone_count() > 0) {
 				Map<uint32_t, Vector<String> >::Element *I = vertex_bone_name.find(j);
 				Vector<int32_t> bones;
 				if (I != NULL) {
 					Vector<String> bone_names;
 					bone_names.append_array(I->value());
 					for (int32_t f = 0; f < bone_names.size(); f++) {
-						int32_t bone = s->find_bone(bone_names[f]);
+						int32_t bone = state.skeleton->find_bone(bone_names[f]);
 						ERR_EXPLAIN("Asset Importer: Mesh can't find bone " + bone_names[f]);
 						ERR_FAIL_COND(bone == -1);
 						bones.push_back(bone);
 					}
-					if (s->get_bone_count()) {
-						int32_t add = CLAMP(p_max_bone_weights - bones.size(), 0, p_max_bone_weights);
+					if (state.skeleton->get_bone_count()) {
+						int32_t add = CLAMP(state.max_bone_weights - bones.size(), 0, state.max_bone_weights);
 						for (int32_t f = 0; f < add; f++) {
 							bones.push_back(0);
 						}
@@ -1392,8 +1392,8 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 					Vector<float> weights;
 					if (E != NULL) {
 						weights = E->value();
-						if (weights.size() != p_max_bone_weights) {
-							int32_t add = CLAMP(p_max_bone_weights - weights.size(), 0, p_max_bone_weights);
+						if (weights.size() != state.max_bone_weights) {
+							int32_t add = CLAMP(state.max_bone_weights - weights.size(), 0, state.max_bone_weights);
 							for (int32_t f = 0; f < add; f++) {
 								weights.push_back(0.0f);
 							}
@@ -1421,7 +1421,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 		if (ai_mesh->HasTangentsAndBitangents() == false && has_uvs) {
 			st->generate_tangents();
 		}
-		aiMaterial *ai_material = p_scene->mMaterials[ai_mesh->mMaterialIndex];
+		aiMaterial *ai_material = state.scene->mMaterials[ai_mesh->mMaterialIndex];
 		Ref<SpatialMaterial> mat;
 		mat.instance();
 
@@ -1446,11 +1446,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 
 			if (AI_SUCCESS == ai_material->GetTexture(tex_normal, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
 				filename = _assimp_raw_string_to_string(ai_filename);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 
 					if (texture != NULL) {
 						if (map_mode != NULL) {
@@ -1467,11 +1467,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_emissive_path;
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_EMISSION_TEXTURE, tex_fbx_pbs_emissive_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_emissive_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
 						mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
@@ -1491,11 +1491,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_NORMAL_TEXTURE, ai_filename)) {
 				filename = _assimp_raw_string_to_string(ai_filename);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
 						mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
@@ -1514,11 +1514,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 
 			if (AI_SUCCESS == ai_material->GetTexture(tex_emissive, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
 				filename = _assimp_raw_string_to_string(ai_filename);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						_set_texture_mapping_mode(map_mode, texture);
 						mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
@@ -1536,11 +1536,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiTextureMapMode map_mode[2];
 			if (AI_SUCCESS == ai_material->GetTexture(tex_albedo, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
 				filename = _assimp_raw_string_to_string(ai_filename);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						if (texture->get_data()->detect_alpha() != Image::ALPHA_NONE) {
 							_set_texture_mapping_mode(map_mode, texture);
@@ -1566,12 +1566,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 		aiTextureMapMode map_mode[2];
 		if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_TEXTURE, &tex_gltf_base_color_path, NULL, NULL, NULL, NULL, map_mode)) {
 			String filename = _assimp_raw_string_to_string(tex_gltf_base_color_path);
-			String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+			String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 			bool found = false;
-			_find_texture_path(p_path, path, found);
+			_find_texture_path(state.path, path, found);
 			if (found) {
-				Ref<Texture> texture = _load_texture(p_scene, path);
-				_find_texture_path(p_path, path, found);
+				Ref<Texture> texture = _load_texture(state.scene, path);
+				_find_texture_path(state.path, path, found);
 				if (texture != NULL) {
 					if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
 						_set_texture_mapping_mode(map_mode, texture);
@@ -1595,12 +1595,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_base_color_path = aiString();
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
-					_find_texture_path(p_path, path, found);
+					Ref<Texture> texture = _load_texture(state.scene, path);
+					_find_texture_path(state.path, path, found);
 					if (texture != NULL) {
 						if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
 							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
@@ -1627,12 +1627,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_normal_path = aiString();
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_NORMAL_TEXTURE, tex_fbx_pbs_normal_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_normal_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
-					_find_texture_path(p_path, path, found);
+					Ref<Texture> texture = _load_texture(state.scene, path);
+					_find_texture_path(state.path, path, found);
 					if (texture != NULL) {
 						mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
 						mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
@@ -1653,12 +1653,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_stingray_normal_path = aiString();
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_NORMAL_TEXTURE, tex_fbx_stingray_normal_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_stingray_normal_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
-					_find_texture_path(p_path, path, found);
+					Ref<Texture> texture = _load_texture(state.scene, path);
+					_find_texture_path(state.path, path, found);
 					if (texture != NULL) {
 						mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
 						mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
@@ -1671,12 +1671,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_base_color_path = aiString();
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
-					_find_texture_path(p_path, path, found);
+					Ref<Texture> texture = _load_texture(state.scene, path);
+					_find_texture_path(state.path, path, found);
 					if (texture != NULL) {
 						if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
 							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
@@ -1703,12 +1703,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_emissive_path = aiString();
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_TEXTURE, tex_fbx_pbs_emissive_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_emissive_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
-					_find_texture_path(p_path, path, found);
+					Ref<Texture> texture = _load_texture(state.scene, path);
+					_find_texture_path(state.path, path, found);
 					if (texture != NULL) {
 						if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
 							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
@@ -1733,11 +1733,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 		aiString tex_gltf_pbr_metallicroughness_path;
 		if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &tex_gltf_pbr_metallicroughness_path)) {
 			String filename = _assimp_raw_string_to_string(tex_gltf_pbr_metallicroughness_path);
-			String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+			String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 			bool found = false;
-			_find_texture_path(p_path, path, found);
+			_find_texture_path(state.path, path, found);
 			if (found) {
-				Ref<Texture> texture = _load_texture(p_scene, path);
+				Ref<Texture> texture = _load_texture(state.scene, path);
 				if (texture != NULL) {
 					mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
 					mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
@@ -1760,11 +1760,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_metallic_path;
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_METALLIC_TEXTURE, tex_fbx_pbs_metallic_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
 						mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
@@ -1780,11 +1780,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_rough_path;
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
 						mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
@@ -1803,11 +1803,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_metallic_path;
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_METALNESS_TEXTURE, tex_fbx_pbs_metallic_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
 						mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
@@ -1823,11 +1823,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 			aiString tex_fbx_pbs_rough_path;
 			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
 				String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
-				String path = p_path.get_base_dir() + "/" + filename.replace("\\", "/");
+				String path = state.path.get_base_dir() + "/" + filename.replace("\\", "/");
 				bool found = false;
-				_find_texture_path(p_path, path, found);
+				_find_texture_path(state.path, path, found);
 				if (found) {
-					Ref<Texture> texture = _load_texture(p_scene, path);
+					Ref<Texture> texture = _load_texture(state.scene, path);
 					if (texture != NULL) {
 						mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
 						mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
@@ -1943,8 +1943,8 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(const aiNode *p_node,
 		mesh->add_surface_from_arrays(primitive, array_mesh, morphs);
 		mesh->surface_set_material(i, mat);
 		mesh->surface_set_name(i, _assimp_string_to_string(ai_mesh->mName));
-		r_mesh_count++;
-		print_verbose(String("Open Asset Import: Created mesh (including instances) ") + _assimp_string_to_string(ai_mesh->mName) + " " + itos(r_mesh_count) + " of " + itos(p_scene->mNumMeshes));
+		state.mesh_count++;
+		print_verbose(String("Open Asset Import: Created mesh (including instances) ") + _assimp_string_to_string(ai_mesh->mName) + " " + itos(state.mesh_count) + " of " + itos(state.scene->mNumMeshes));
 	}
 	p_mesh_instance->set_mesh(mesh);
 }
