@@ -380,20 +380,25 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			break;
 		}
 	}
+
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-		if (skeleton_root != state.scene->mRootNode) {
-			while (skeleton_root->mParent && _assimp_string_to_string(skeleton_root->mName).split(ASSIMP_FBX_KEY)[0] == _assimp_string_to_string(skeleton_root->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-				skeleton_root = skeleton_root->mParent;
+		aiNode *node = skeleton_root;
+		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+			while (node->mParent) {
+				if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+					break;
+				}
+				node = node->mParent;
 			}
-			skeleton_root = skeleton_root->mParent;
+			node = node->mParent;
 		}
-		const aiNode *bone_root = skeleton_root;
-		if (bone_root == state.scene->mRootNode) {
+		const aiNode *armature_node = node;
+		if (armature_node == state.scene->mRootNode) {
 			state.root->add_child(state.skeleton);
 			state.skeleton->set_owner(state.root);
 			break;
 		}
-		state.root->find_node(_assimp_string_to_string(bone_root->mName))->get_parent()->add_child(state.skeleton);
+		state.root->find_node(_assimp_string_to_string(armature_node->mName))->get_parent()->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
@@ -617,7 +622,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			if (is_bone) {
 				continue;
 			}
-			if (!state.ap->get_owner()->has_node(node_name)) {
+			if (!state.ap->get_owner()->find_node(node_name)) {
 				continue;
 			}
 			Node *node = state.ap->get_owner()->find_node(node_name);
@@ -1294,6 +1299,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
+	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
@@ -1401,9 +1407,13 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
-			Transform mesh_xform = _get_global_ai_node_transform(state.scene, p_node).affine_inverse() * p_mesh_xform;
-			if (p_mesh_instance->get_parent() != state.root) {
-				godot_pos = mesh_xform.xform(godot_pos);
+			Transform mesh_parent_global_xform = _get_global_ai_node_transform(state.scene, p_node->mParent) * p_mesh_xform;
+			Transform mesh_xform = _ai_matrix_transform(p_node->mTransformation);
+			if (p_mesh_instance->get_parent() != state.root && is_pivoted) {
+				Transform xform = mesh_parent_global_xform.affine_inverse() * mesh_xform;
+				godot_pos = xform.xform(godot_pos);
+			} else if (p_mesh_instance->get_parent() == state.root) {
+				godot_pos = _get_global_ai_node_transform(state.scene, p_node).xform(godot_pos);
 			}
 			st->add_vertex(godot_pos);
 		}
