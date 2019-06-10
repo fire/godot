@@ -164,7 +164,6 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	state.skeleton = memnew(Skeleton);
 	state.root = memnew(Spatial);
 	Node *scene = _generate_scene(state);
-	ResourceImporterScene::get_singleton()->_optimize_scene(scene);
 	return scene;
 }
 
