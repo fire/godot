@@ -1050,7 +1050,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		p_parent->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
-		mesh_node->set_transform(child_node->get_transform());
 		{
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
@@ -1061,7 +1060,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			if (mi) {
 				state.meshes.push_back(mi);
 			}
-			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
+			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner, child_node->get_transform());
 		}
 
 		if (state.skeleton->get_bone_count() > 0) {
@@ -1292,7 +1291,7 @@ void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<Strin
 	}
 }
 
-void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner) {
+void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner, Transform p_mesh_xform) {
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
@@ -1403,6 +1402,8 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
+			Transform mesh_xform = _get_global_ai_node_transform(state.scene, p_node).affine_inverse() * p_mesh_xform;
+			godot_pos = mesh_xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
