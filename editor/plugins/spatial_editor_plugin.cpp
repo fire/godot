@@ -524,6 +524,7 @@ void SpatialEditorViewport::_select_region() {
 		// Replace the node by the group if grouped
 		if (item->is_class("Spatial")) {
 			Spatial *sel = Object::cast_to<Spatial>(item);
+			ERR_CONTINUE(!editor->get_edited_scene());
 			while (item && item != editor->get_edited_scene()->get_parent()) {
 				Spatial *selected_tmp = Object::cast_to<Spatial>(item);
 				if (selected_tmp && item->has_meta("_edit_group_")) {

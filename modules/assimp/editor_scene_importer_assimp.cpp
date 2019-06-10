@@ -620,7 +620,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 			if (!state.ap->get_owner()->has_node(node_name)) {
 				continue;
-			} 
+			}
 			Node *node = state.ap->get_owner()->find_node(node_name);
 			if (state.removed_nodes.has(node_name)) {
 				continue;
@@ -641,10 +641,10 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			String node_name = _assimp_string_to_string(track->mNodeName);
 			Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
 			String bare_name = split_name[0];
-			if (!state.ap->get_owner()->has_node(bare_name)) {
-				continue;
-			} 
 			Node *node = state.ap->get_owner()->find_node(bare_name);
+			if (!Object::cast_to<MeshInstance>(node) && !Object::cast_to<Light>(node) && !Object::cast_to<Camera>(node)) {
+				continue;
+			}
 			if (node != NULL && split_name.size() > 1) {
 				Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
 				Vector<const aiNodeAnim *> ai_tracks;
@@ -1043,16 +1043,14 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		child_node = memnew(Spatial);
 		p_parent->add_child(child_node);
 		child_node->set_owner(p_owner);
-		child_node->set_transform(xform * child_node->get_transform());
+		child_node->set_transform(xform);
 	}
 
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		p_parent->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
-		if (mesh_node->get_parent() != p_owner) {
-			mesh_node->set_transform(child_node->get_transform());
-		}
+		mesh_node->set_transform(child_node->get_transform());
 		{
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
@@ -1184,7 +1182,7 @@ void EditorSceneImporterAssimp::_set_bone_parent(Skeleton *p_skeleton, const aiS
 	}
 }
 
-aiNode * EditorSceneImporterAssimp::_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask) {
+aiNode *EditorSceneImporterAssimp::_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask) {
 
 	if (_assimp_string_to_string(ai_child_node->mName).match(bone_name_mask)) {
 		return ai_child_node;
