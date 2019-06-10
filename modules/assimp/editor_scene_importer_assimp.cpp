@@ -1403,7 +1403,9 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
 			Transform mesh_xform = _get_global_ai_node_transform(state.scene, p_node).affine_inverse() * p_mesh_xform;
-			godot_pos = mesh_xform.xform(godot_pos);
+			if (p_mesh_instance->get_parent() != state.root) {
+				godot_pos = mesh_xform.xform(godot_pos);
+			}
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
