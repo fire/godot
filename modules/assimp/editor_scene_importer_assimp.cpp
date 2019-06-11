@@ -559,8 +559,8 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
 				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
 				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
-				if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") {
-					Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bone_name);
+				if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling" && state.skeleton->find_bone(bone_name) != -1) {
+					Map<String, Vector<const aiNodeAnim *> >::Element *E = bone_tracks.find(bone_name);
 					Vector<const aiNodeAnim *> ai_tracks;
 					if (E) {
 						ai_tracks = E->get();
@@ -569,24 +569,19 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 						ai_tracks.push_back(track);
 					}
 					bone_tracks.insert(bone_name, ai_tracks);
-					is_bone = true;
+					continue;
 				}
 			}
-			for (Map<Skeleton *, MeshInstance *>::Element *E = state.skeletons.front(); E; E = E->next()) {
-				Skeleton *sk = E->key();
-				const String path = state.ap->get_owner()->get_path_to(sk);
-				if (path.empty()) {
-					continue;
-				}
-				if (sk->find_bone(node_name) == -1) {
-					continue;
-				}
+
+			Skeleton *sk = state.skeleton;
+			const String path = state.ap->get_owner()->get_path_to(sk);
+			if (path.empty()) {
+				continue;
+			}
+			if (sk->find_bone(node_name) != -1) {
 				node_path = path + ":" + node_name;
 				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
-				is_bone = true;
-			}
-			if (is_bone) {
 				continue;
 			}
 			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
@@ -618,12 +613,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			memdelete(spatial);
-			const String path = state.ap->get_owner()->get_path_to(node);
-			if (path.empty()) {
-				print_verbose("Can't animate path");
-				continue;
-			}
-			node_path = path;
+			node_path = state.ap->get_owner()->get_path_to(node);
 			if (state.ap->get_owner()->has_node(node_path) == false) {
 				continue;
 			}
