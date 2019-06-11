@@ -574,14 +574,12 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 
 			Skeleton *sk = state.skeleton;
-			if (sk->is_inside_tree()) {
-				const String path = state.ap->get_owner()->get_path_to(sk);
-				if (!path.empty() && sk->find_bone(node_name) != -1) {
-					node_path = path + ":" + node_name;
-					ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
-					_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
-					continue;
-				}
+			const String path = state.ap->get_owner()->get_path_to(sk);
+			if (!path.empty() && sk->find_bone(node_name) != -1) {
+				node_path = path + ":" + node_name;
+				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
+				continue;
 			}
 			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
 			const String bare_name = split_name[0];
