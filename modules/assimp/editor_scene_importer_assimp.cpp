@@ -382,24 +382,19 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	}
 
 	if (state.skeleton->get_bone_count() && !state.skeleton->get_parent()) {
-		aiNode *node = skeleton_root;
-		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-			while (node->mParent) {
-				if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-					break;
-				}
-				node = node->mParent;
-			}
-			node = node->mParent;
-		}
-		const aiNode *armature_node = node;
-		if (armature_node == state.scene->mRootNode) {
-			state.root->add_child(state.skeleton);
-			state.skeleton->set_owner(state.root);
-		} else {
-			state.root->find_node(_assimp_string_to_string(armature_node->mName))->get_parent()->add_child(state.skeleton);
-			state.skeleton->set_owner(state.root);
-		}
+		//aiNode *node = skeleton_root;
+		//while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+		//	while (node->mParent) {
+		//		if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+		//			break;
+		//		}
+		//		node = node->mParent;
+		//	}
+		//	node = node->mParent;
+		//}
+		//const aiNode *armature_node = node;
+		state.root->add_child(state.skeleton);
+		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
@@ -638,7 +633,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
-		}		
+		}
 		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = anim_tracks.front(); F; F = F->next()) {
 			_insert_pivot_anim_track(state.meshes, F->key(), F->get(), state.ap, state.skeleton, length, ticks_per_second, animation, state.bake_fps, state.path, state.scene);
 		}
