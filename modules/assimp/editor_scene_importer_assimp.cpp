@@ -424,18 +424,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	return state.root;
 }
 
-void EditorSceneImporterAssimp::_fill_kept_node(Set<Node *> &keep_nodes) {
-	for (Set<Node *>::Element *E = keep_nodes.front(); E; E = E->next()) {
-		Node *node = E->get();
-		while (node != NULL) {
-			if (keep_nodes.has(node) == false) {
-				keep_nodes.insert(node);
-			}
-			node = node->get_parent();
-		}
-	}
-}
-
 String EditorSceneImporterAssimp::_find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root) {
 	for (Map<Skeleton *, MeshInstance *>::Element *E = skeletons.front(); E; E = E->next()) {
 		if (meshes.has(E->get())) {
@@ -461,33 +449,6 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 		Vector3 base_pos;
 		Quat base_rot;
 		Vector3 base_scale = Vector3(1, 1, 1);
-
-		if (track->mNumRotationKeys != 0) {
-			aiQuatKey key = track->mRotationKeys[0];
-			real_t x = key.mValue.x;
-			real_t y = key.mValue.y;
-			real_t z = key.mValue.z;
-			real_t w = key.mValue.w;
-			Quat q(x, y, z, w);
-			q = q.normalized();
-			base_rot = q;
-		}
-
-		if (track->mNumPositionKeys != 0) {
-			aiVectorKey key = track->mPositionKeys[0];
-			real_t x = key.mValue.x;
-			real_t y = key.mValue.y;
-			real_t z = key.mValue.z;
-			base_pos = Vector3(x, y, z);
-		}
-
-		if (track->mNumScalingKeys != 0) {
-			aiVectorKey key = track->mScalingKeys[0];
-			real_t x = key.mValue.x;
-			real_t y = key.mValue.y;
-			real_t z = key.mValue.z;
-			base_scale = Vector3(x, y, z);
-		}
 
 		bool last = false;
 
@@ -857,43 +818,7 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 					length = MAX(length, F[k]->mScalingKeys[i].mTime / ticks_per_second);
 				}
 			}
-
-			if (is_rotation == false && is_translation == false && is_scaling == false) {
-				return;
-			}
-
-			if (is_rotation) {
-				if (F[k]->mNumRotationKeys != 0) {
-					aiQuatKey key = F[k]->mRotationKeys[0];
-					real_t x = key.mValue.x;
-					real_t y = key.mValue.y;
-					real_t z = key.mValue.z;
-					real_t w = key.mValue.w;
-					Quat q(x, y, z, w);
-					q = q.normalized();
-					base_rot = q;
-				}
-			}
-
-			if (is_translation) {
-				if (F[k]->mNumPositionKeys != 0) {
-					aiVectorKey key = F[k]->mPositionKeys[0];
-					real_t x = key.mValue.x;
-					real_t y = key.mValue.y;
-					real_t z = key.mValue.z;
-					base_pos = Vector3(x, y, z);
-				}
-			}
-
-			if (is_scaling) {
-				if (F[k]->mNumScalingKeys != 0) {
-					aiVectorKey key = F[k]->mScalingKeys[0];
-					real_t x = key.mValue.x;
-					real_t y = key.mValue.y;
-					real_t z = key.mValue.z;
-					base_scale = Vector3(x, y, z);
-				}
-			}
+			
 			if (is_translation) {
 				for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
 					aiVector3D pos = F[k]->mPositionKeys[p].mValue;

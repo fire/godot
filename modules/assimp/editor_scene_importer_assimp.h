@@ -172,7 +172,7 @@ private:
 		};
 	};
 	Spatial *_generate_scene(State &state);
-	void _fill_kept_node(Set<Node *> &keep_nodes);
+	
 	String _find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root);
 	Transform _get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node);
 	void _generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights);
