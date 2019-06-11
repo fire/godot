@@ -832,13 +832,13 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 		Vector3 pos = Vector3();
 		Quat rot = Quat();
 		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
-		if (is_translation && pos_values.size()) {
+		if (pos_values.size()) {
 			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
-		if (is_rotation && rot_values.size()) {
+		if (rot_values.size()) {
 			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
 		}
-		if (is_scaling && scale_values.size()) {
+		if (scale_values.size()) {
 			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
 		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
