@@ -885,30 +885,6 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 	}
 }
 
-void EditorSceneImporterAssimp::_keep_node(const String &p_path, Node *p_current, Node *p_owner, Set<Node *> &r_keep_nodes) {
-	if (p_current == p_owner) {
-		r_keep_nodes.insert(p_current);
-	}
-
-	if (p_current->get_class() != Spatial().get_class()) {
-		r_keep_nodes.insert(p_current);
-	}
-
-	for (int i = 0; i < p_current->get_child_count(); i++) {
-		_keep_node(p_path, p_current->get_child(i), p_owner, r_keep_nodes);
-	}
-}
-
-void EditorSceneImporterAssimp::_filter_node(const String &p_path, Node *p_current, Node *p_owner, const Set<Node *> p_keep_nodes, Set<String> &r_removed_nodes) {
-	if (p_keep_nodes.has(p_current) == false) {
-		r_removed_nodes.insert(p_current->get_name());
-		p_current->queue_delete();
-	}
-	for (int i = 0; i < p_current->get_child_count(); i++) {
-		_filter_node(p_path, p_current->get_child(i), p_owner, p_keep_nodes, r_removed_nodes);
-	}
-}
-
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
 	Spatial *child_node = NULL;
 	if (p_node == NULL) {
