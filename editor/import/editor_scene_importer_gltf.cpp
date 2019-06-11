@@ -207,7 +207,7 @@ Error EditorSceneImporterGLTF::_parse_nodes(GLTFState &state) {
 		Dictionary n = nodes[i];
 
 		if (n.has("name")) {
-			node->name = n["name"];
+			node->name = _canonicalize_name(n["name"]);
 		}
 		if (n.has("camera")) {
 			node->camera = n["camera"];
@@ -1805,13 +1805,18 @@ void EditorSceneImporterGLTF::_generate_bone(GLTFState &state, int p_node, Vecto
 		const GLTFNode *gltf_bone_node = state.nodes[state.skins[skin].bones[n->joints[i].bone].node];
 		const String bone_name = gltf_bone_node->name;
 		const int parent = gltf_bone_node->parent;
-		if (parent != -1) {
-			const int parent_index = s->find_bone(state.nodes[parent]->name);
-			const int bone_index = s->find_bone(bone_name);
-			s->set_bone_parent(bone_index, parent_index);
-			n->godot_nodes.push_back(s);
-			n->joints.write[i].godot_bone_index = bone_index;
+		if (parent == -1) {
+			continue;
 		}
+		const int parent_index = s->find_bone(state.nodes[parent]->name);
+		const int bone_index = s->find_bone(bone_name);
+		ERR_EXPLAIN("GLTF can't find bone parent: " + state.nodes[parent]->name);
+		ERR_CONTINUE(parent_index == -1);
+		ERR_EXPLAIN("GLTF can't find bone: " + bone_name);
+		ERR_CONTINUE(bone_index == -1);
+		s->set_bone_parent(bone_index, parent_index);
+		n->godot_nodes.push_back(s);
+		n->joints.write[i].godot_bone_index = bone_index;
 	}
 
 	for (int i = 0; i < n->children.size(); i++) {
@@ -2272,4 +2277,8 @@ Ref<Animation> EditorSceneImporterGLTF::import_animation(const String &p_path, u
 }
 
 EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
+}
+
+String EditorSceneImporterGLTF::_canonicalize_name(String p_name) {
+	return p_name.replace(":", "_");
 }
