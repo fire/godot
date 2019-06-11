@@ -626,6 +626,9 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			Node *node = state.ap->get_owner()->find_node(node_name);
+			if (!Object::cast_to<MeshInstance>(node) && !Object::cast_to<Light>(node) && !Object::cast_to<Camera>(node)) {
+				continue;
+			}
 			if (state.removed_nodes.has(node_name)) {
 				continue;
 			}
