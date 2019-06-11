@@ -1278,11 +1278,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
-			if (ai_mesh->HasBones()) {
-				godot_pos = mesh_xform.xform(godot_pos);
-			} else {
-				godot_pos = p_mesh_xform.xform(godot_pos);
-			}
+			godot_pos = mesh_xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
