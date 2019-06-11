@@ -685,12 +685,6 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			Ref<Mesh> mesh = mesh_instance->get_mesh();
 			ERR_CONTINUE(mesh.is_null());
 
-			for (size_t k = 0; k < anim_mesh->mNumKeys; k++) {
-				for (size_t j = 0; j < anim_mesh->mKeys[k].mNumValuesAndWeights; j++) {
-					length = MAX(length, anim_mesh->mKeys[k].mTime / ticks_per_second);
-				}
-			}
-
 			float base_weight = 0.0f;
 			if (anim_mesh->mNumKeys != 0) {
 				if (anim_mesh->mKeys[0].mNumValuesAndWeights) {
@@ -802,22 +796,6 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 		ERR_CONTINUE(ap->get_owner()->has_node(node_path) == false);
 
 		if (F[k]->mNumRotationKeys || F[k]->mNumPositionKeys || F[k]->mNumScalingKeys) {
-
-			if (is_rotation) {
-				for (size_t i = 0; i < F[k]->mNumRotationKeys; i++) {
-					length = MAX(length, F[k]->mRotationKeys[i].mTime / ticks_per_second);
-				}
-			}
-			if (is_translation) {
-				for (size_t i = 0; i < F[k]->mNumPositionKeys; i++) {
-					length = MAX(length, F[k]->mPositionKeys[i].mTime / ticks_per_second);
-				}
-			}
-			if (is_scaling) {
-				for (size_t i = 0; i < F[k]->mNumScalingKeys; i++) {
-					length = MAX(length, F[k]->mScalingKeys[i].mTime / ticks_per_second);
-				}
-			}
 			
 			if (is_translation) {
 				for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
