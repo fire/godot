@@ -550,42 +550,26 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 	length = anim->mDuration / ticks_per_second;
 	if (anim) {
 		Map<String, Vector<const aiNodeAnim *> > node_tracks;
-		Map<String, Vector<const aiNodeAnim *> > anim_tracks;
+		Map<String, Vector<const aiNodeAnim *> > bone_tracks;
 		for (size_t i = 0; i < anim->mNumChannels; i++) {
 			const aiNodeAnim *track = anim->mChannels[i];
 			String node_name = _assimp_string_to_string(track->mNodeName);
 			NodePath node_path = node_name;
 			bool is_bone = false;
 			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
+				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
 				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
 				if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") {
-					for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-						String _bone_name = state.skeleton->get_bone_name(i);
-						Vector<const aiNodeAnim *> ai_tracks;
-
-						if (state.skeleton->find_bone(node_name) == -1) {
-							continue;
-						}
-						for (size_t j = 0; j < anim->mNumChannels; j++) {
-							if (_assimp_string_to_string(anim->mChannels[j]->mNodeName).split(ASSIMP_FBX_KEY).size() == 1) {
-								continue;
-							}
-							String track_name = _assimp_string_to_string(anim->mChannels[j]->mNodeName).split(ASSIMP_FBX_KEY)[0];
-							if (track_name != _bone_name) {
-								continue;
-							}
-							if (state.skeleton->find_bone(_bone_name) == -1) {
-								continue;
-							}
-							ai_tracks.push_back(anim->mChannels[j]);
-						}
-						if (ai_tracks.size() == 0) {
-							continue;
-						}
-						anim_tracks.insert(_bone_name, ai_tracks);
-						break;
+					Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bone_name);
+					Vector<const aiNodeAnim *> ai_tracks;
+					if (E) {
+						ai_tracks = E->get();
+						ai_tracks.push_back(track);
+					} else {
+						ai_tracks.push_back(track);
 					}
-					continue;
+					bone_tracks.insert(bone_name, ai_tracks);
+					is_bone = true;
 				}
 			}
 			for (Map<Skeleton *, MeshInstance *>::Element *E = state.skeletons.front(); E; E = E->next()) {
@@ -605,24 +589,35 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			if (is_bone) {
 				continue;
 			}
-			if (!state.ap->get_owner()->find_node(node_name)) {
-				continue;
-			}
-			Node *node = state.ap->get_owner()->find_node(node_name);
-			Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
-			String bare_name = split_name[0];
-			if (node != NULL && split_name.size() > 1) {
-				Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
+			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
+			const String bare_name = split_name[0];
+			if (split_name.size() > 1) {
+				const Node *node = state.ap->get_owner()->find_node(bare_name);
+				Spatial *spatial = memnew(Spatial);
+				if (node->get_class_name() == spatial->get_class_name()) {
+					continue;
+				}
+				memdelete(spatial);
+				const Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
 				Vector<const aiNodeAnim *> ai_tracks;
 				if (E) {
 					ai_tracks = E->get();
-					ai_tracks.push_back(anim->mChannels[i]);
+					ai_tracks.push_back(track);
 				} else {
-					ai_tracks.push_back(anim->mChannels[i]);
+					ai_tracks.push_back(track);
 				}
 				node_tracks.insert(bare_name, ai_tracks);
 				continue;
 			}
+			const Node *node = state.ap->get_owner()->find_node(node_name);
+			if (!state.ap->get_owner()->find_node(node_name)) {
+				continue;
+			}
+			Spatial *spatial = memnew(Spatial);
+			if (node->get_class_name() == spatial->get_class_name()) {
+				continue;
+			}
+			memdelete(spatial);
 			const String path = state.ap->get_owner()->get_path_to(node);
 			if (path.empty()) {
 				print_verbose("Can't animate path");
@@ -634,7 +629,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
 		}
-		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = anim_tracks.front(); F; F = F->next()) {
+		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = bone_tracks.front(); F; F = F->next()) {
 			_insert_pivot_anim_track(state.meshes, F->key(), F->get(), state.ap, state.skeleton, length, ticks_per_second, animation, state.bake_fps, state.path, state.scene);
 		}
 		for (Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.front(); E; E = E->next()) {
