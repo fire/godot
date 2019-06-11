@@ -1054,6 +1054,17 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		p_parent->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
+		if (state.skeleton->get_bone_count() == 0) {
+			if (mesh_node->get_parent() == state.root) {
+				const aiNode *ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
+				Transform mesh_xform;
+				if (ai_mesh_node) {
+					mesh_xform = _get_global_ai_node_transform(state.scene, ai_mesh_node);
+				}
+				ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
+				state.skeleton->set_transform(mesh_xform);
+			}
+		}
 		{
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
@@ -1066,7 +1077,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			}
 			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner, child_node->get_transform());
 		}
-
 		if (state.skeleton->get_bone_count() > 0) {
 			aiNode *skeleton_root = NULL;
 			_set_bone_parent(state.skeleton, state.scene);
@@ -1299,7 +1309,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
-	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
@@ -1407,10 +1416,18 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
-			Transform mesh_xform = _get_global_ai_node_transform(state.scene, p_node).affine_inverse() * p_mesh_xform;
+			const Transform mesh_parent_global_xform = _get_global_ai_node_transform(state.scene, p_node->mParent);
+			Transform mesh_xform = p_mesh_xform;
+			mesh_xform = mesh_parent_global_xform.affine_inverse() * p_mesh_xform;
 			if (p_mesh_instance->get_parent() != state.root) {
-				godot_pos = mesh_xform.xform(godot_pos);
+				bool has_pivot = mesh_xform.basis != Basis();
+				if (!has_pivot) {
+					mesh_xform = Transform();
+				}
+			} else {
+				mesh_xform = _get_global_ai_node_transform(state.scene, p_node);
 			}
+			godot_pos = mesh_xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
