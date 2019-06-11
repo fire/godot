@@ -575,10 +575,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 
 			Skeleton *sk = state.skeleton;
 			const String path = state.ap->get_owner()->get_path_to(sk);
-			if (path.empty()) {
-				continue;
-			}
-			if (sk->find_bone(node_name) != -1) {
+			if (!path.empty() && sk->find_bone(node_name) != -1) {
 				node_path = path + ":" + node_name;
 				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
