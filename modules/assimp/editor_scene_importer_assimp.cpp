@@ -381,7 +381,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 
-	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+	if (state.skeleton->get_bone_count() && !state.skeleton->get_parent()) {
 		aiNode *node = skeleton_root;
 		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
 			while (node->mParent) {
@@ -396,10 +396,10 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		if (armature_node == state.scene->mRootNode) {
 			state.root->add_child(state.skeleton);
 			state.skeleton->set_owner(state.root);
-			break;
+		} else {
+			state.root->find_node(_assimp_string_to_string(armature_node->mName))->get_parent()->add_child(state.skeleton);
+			state.skeleton->set_owner(state.root);
 		}
-		state.root->find_node(_assimp_string_to_string(armature_node->mName))->get_parent()->add_child(state.skeleton);
-		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
@@ -796,7 +796,7 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 		ERR_CONTINUE(ap->get_owner()->has_node(node_path) == false);
 
 		if (F[k]->mNumRotationKeys || F[k]->mNumPositionKeys || F[k]->mNumScalingKeys) {
-			
+
 			if (is_translation) {
 				for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
 					aiVector3D pos = F[k]->mPositionKeys[p].mValue;
