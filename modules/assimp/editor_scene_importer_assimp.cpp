@@ -150,7 +150,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			//aiProcess_OptimizeGraph |
 			//aiProcess_Debone |
 			//aiProcess_EmbedTextures |
-			aiProcess_SplitByBoneCount |
+			//aiProcess_SplitByBoneCount |
 			0;
 	const aiScene *ai_scene = importer.ReadFile(s_path.c_str(),
 			post_process_Steps);
