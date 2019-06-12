@@ -586,11 +586,9 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const String bare_name = split_name[0];
 			if (split_name.size() > 1) {
 				const Node *node = state.ap->get_owner()->find_node(bare_name);
-				Spatial *spatial = memnew(Spatial);
-				if (node->get_class_name() == spatial->get_class_name()) {
+				if (sk->find_bone(bare_name) == -1) {
 					continue;
 				}
-				memdelete(spatial);
 				const Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
 				Vector<const aiNodeAnim *> ai_tracks;
 				if (E) {
@@ -603,14 +601,9 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			const Node *node = state.ap->get_owner()->find_node(node_name);
-			if (!state.ap->get_owner()->find_node(node_name)) {
+			if (!state.ap->get_owner()->find_node(node_name) && sk->find_bone(node_name) != -1) {
 				continue;
 			}
-			Spatial *spatial = memnew(Spatial);
-			if (node->get_class_name() == spatial->get_class_name()) {
-				continue;
-			}
-			memdelete(spatial);
 			node_path = state.ap->get_owner()->get_path_to(node);
 			if (state.ap->get_owner()->has_node(node_path) == false) {
 				continue;
@@ -863,11 +856,11 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _ai_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
 			String ext = p_path.get_file().get_extension().to_lower();
-			if (ext == "fbx") {
-				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
-				mesh_xform.basis = Basis();
-				xform = mesh_xform.affine_inverse() * xform;
-			}
+			//if (ext == "fbx") {
+			//	Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
+			//	mesh_xform.basis = Basis();
+			//	xform = mesh_xform.affine_inverse() * xform;
+			//}
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
 	}
