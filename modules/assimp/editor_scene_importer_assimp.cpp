@@ -784,9 +784,10 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 		if (scale_values.size()) {
 			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
-		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
-		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
-
+		if (pos_values.size() || rot_values.size() || scale_values.size()) {
+			animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
+			animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
+		}
 		if (last) {
 			break;
 		}
