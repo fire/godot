@@ -884,7 +884,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
-		p_parent->add_child(mesh_node);
+		child_node->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
 		if (state.skeleton->get_bone_count() == 0) {
 			if (mesh_node->get_parent() == state.root) {
@@ -897,6 +897,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				state.skeleton->set_transform(mesh_xform);
 			}
 		}
+		mesh_node->set_name(node_name + mesh_node->get_class_name());
 		{
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
@@ -948,10 +949,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			state.mesh_skeletons.insert(mesh_node, state.skeleton);
 		}
 		Transform xform = child_node->get_transform();
-		mesh_node->set_transform(xform);
-		child_node->get_parent()->remove_child(child_node);
-		memdelete(child_node);
-		child_node = mesh_node;
 	} else if (state.light_names.has(node_name)) {
 		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(light_node == NULL);
