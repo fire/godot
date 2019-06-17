@@ -176,7 +176,7 @@ private:
 	void _generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner);
 	void _set_bone_parent(Skeleton *p_skeleton, const aiScene *p_scene);
 	aiNode *_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask);
-	Transform _format_rot_xform(const String p_path, const aiScene *p_scene);
+	Transform _format_rot_xform(State &state);
 	void _get_track_set(const aiScene *p_scene, Set<String> &tracks);
 	void _insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path);
 	void _add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner, Transform p_mesh_xform);

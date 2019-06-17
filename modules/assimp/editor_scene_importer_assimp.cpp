@@ -303,6 +303,11 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		state.ap->set_owner(state.root);
 		state.ap->set_name(TTR("AnimationPlayer"));
 	}
+
+	if (state.path.get_extension().to_lower() == "fbx") {
+		state.root->set_transform(_format_rot_xform(state) * state.root->get_transform());
+	}
+
 	String ext = state.path.get_file().get_extension().to_lower();
 	for (size_t l = 0; l < state.scene->mNumLights; l++) {
 		Light *light = NULL;
@@ -382,22 +387,19 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 
-	if (state.skeleton->get_bone_count()) {
-		//aiNode *node = skeleton_root;
-		//while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-		//	while (node->mParent) {
-		//		if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-		//			break;
-		//		}
-		//		node = node->mParent;
-		//	}
-		//	node = node->mParent;
-		//}
-		//const aiNode *armature_node = node;
-		//Transform xform = state.skeleton->get_transform() * _get_global_ai_node_transform(state.scene, armature_node);
-		//Transform xform = Node::cast_to<Spatial>(state.skeleton->get_parent())->get_transform();
-		//state.skeleton->set_transform(xform);
-	}
+	//if (state.skeleton->get_bone_count()) {
+	//	aiNode *node = skeleton_root;
+	//	while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+	//		while (node->mParent) {
+	//			if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+	//				break;
+	//			}
+	//			node = node->mParent;
+	//		}
+	//		node = node->mParent;
+	//	}
+	//	const aiNode *armature_node = node;
+	//}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
 		String path = String(E->key()->get_path_to(E->key()->get_owner()));
@@ -557,7 +559,6 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 		for (size_t i = 0; i < anim->mNumChannels; i++) {
 			const aiNodeAnim *track = anim->mChannels[i];
 			String node_name = _assimp_string_to_string(track->mNodeName);
-			NodePath node_path = node_name;
 			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
 				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
 				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
@@ -578,8 +579,10 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			Skeleton *sk = state.skeleton;
 			const String path = state.ap->get_owner()->get_path_to(sk);
 			bool is_node_bone = sk->find_bone(node_name) != -1;
+			NodePath node_path;
 			if (!path.empty() && is_node_bone) {
 				node_path = path + ":" + node_name;
+				ERR_CONTINUE(node_path.is_empty());
 				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
 				continue;
@@ -608,6 +611,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			node_path = state.ap->get_owner()->get_path_to(node);
+			ERR_CONTINUE(node_path.is_empty());
 			if (state.ap->get_owner()->has_node(node_path) == false) {
 				continue;
 			}
@@ -621,7 +625,9 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const String prop_name = _assimp_string_to_string(anim_mesh->mName);
 			const String mesh_name = prop_name.split("*")[0];
 			ERR_CONTINUE(prop_name.split("*").size() != 2);
-			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name));
+			MeshInstance *mi = memnew(MeshInstance);
+			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name + mi->get_class_name()));
+			memdelete(mi);
 			ERR_CONTINUE(mesh_instance == NULL);
 			if (state.ap->get_owner()->find_node(mesh_instance->get_name()) == NULL) {
 				print_verbose("Can't find mesh in scene: " + mesh_instance->get_name());
@@ -702,18 +708,14 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 	bool is_bone = state.skeleton->find_bone(p_node_name) != -1;
 	if (!is_bone) {
 		Node *node = state.ap->get_owner()->find_node(p_node_name);
-		if (node == NULL) {
-			return;
-		}
+		ERR_FAIL_COND(!node);
 		const String path = state.ap->get_owner()->get_path_to(node);
 		node_path = path;
 	} else {
 		const String path = state.ap->get_owner()->get_path_to(state.skeleton);
 		node_path = path + ":" + p_node_name;
 	}
-	if (node_path.is_empty()) {
-		return;
-	}
+	ERR_FAIL_COND(node_path.is_empty());
 
 	Vector<Vector3> pos_values;
 	Vector<float> pos_times;
@@ -925,7 +927,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 							state.skeleton->add_bone(node_name);
 							int32_t idx = state.skeleton->find_bone(node_name);
 							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
-							xform = _format_rot_xform(state.path, state.scene) * xform;
 							state.skeleton->set_bone_rest(idx, xform);
 							break;
 						}
@@ -939,7 +940,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_set_bone_parent(state.skeleton, state.scene);
 
 			state.skeletons.insert(state.skeleton, mesh_node);
-			state.mesh_skeletons.insert(mesh_node, state.skeleton);
 		}
 		Transform xform = child_node->get_transform();
 	} else if (state.light_names.has(node_name)) {
@@ -1007,7 +1007,9 @@ aiNode *EditorSceneImporterAssimp::_assimp_find_node(aiNode *ai_child_node, cons
 	return target;
 }
 
-Transform EditorSceneImporterAssimp::_format_rot_xform(const String p_path, const aiScene *p_scene) {
+Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
+	const aiScene *p_scene = state.scene;
+	String p_path = state.path;
 	String ext = p_path.get_file().get_extension().to_lower();
 
 	Transform xform;
@@ -1769,6 +1771,9 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 		mesh->surface_set_material(i, mat);
 		mesh->surface_set_name(i, _assimp_string_to_string(ai_mesh->mName));
 		state.mesh_count++;
+		if (ai_mesh->HasBones()) {
+			state.mesh_skeletons.insert(p_mesh_instance, state.skeleton);
+		}
 		print_verbose(String("Open Asset Import: Created mesh (including instances) ") + _assimp_string_to_string(ai_mesh->mName) + " " + itos(state.mesh_count) + " of " + itos(state.scene->mNumMeshes));
 	}
 	p_mesh_instance->set_mesh(mesh);
