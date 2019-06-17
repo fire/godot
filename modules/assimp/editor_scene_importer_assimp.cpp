@@ -586,7 +586,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const String bare_name = split_name[0];
 			if (split_name.size() > 1) {
 				const Node *node = state.ap->get_owner()->find_node(bare_name);
-				if (sk->find_bone(bare_name) == -1) {
+				if (sk->find_bone(bare_name) != -1) {
 					continue;
 				}
 				const Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
