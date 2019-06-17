@@ -394,8 +394,9 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		//	node = node->mParent;
 		//}
 		//const aiNode *armature_node = node;
-		state.root->add_child(state.skeleton);
-		state.skeleton->set_owner(state.root);
+		//Transform xform = state.skeleton->get_transform() * _get_global_ai_node_transform(state.scene, armature_node);
+		//Transform xform = Node::cast_to<Spatial>(state.skeleton->get_parent())->get_transform();
+		//state.skeleton->set_transform(xform);
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
@@ -886,17 +887,17 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		child_node->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
-		if (state.skeleton->get_bone_count() == 0) {
-			if (mesh_node->get_parent() == state.root) {
-				const aiNode *ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-				Transform mesh_xform;
-				if (ai_mesh_node) {
-					mesh_xform = _get_global_ai_node_transform(state.scene, ai_mesh_node);
-				}
-				ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-				state.skeleton->set_transform(mesh_xform);
-			}
-		}
+		//if (state.skeleton->get_bone_count() == 0) {
+		//if (mesh_node->get_parent() == state.root) {
+		//const aiNode *ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
+		//Transform mesh_xform;
+		//if (ai_mesh_node) {
+		//	mesh_xform = _get_global_ai_node_transform(state.scene, ai_mesh_node);
+		//}
+		//ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
+		//state.skeleton->set_transform(mesh_xform);
+		//}
+		//}
 		mesh_node->set_name(node_name + mesh_node->get_class_name());
 		{
 			Map<String, bool> mesh_bones;
@@ -911,6 +912,20 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner, child_node->get_transform());
 		}
 		if (state.skeleton->get_bone_count() > 0) {
+			bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+			if (!state.skeleton->get_parent()) {
+				//if (is_pivoted) {
+				//	child_node->add_child(state.skeleton);
+				//} else {
+				//state.root->add_child(state.skeleton);
+				//}
+				child_node->add_child(state.skeleton);
+				state.skeleton->set_owner(state.root);
+				bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+				if (is_pivoted) {
+					state.skeleton->set_transform(_get_global_ai_node_transform(state.scene, p_node).affine_inverse());
+				}
+			}
 			aiNode *skeleton_root = NULL;
 			_set_bone_parent(state.skeleton, state.scene);
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
@@ -1112,18 +1127,23 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
-	const Transform mesh_parent_global_xform = _get_global_ai_node_transform(state.scene, p_node->mParent);
-	Transform mesh_xform = p_mesh_xform;
-	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
-	if (p_mesh_instance->get_parent() != state.root) {
-		mesh_xform = mesh_parent_global_xform.affine_inverse();
-		bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
-		if (!has_pivot) {
-			mesh_xform = Transform();
-		}
-	} else {
-		mesh_xform = mesh_parent_global_xform;
-	}
+	Transform mesh_xform;
+
+	//const Transform mesh_parent_global_xform;
+	////	= _get_global_ai_node_transform(state.scene, p_node->mParent);
+	//Transform mesh_xform = p_mesh_xform;
+	//bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+	//if (p_mesh_instance->get_parent() != state.root) {
+	//	//mesh_xform = mesh_parent_global_xform.affine_inverse();
+	//	bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
+	//	if (!has_pivot) {
+	//		mesh_xform = Transform();
+	//	}
+	//} else {
+	//	mesh_xform = mesh_parent_global_xform;
+	//}
+	//mesh_xform = mesh_xform * p_mesh_xform.affine_inverse();
+
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
