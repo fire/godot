@@ -551,18 +551,16 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 
 	length = anim->mDuration / ticks_per_second;
 	if (anim) {
-		Map<String, Vector<const aiNodeAnim *> > node_tracks;
-		Map<String, Vector<const aiNodeAnim *> > bone_tracks;
+		Map<String, Vector<const aiNodeAnim *> > pivot_tracks;
 		for (size_t i = 0; i < anim->mNumChannels; i++) {
 			const aiNodeAnim *track = anim->mChannels[i];
 			String node_name = _assimp_string_to_string(track->mNodeName);
 			NodePath node_path = node_name;
-			bool is_bone = false;
 			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
 				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
 				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
 				if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling" && state.skeleton->find_bone(bone_name) != -1) {
-					Map<String, Vector<const aiNodeAnim *> >::Element *E = bone_tracks.find(bone_name);
+					Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
 					Vector<const aiNodeAnim *> ai_tracks;
 					if (E) {
 						ai_tracks = E->get();
@@ -570,14 +568,15 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 					} else {
 						ai_tracks.push_back(track);
 					}
-					bone_tracks.insert(bone_name, ai_tracks);
+					pivot_tracks.insert(bone_name, ai_tracks);
 					continue;
 				}
 			}
 
 			Skeleton *sk = state.skeleton;
 			const String path = state.ap->get_owner()->get_path_to(sk);
-			if (!path.empty() && sk->find_bone(node_name) != -1) {
+			bool is_node_bone = sk->find_bone(node_name) != -1;
+			if (!path.empty() && is_node_bone) {
 				node_path = path + ":" + node_name;
 				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
@@ -587,10 +586,11 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const String bare_name = split_name[0];
 			if (split_name.size() > 1) {
 				const Node *node = state.ap->get_owner()->find_node(bare_name);
-				if (sk->find_bone(bare_name) != -1) {
+				bool is_bone = sk->find_bone(bare_name) != -1;
+				if (is_bone) {
 					continue;
 				}
-				const Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.find(bare_name);
+				const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
 				Vector<const aiNodeAnim *> ai_tracks;
 				if (E) {
 					ai_tracks = E->get();
@@ -598,7 +598,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				} else {
 					ai_tracks.push_back(track);
 				}
-				node_tracks.insert(bare_name, ai_tracks);
+				pivot_tracks.insert(bare_name, ai_tracks);
 				continue;
 			}
 			const Node *node = state.ap->get_owner()->find_node(node_name);
@@ -611,11 +611,8 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
 		}
-		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = bone_tracks.front(); F; F = F->next()) {
-			_insert_pivot_anim_track(state.meshes, F->key(), F->get(), state.ap, state.skeleton, length, ticks_per_second, animation, state.bake_fps, state.path, state.scene);
-		}
-		for (Map<String, Vector<const aiNodeAnim *> >::Element *E = node_tracks.front(); E; E = E->next()) {
-			_insert_pivot_anim_track(state.meshes, E->key(), E->get(), state.ap, NULL, length, ticks_per_second, animation, state.bake_fps, state.path, state.scene);
+		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
+			_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
 		}
 		for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
 			const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
@@ -698,24 +695,19 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 	}
 }
 
-void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstance *> p_meshes, const String p_node_name, Vector<const aiNodeAnim *> F, AnimationPlayer *ap, Skeleton *sk, float &length, float ticks_per_second, Ref<Animation> animation, int p_bake_fps, const String &p_path, const aiScene *p_scene) {
+void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const String p_node_name, Vector<const aiNodeAnim *> F, float &length, float ticks_per_second, Ref<Animation> animation) {
 	NodePath node_path;
-	if (sk != NULL) {
-		const String path = ap->get_owner()->get_path_to(sk);
-		if (path.empty()) {
-			return;
-		}
-		if (sk->find_bone(p_node_name) == -1) {
-			return;
-		}
-		node_path = path + ":" + p_node_name;
-	} else {
-		Node *node = ap->get_owner()->find_node(p_node_name);
+	bool is_bone = state.skeleton->find_bone(p_node_name) != -1;
+	if (!is_bone) {
+		Node *node = state.ap->get_owner()->find_node(p_node_name);
 		if (node == NULL) {
 			return;
 		}
-		const String path = ap->get_owner()->get_path_to(node);
+		const String path = state.ap->get_owner()->get_path_to(node);
 		node_path = path;
+	} else {
+		const String path = state.ap->get_owner()->get_path_to(state.skeleton);
+		node_path = path + ":" + p_node_name;
 	}
 	if (node_path.is_empty()) {
 		return;
@@ -744,7 +736,7 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 		} else {
 			continue;
 		}
-		ERR_CONTINUE(ap->get_owner()->has_node(node_path) == false);
+		ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 
 		if (F[k]->mNumRotationKeys || F[k]->mNumPositionKeys || F[k]->mNumScalingKeys) {
 
@@ -776,7 +768,7 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(const Vector<MeshInstan
 	int32_t track_idx = animation->get_track_count();
 	animation->add_track(Animation::TYPE_TRANSFORM);
 	animation->track_set_path(track_idx, node_path);
-	float increment = 1.0 / float(p_bake_fps);
+	float increment = 1.0 / float(state.bake_fps);
 	float time = 0.0;
 	bool last = false;
 	while (true) {
