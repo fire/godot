@@ -473,6 +473,9 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
 			scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
 		}
+		if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
+			return;
+		}
 		while (true) {
 			Vector3 pos = base_pos;
 			Quat rot = base_rot;
@@ -506,7 +509,6 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 
 			animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
 			animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
-
 			if (last) {
 				break;
 			}
@@ -771,6 +773,9 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 	float increment = 1.0 / float(state.bake_fps);
 	float time = 0.0;
 	bool last = false;
+	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
+		return;
+	}
 	while (true) {
 		Vector3 pos = Vector3();
 		Quat rot = Quat();
@@ -783,10 +788,6 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 		}
 		if (scale_values.size()) {
 			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
-		}
-		if (pos_values.size() || rot_values.size() || scale_values.size()) {
-			animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
-			animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
 		}
 		if (last) {
 			break;
