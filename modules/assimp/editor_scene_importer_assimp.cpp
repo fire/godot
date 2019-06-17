@@ -887,17 +887,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		child_node->add_child(mesh_node);
 		mesh_node->set_owner(p_owner);
-		//if (state.skeleton->get_bone_count() == 0) {
-		//if (mesh_node->get_parent() == state.root) {
-		//const aiNode *ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-		//Transform mesh_xform;
-		//if (ai_mesh_node) {
-		//	mesh_xform = _get_global_ai_node_transform(state.scene, ai_mesh_node);
-		//}
-		//ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-		//state.skeleton->set_transform(mesh_xform);
-		//}
-		//}
 		mesh_node->set_name(node_name + mesh_node->get_class_name());
 		{
 			Map<String, bool> mesh_bones;
@@ -914,11 +903,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		if (state.skeleton->get_bone_count() > 0) {
 			bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
 			if (!state.skeleton->get_parent()) {
-				//if (is_pivoted) {
-				//	child_node->add_child(state.skeleton);
-				//} else {
-				//state.root->add_child(state.skeleton);
-				//}
 				child_node->add_child(state.skeleton);
 				state.skeleton->set_owner(state.root);
 				bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
