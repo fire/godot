@@ -943,14 +943,12 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				}
 			}
 			_set_bone_parent(state.skeleton, state.scene);
-			bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+
 			state.skeletons.insert(state.skeleton, mesh_node);
 			state.mesh_skeletons.insert(mesh_node, state.skeleton);
-
-		} else if (state.skeleton->get_bone_count() == 0) {
-			Transform xform = child_node->get_transform();
-			mesh_node->set_transform(xform);
 		}
+		Transform xform = child_node->get_transform();
+		mesh_node->set_transform(xform);
 		child_node->get_parent()->remove_child(child_node);
 		memdelete(child_node);
 		child_node = mesh_node;
@@ -1119,14 +1117,15 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 	bool has_uvs = false;
 	const Transform mesh_parent_global_xform = _get_global_ai_node_transform(state.scene, p_node->mParent);
 	Transform mesh_xform = p_mesh_xform;
-	mesh_xform = mesh_parent_global_xform.affine_inverse() * p_mesh_xform;
+	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
 	if (p_mesh_instance->get_parent() != state.root) {
-		bool has_pivot = mesh_xform.basis != Basis() && p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+		mesh_xform = mesh_parent_global_xform.affine_inverse();
+		bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
 		if (!has_pivot) {
 			mesh_xform = Transform();
 		}
 	} else {
-		mesh_xform = _get_global_ai_node_transform(state.scene, p_node);
+		mesh_xform = mesh_parent_global_xform;
 	}
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
