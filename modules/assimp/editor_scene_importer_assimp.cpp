@@ -1011,86 +1011,36 @@ Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
 	const aiScene *p_scene = state.scene;
 	String p_path = state.path;
 	String ext = p_path.get_file().get_extension().to_lower();
-
 	Transform xform;
-	int32_t up_axis = 0;
-	Vector3 up_axis_vec3 = Vector3();
-
-	int32_t front_axis = 0;
-	Vector3 front_axis_vec3 = Vector3();
-
-	if (p_scene->mMetaData != NULL) {
-		p_scene->mMetaData->Get("UpAxis", up_axis);
-		if (up_axis == AssetImportFbx::UP_VECTOR_AXIS_X) {
-			if (p_scene->mMetaData != NULL) {
-				p_scene->mMetaData->Get("FrontAxis", front_axis);
-				if (front_axis == AssetImportFbx::FRONT_PARITY_EVEN) {
-					// y
-				} else if (front_axis == AssetImportFbx::FRONT_PARITY_ODD) {
-					// z
-					//front_axis_vec3 = Vector3(0.0f, Math::deg2rad(-180.f), 0.0f);
-				}
-			}
-		} else if (up_axis == AssetImportFbx::UP_VECTOR_AXIS_Y) {
-			up_axis_vec3 = Vector3(Math::deg2rad(-90.f), 0.0f, 0.0f);
-			if (p_scene->mMetaData != NULL) {
-				p_scene->mMetaData->Get("FrontAxis", front_axis);
-				if (front_axis == AssetImportFbx::FRONT_PARITY_EVEN) {
-					// x
-				} else if (front_axis == AssetImportFbx::FRONT_PARITY_ODD) {
-					// z
-				}
-			}
-		} else if (up_axis == AssetImportFbx::UP_VECTOR_AXIS_Z) {
-			up_axis_vec3 = Vector3(0.0f, Math ::deg2rad(90.f), 0.0f);
-			if (p_scene->mMetaData != NULL) {
-				p_scene->mMetaData->Get("FrontAxis", front_axis);
-				if (front_axis == AssetImportFbx::FRONT_PARITY_EVEN) {
-					// x
-				} else if (front_axis == AssetImportFbx::FRONT_PARITY_ODD) {
-					// y
-				}
-			}
+	if (ext == "fbx") {
+		int32_t up_axis = 0;
+		int32_t up_axis_sign = 0;
+		int32_t front_axis = 0;
+		int32_t front_axis_sign = 0;
+		int32_t coord_axis;
+		int32_t coord_axis_sign = 0;
+		if (p_scene->mMetaData != NULL) {
+			p_scene->mMetaData->Get("UpAxis", up_axis);
+			p_scene->mMetaData->Get("UpAxisSign", up_axis_sign);
+			p_scene->mMetaData->Get("FrontAxis", front_axis);
+			p_scene->mMetaData->Get("FrontAxisSign", front_axis_sign);
+			p_scene->mMetaData->Get("CoordAxis", coord_axis);
+			p_scene->mMetaData->Get("CoordAxisSign", coord_axis_sign);
 		}
+		AssetImportFbx::UpFrontCoord up_front_coord = { up_axis, up_axis_sign, front_axis, front_axis_sign, coord_axis, coord_axis_sign };
+		xform.basis.set_quat(_get_up_forward(up_front_coord));
 	}
-
-	int32_t up_axis_sign = 0;
-	if (p_scene->mMetaData != NULL) {
-		p_scene->mMetaData->Get("UpAxisSign", up_axis_sign);
-		up_axis_vec3 = up_axis_vec3 * up_axis_sign;
-	}
-
-	int32_t front_axis_sign = 0;
-	if (p_scene->mMetaData != NULL) {
-		p_scene->mMetaData->Get("FrontAxisSign", front_axis_sign);
-		front_axis_vec3 = front_axis_vec3 * front_axis_sign;
-	}
-
-	int32_t coord_axis = 0;
-	Vector3 coord_axis_vec3 = Vector3();
-	if (p_scene->mMetaData != NULL) {
-		p_scene->mMetaData->Get("CoordAxis", coord_axis);
-		if (coord_axis == AssetImportFbx::COORD_LEFT) {
-		} else if (coord_axis == AssetImportFbx::COORD_RIGHT) {
-		}
-	}
-
-	int32_t coord_axis_sign = 0;
-	if (p_scene->mMetaData != NULL) {
-		p_scene->mMetaData->Get("CoordAxisSign", coord_axis_sign);
-	}
-
-	Quat up_quat;
-	up_quat.set_euler(up_axis_vec3);
-
-	Quat coord_quat;
-	coord_quat.set_euler(coord_axis_vec3);
-
-	Quat front_quat;
-	front_quat.set_euler(front_axis_vec3);
-
-	xform.basis.set_quat(up_quat * coord_quat * front_quat);
 	return xform;
+}
+
+Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_up_front_coord) {
+	print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
+	print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
+	print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
+	print_line("Front Axis Sign: " + itos(p_up_front_coord.front_axis_sign));
+	print_line("Coord Axis: " + itos(p_up_front_coord.coord_axis));
+	print_line("Coord Sign: " + itos(p_up_front_coord.coord_axis_sign));
+	return Quat();
 }
 
 void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<String> &tracks) {
