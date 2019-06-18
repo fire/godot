@@ -387,19 +387,25 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 
-	//if (state.skeleton->get_bone_count()) {
-	//	aiNode *node = skeleton_root;
-	//	while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-	//		while (node->mParent) {
-	//			if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-	//				break;
-	//			}
-	//			node = node->mParent;
-	//		}
-	//		node = node->mParent;
-	//	}
-	//	const aiNode *armature_node = node;
-	//}
+	if (state.skeleton->get_bone_count()) {
+		aiNode *node = skeleton_root;
+		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+			while (node->mParent) {
+				if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+					break;
+				}
+				node = node->mParent;
+			}
+			node = node->mParent;
+		}
+		const aiNode *armature_node = node;
+		if (armature_node != state.scene->mRootNode) {
+			state.root->find_node(_assimp_string_to_string(armature_node->mName))->add_child(state.skeleton);			
+		} else {
+			state.root->add_child(state.skeleton);
+		}
+		state.skeleton->set_owner(state.root);
+	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
 		String path = String(E->key()->get_path_to(E->key()->get_owner()));
@@ -900,15 +906,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner, child_node->get_transform());
 		}
 		if (state.skeleton->get_bone_count() > 0) {
-			bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
-			if (!state.skeleton->get_parent()) {
-				child_node->add_child(state.skeleton);
-				state.skeleton->set_owner(state.root);
-				bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
-				if (is_pivoted) {
-					state.skeleton->set_transform(_get_global_ai_node_transform(state.scene, p_node).affine_inverse());
-				}
-			}
 			aiNode *skeleton_root = NULL;
 			_set_bone_parent(state.skeleton, state.scene);
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
