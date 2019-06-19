@@ -559,10 +559,11 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 		for (size_t i = 0; i < anim->mNumChannels; i++) {
 			const aiNodeAnim *track = anim->mChannels[i];
 			String node_name = _assimp_string_to_string(track->mNodeName);
+			NodePath node_path = node_name;
 			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
 				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
 				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
-				if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling" && state.skeleton->find_bone(bone_name) != -1) {
+				if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
 					Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
 					Vector<const aiNodeAnim *> ai_tracks;
 					if (E) {
@@ -590,7 +591,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
 			const String bare_name = split_name[0];
 			if (split_name.size() > 1) {
-				const Node *node = state.ap->get_owner()->find_node(bare_name);
+				// const Node *node = state.ap->get_owner()->find_node(bare_name);
 				bool is_bone = sk->find_bone(bare_name) != -1;
 				if (is_bone) {
 					continue;
@@ -725,7 +726,6 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 	Vector<float> rot_times;
 	Vector3 base_pos;
 	Quat base_rot;
-	Vector3 base_scale = Vector3(1, 1, 1);
 	bool is_translation = false;
 	bool is_rotation = false;
 	bool is_scaling = false;
@@ -920,7 +920,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 				while (node != NULL) {
-					int32_t bone = state.skeleton->find_bone(_assimp_string_to_string(node->mName));
 					String node_name = _assimp_string_to_string(node->mName);
 					if (!node_name.empty()) {
 						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(skeleton_root->mName).split(ASSIMP_FBX_KEY)[0])) {
@@ -944,7 +943,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 
 			state.skeletons.insert(state.skeleton, mesh_node);
 		}
-		Transform xform = child_node->get_transform();
 	} else if (state.light_names.has(node_name)) {
 		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(light_node == NULL);
@@ -1233,9 +1231,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					Ref<Texture> texture = _load_texture(state.scene, path);
 
 					if (texture != NULL) {
-						if (map_mode != NULL) {
-							_set_texture_mapping_mode(map_mode, texture);
-						}
+						_set_texture_mapping_mode(map_mode, texture);
 						mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
 						mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
 					}
