@@ -138,7 +138,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			aiProcess_SplitLargeMeshes |
 			aiProcess_Triangulate |
 			//aiProcess_GenUVCoords |
-			//aiProcess_FindDegenerates |
+			aiProcess_FindDegenerates |
 			aiProcess_RemoveComponent |
 			aiProcess_SortByPType |
 			aiProcess_FindInvalidData |
