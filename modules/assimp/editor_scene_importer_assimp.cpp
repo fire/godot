@@ -580,7 +580,6 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			Skeleton *sk = state.skeleton;
 			const String path = state.ap->get_owner()->get_path_to(sk);
 			bool is_node_bone = sk->find_bone(node_name) != -1;
-			NodePath node_path;
 			if (!path.empty() && is_node_bone) {
 				node_path = path + ":" + node_name;
 				ERR_CONTINUE(node_path.is_empty());
@@ -613,7 +612,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 			node_path = state.ap->get_owner()->get_path_to(node);
 			ERR_CONTINUE(node_path.is_empty());
-			if (state.ap->get_owner()->has_node(node_path) == false) {
+			if (!state.ap->get_owner()->has_node(node_path)) {
 				continue;
 			}
 			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
@@ -888,17 +887,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		mesh_node->set_owner(p_owner);
 		memdelete(child_node);
 		child_node = mesh_node;
-		if (state.skeleton->get_bone_count() == 0) {
-			if (mesh_node->get_parent() == state.root) {
-				const aiNode *ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-				Transform mesh_xform;
-				if (ai_mesh_node) {
-					mesh_xform = _get_global_ai_node_transform(state.scene, ai_mesh_node);
-				}
-				ai_mesh_node = _assimp_find_node(state.scene->mRootNode, _assimp_string_to_string(p_node->mName));
-				state.skeleton->set_transform(mesh_xform);
-			}
-		}
 		{
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
