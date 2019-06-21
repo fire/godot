@@ -128,10 +128,10 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	//importer.SetPropertyFloat(AI_CONFIG_PP_DB_THRESHOLD, 1.0f);
 	int32_t post_process_Steps = //aiProcess_CalcTangentSpace |
 			//aiProcess_FlipUVs |
-			//aiProcess_FlipWindingOrder |
+			aiProcess_FlipWindingOrder |
 			//aiProcess_DropNormals |
 			//aiProcess_GenSmoothNormals |
-			aiProcess_JoinIdenticalVertices |
+			// aiProcess_JoinIdenticalVertices |
 			aiProcess_ImproveCacheLocality |
 			aiProcess_LimitBoneWeights |
 			aiProcess_RemoveRedundantMaterials |
@@ -1187,13 +1187,8 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
 			const aiFace face = ai_mesh->mFaces[j];
-			ERR_FAIL_COND(face.mNumIndices != 3);
-			Vector<size_t> order;
-			order.push_back(2);
-			order.push_back(1);
-			order.push_back(0);
-			for (int32_t k = 0; k < order.size(); k++) {
-				st->add_index(face.mIndices[order[k]]);
+			for (int32_t k = 0; k < face.mNumIndices; k++) {
+				st->add_index(face.mIndices[k]);
 			}
 		}
 		if (ai_mesh->HasTangentsAndBitangents() == false && has_uvs) {
@@ -1651,7 +1646,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 				}
 				PoolVector3Array new_vertices = array_copy[VisualServer::ARRAY_VERTEX].duplicate(true);
 
-				for (int32_t l = 0; l < vertices.size(); l++) {
+				for (int32_t l = 0; l < new_vertices.size(); l++) {
 					PoolVector3Array::Write w = new_vertices.write();
 					w[l] = vertices[l];
 				}
