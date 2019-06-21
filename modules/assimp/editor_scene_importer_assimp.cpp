@@ -1649,12 +1649,11 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					vertices.write()[l] = position;
 				}
 				PoolVector3Array new_vertices = array_copy[VisualServer::ARRAY_VERTEX].duplicate(true);
-
+				ERR_CONTINUE(vertices.size() != new_vertices.size());
 				for (int32_t l = 0; l < new_vertices.size(); l++) {
 					PoolVector3Array::Write w = new_vertices.write();
 					w[l] = vertices[l];
 				}
-				ERR_CONTINUE(vertices.size() != new_vertices.size());
 				array_copy[VisualServer::ARRAY_VERTEX] = new_vertices;
 			}
 
@@ -1668,7 +1667,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					colors.write()[l] = color;
 				}
 				PoolColorArray new_colors = array_copy[VisualServer::ARRAY_COLOR].duplicate(true);
-
+				ERR_CONTINUE(colors.size() != new_colors.size());
 				for (int32_t l = 0; l < colors.size(); l++) {
 					PoolColorArray::Write w = new_colors.write();
 					w[l] = colors[l];
@@ -1685,7 +1684,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					normals.write()[l] = normal;
 				}
 				PoolVector3Array new_normals = array_copy[VisualServer::ARRAY_NORMAL].duplicate(true);
-
+				ERR_CONTINUE(normals.size() != new_normals.size());
 				for (int l = 0; l < normals.size(); l++) {
 					PoolVector3Array::Write w = new_normals.write();
 					w[l] = normals[l];
@@ -1708,7 +1707,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					new_tangents.write()[l + 2] = tangents[l].b;
 					new_tangents.write()[l + 3] = tangents[l].a;
 				}
-
 				array_copy[VisualServer::ARRAY_TANGENT] = new_tangents;
 			}
 
