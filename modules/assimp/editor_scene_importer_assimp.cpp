@@ -415,6 +415,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			E->key()->set_skeleton_path(path + "/" + E->get()->get_owner()->get_path_to(E->get()));
 		}
 	}
+	ResourceImporterScene::get_singleton()->_optimize_scene(state.root);
 	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
 		for (size_t i = 0; i < state.scene->mNumAnimations; i++) {
 			_import_animation(state, i);
