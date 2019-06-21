@@ -131,7 +131,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			aiProcess_FlipWindingOrder |
 			//aiProcess_DropNormals |
 			//aiProcess_GenSmoothNormals |
-			// aiProcess_JoinIdenticalVertices |
+			aiProcess_JoinIdenticalVertices |
 			aiProcess_ImproveCacheLocality |
 			aiProcess_LimitBoneWeights |
 			aiProcess_RemoveRedundantMaterials |
@@ -601,6 +601,10 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				if (is_bone) {
 					continue;
 				}
+				const Node *node = state.ap->get_owner()->find_node(node_name);
+				if (!node) {
+					continue;
+				}
 				const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
 				Vector<const aiNodeAnim *> ai_tracks;
 				if (E) {
@@ -613,7 +617,10 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				continue;
 			}
 			const Node *node = state.ap->get_owner()->find_node(node_name);
-			if (!state.ap->get_owner()->find_node(node_name) && sk->find_bone(node_name) != -1) {
+			if (!node) {
+				continue;
+			}
+			if (!state.ap->get_owner()->find_node(node_name) || sk->find_bone(node_name) != -1) {
 				continue;
 			}
 			node_path = state.ap->get_owner()->get_path_to(node);
@@ -1032,12 +1039,12 @@ Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
 }
 
 Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_up_front_coord) {
-	print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
-	print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
-	print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
-	print_line("Front Axis Sign: " + itos(p_up_front_coord.front_axis_sign));
-	print_line("Coord Axis: " + itos(p_up_front_coord.coord_axis));
-	print_line("Coord Sign: " + itos(p_up_front_coord.coord_axis_sign));
+	//print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
+	//print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
+	//print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
+	//print_line("Front Axis Sign: " + itos(p_up_front_coord.front_axis_sign));
+	//print_line("Coord Axis: " + itos(p_up_front_coord.coord_axis));
+	//print_line("Coord Sign: " + itos(p_up_front_coord.coord_axis_sign));
 	return Quat();
 }
 
@@ -1055,22 +1062,21 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
-	Transform mesh_xform;
 
-	//const Transform mesh_parent_global_xform;
-	////	= _get_global_ai_node_transform(state.scene, p_node->mParent);
-	//Transform mesh_xform = p_mesh_xform;
-	//bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
-	//if (p_mesh_instance->get_parent() != state.root) {
-	//	//mesh_xform = mesh_parent_global_xform.affine_inverse();
-	//	bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
-	//	if (!has_pivot) {
-	//		mesh_xform = Transform();
-	//	}
-	//} else {
-	//	mesh_xform = mesh_parent_global_xform;
-	//}
-	//mesh_xform = mesh_xform * p_mesh_xform.affine_inverse();
+	const Transform mesh_parent_global_xform;
+	//	= _get_global_ai_node_transform(state.scene, p_node->mParent);
+	Transform mesh_xform = p_mesh_xform;
+	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
+	if (p_mesh_instance->get_parent() != state.root) {
+		//mesh_xform = mesh_parent_global_xform.affine_inverse();
+		bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
+		if (!has_pivot) {
+			mesh_xform = Transform();
+		}
+	} else {
+		mesh_xform = mesh_parent_global_xform;
+	}
+	mesh_xform = mesh_xform * p_mesh_xform.affine_inverse();
 
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];

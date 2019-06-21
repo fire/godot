@@ -1343,10 +1343,6 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		_optimize_animations(scene, anim_optimizer_linerr, anim_optimizer_angerr, anim_optimizer_maxang);
 	}
 
-	if (p_options["nodes/optimizer/remove_unused_nodes"]) {
-		_optimize_scene(scene);
-	}
-
 	Array animation_clips;
 	{
 
@@ -1463,6 +1459,10 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		}
 	}
 
+	if (p_options["nodes/optimizer/remove_unused_nodes"]) {
+		_optimize_scene(scene);
+	}
+
 	progress.step(TTR("Saving..."), 104);
 
 	if (external_scenes) {
@@ -1522,27 +1522,36 @@ void ResourceImporterScene::_keep_node(Node *p_current, Node *p_owner, Set<Node 
 }
 
 void ResourceImporterScene::_optimize_scene(Node *scene) {
-	Set<String> removed_nodes;
+	Set<Node *> removed_nodes;
 	Set<Node *> keep_nodes;
 	_keep_node(scene, scene, keep_nodes);
 	_fill_kept_node(keep_nodes);
 	_filter_node(scene, scene, keep_nodes, removed_nodes);
+	_optimize_scene_clear_nodes(removed_nodes);
 	_clean_animation_player(scene);
 }
 
+void ResourceImporterScene::_optimize_scene_clear_nodes(Set<Node *> &removed_nodes) {
+	for (Set<Node *>::Element *E = removed_nodes.front(); E; E = E->next()) {
+		E->get()->get_parent()->remove_child(E->get());
+		E->get()->queue_delete();
+	}
+}
+
 void ResourceImporterScene::_clean_animation_player(Node *scene) {
-	for (size_t i = 0; i < scene->get_child_count(); i++) {
+	for (int32_t i = 0; i < scene->get_child_count(); i++) {
 		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(scene->get_child(i));
 		if (ap) {
 			List<StringName> animations;
 			ap->get_animation_list(&animations);
 			for (List<StringName>::Element *E = animations.front(); E; E = E->next()) {
 				Ref<Animation> animation = ap->get_animation(E->get());
-				for (size_t k = 0; k < animation->get_track_count(); k++) {
+				for (int32_t k = 0; k < animation->get_track_count(); k++) {
 					NodePath path = animation->track_get_path(k);
-					if (!scene->has_node(path)) {
-						animation->remove_track(k);
+					if (scene->get_node_or_null(path)) {
+						continue;
 					}
+					animation->remove_track(k);
 				}
 			}
 			break;
@@ -1550,10 +1559,9 @@ void ResourceImporterScene::_clean_animation_player(Node *scene) {
 	}
 }
 
-void ResourceImporterScene::_filter_node(Node *p_current, Node *p_owner, const Set<Node *> p_keep_nodes, Set<String> &r_removed_nodes) {
-	if (p_keep_nodes.has(p_current) == false) {
-		r_removed_nodes.insert(p_current->get_name());
-		p_current->queue_delete();
+void ResourceImporterScene::_filter_node(Node *p_current, Node *p_owner, const Set<Node *> p_keep_nodes, Set<Node *> &r_removed_nodes) {
+	if (!p_keep_nodes.has(p_current)) {
+		r_removed_nodes.insert(p_current);
 	}
 	for (int i = 0; i < p_current->get_child_count(); i++) {
 		_filter_node(p_current->get_child(i), p_owner, p_keep_nodes, r_removed_nodes);
