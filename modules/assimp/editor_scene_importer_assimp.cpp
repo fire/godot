@@ -1712,7 +1712,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 
 			morphs[j] = array_copy;
 		}
-		//mesh->add_surface_from_arrays(primitive, array_mesh, morphs, format_flags);
 		mesh->add_surface_from_arrays(primitive, array_mesh, morphs);
 		mesh->surface_set_material(i, mat);
 		mesh->surface_set_name(i, _assimp_string_to_string(ai_mesh->mName));
