@@ -42,8 +42,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 #include "thirdparty/meshoptimizer/src/meshoptimizer.h"
-#include "thirdparty/xatlas/xatlas.h"
-#include <vector>
+#include "mesh_merge_material_pack.h"
 
 #ifdef TOOLS_ENABLED
 void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
@@ -61,11 +60,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 	Vector<GridMap *> grid_map_items;
 	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
 
-	struct MeshInfo {
-		Transform transform;
-		Ref<Mesh> mesh;
-		String name;
-	};
+
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
 		MeshInfo mesh_info;
@@ -106,7 +101,9 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 		float t1x, t1y;
 	};
 
-	// TODO Merge meshes and their materials
+	Ref<MeshMergeMaterialRepack> repack;
+	repack.instance();
+	repack->pack(meshes, p_root_node->get_name());
 
 	for (int32_t i = 0; i < meshes.size(); i++) {
 		Ref<Mesh> mesh = meshes[i].mesh;
@@ -357,7 +354,7 @@ void SceneOptimizePlugin::optimize(Variant p_user_data) {
 		file_export_lib->add_filter("*." + extensions[i] + " ; " + extensions[i].to_upper());
 	}
 	file_export_lib->popup_centered_ratio();
-	file_export_lib->set_title(TTR("Export Scene"));
+	file_export_lib->set_title(TTR("Optimize Scene"));
 }
 
 void SceneOptimizePlugin::_dialog_action(String p_file) {

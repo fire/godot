@@ -27,7 +27,6 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#pragma once
 
 #ifndef SCENE_OPTIMIZE_H
 #define SCENE_OPTIMIZE_H
@@ -45,11 +44,18 @@
 class SceneOptimize : public Reference {
 private:
 	GDCLASS(SceneOptimize, Reference);
+
 	void _find_all_mesh_instances(Vector<MeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _dialog_action(String p_file);
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
+
 public:
+	struct MeshInfo {
+		Transform transform;
+		Ref<Mesh> mesh;
+		String name;
+	};
 	void scene_optimize(const String p_file, Node *p_root_node);
 };
 
@@ -57,12 +63,12 @@ class SceneOptimizePlugin : public EditorPlugin {
 
 	GDCLASS(SceneOptimizePlugin, EditorPlugin);
 
-	
 	EditorNode *editor;
 	CheckBox *file_export_lib_merge;
 	EditorFileDialog *file_export_lib;
 	Ref<SceneOptimize> scene_optimize;
 	void _dialog_action(String p_file);
+
 protected:
 	static void _bind_methods();
 
