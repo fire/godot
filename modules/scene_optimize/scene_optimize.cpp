@@ -291,7 +291,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				array_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
 				MeshInstance *mi = memnew(MeshInstance);
 				mi->set_mesh(array_mesh);
-				mi->set_name(String(meshes[i].name) + "_" + itos(j) + "_" + itos(r));
+				mi->set_name(String(meshes[i].name) + "_" + itos(j) + "_lod_" + itos(r));
 				spatial->add_child(mi);
 				mi->set_owner(spatial);
 			}
