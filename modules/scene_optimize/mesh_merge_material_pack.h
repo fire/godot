@@ -47,13 +47,14 @@ Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 #ifndef MESH_MERGE_MATERIAL_REPACK_H
 #define MESH_MERGE_MATERIAL_REPACK_H
 
-#include "thirdparty/xatlas/xatlas.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <stdlib.h>
+#include "thirdparty/xatlas/xatlas.h"
 
 #ifdef _MSC_VER
 #define FOPEN(_file, _filename, _mode)                            \

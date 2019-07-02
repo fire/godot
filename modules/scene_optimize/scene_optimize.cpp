@@ -93,7 +93,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 		}
 	}
 	const size_t lod_count = 5;
-	const size_t kCacheSize = 16;
+	// const size_t kCacheSize = 16;
 	struct Vertex {
 		float px, py, pz;
 		float nx, ny, nz;
@@ -108,7 +108,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 	for (int32_t i = 0; i < meshes.size(); i++) {
 		Ref<Mesh> mesh = meshes[i].mesh;
 		for (int32_t j = 0; j < mesh->get_surface_count(); j++) {
-			double start = OS::get_singleton()->get_ticks_msec();
+			// double start = OS::get_singleton()->get_ticks_msec();
 
 			Ref<SurfaceTool> st;
 			st.instance();
@@ -180,7 +180,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				lod.resize(meshopt_simplify(&lod.write()[0], &source.write()[0], source.size(), &meshopt_vertices.write()[0].px, meshopt_vertices.size(), sizeof(Vertex), target_index_count, target_error));
 			}
 
-			double middle = OS::get_singleton()->get_ticks_msec();
+			// double middle = OS::get_singleton()->get_ticks_msec();
 
 			// optimize each individual LOD for vertex cache & overdraw
 			for (size_t m = 1; m < lod_count; m++) {
@@ -222,7 +222,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 			// // note that the order of LODs above affects vertex fetch results
 			// meshopt_optimizeVertexFetch(&vertices[0], &indices[0], indices.size(), &vertices[0], vertices.size(), sizeof(Vertex));
 
-			double end = OS::get_singleton()->get_ticks_msec();
+			// double end = OS::get_singleton()->get_ticks_msec();
 
 			// printf("%-9s: %d triangles => %d LOD levels down to %d triangles in %.2f msec, optimized in %.2f msec\n",
 			// 		"SimplifyC",
