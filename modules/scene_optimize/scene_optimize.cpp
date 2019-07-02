@@ -33,6 +33,7 @@
 #include "core/object.h"
 #include "core/project_settings.h"
 #include "core/vector.h"
+#include "mesh_merge_material_pack.h"
 #include "modules/csg/csg_shape.h"
 #include "modules/gridmap/grid_map.h"
 #include "scene/3d/mesh_instance.h"
@@ -42,12 +43,11 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 #include "thirdparty/meshoptimizer/src/meshoptimizer.h"
-#include "mesh_merge_material_pack.h"
 
 #ifdef TOOLS_ENABLED
 void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 	Spatial *spatial = memnew(Spatial);
-	if(Node::cast_to<Spatial>(p_root_node)) {
+	if (Node::cast_to<Spatial>(p_root_node)) {
 		spatial->set_transform(Node::cast_to<Spatial>(p_root_node)->get_transform());
 	}
 	ERR_FAIL_COND(p_root_node == NULL);
@@ -59,7 +59,6 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 
 	Vector<GridMap *> grid_map_items;
 	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
-
 
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
@@ -142,7 +141,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				meshopt_vertex.px = vertex.x;
 				meshopt_vertex.py = vertex.y;
 				meshopt_vertex.pz = vertex.z;
-				if (k < normals.size())  {
+				if (k < normals.size()) {
 					Vector3 normal = normals.read()[k];
 					meshopt_vertex.nx = normal.x;
 					meshopt_vertex.ny = normal.y;
@@ -288,7 +287,9 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				Ref<ArrayMesh> array_mesh;
 				array_mesh.instance();
 				array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, lod_mesh_array);
-				array_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
+				if (mesh->surface_get_material(j).is_valid()) {
+					array_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
+				}
 				MeshInstance *mi = memnew(MeshInstance);
 				mi->set_mesh(array_mesh);
 				mi->set_name(String(meshes[i].name) + itos(j) + "Lod" + itos(r));
