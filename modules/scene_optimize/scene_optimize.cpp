@@ -171,7 +171,8 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 
 				// we can simplify all the way from base level or from the last result
 				// simplifying from the base level sometimes produces better results, but simplifying from last level is faster
-				PoolVector<uint32_t> &source = w[l - 1];
+				// simplify from the base level
+				PoolVector<uint32_t> &source = w[0];
 
 				if (source.size() < target_index_count)
 					target_index_count = source.size();
@@ -290,7 +291,7 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				array_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
 				MeshInstance *mi = memnew(MeshInstance);
 				mi->set_mesh(array_mesh);
-				mi->set_name(String(meshes[i].name) + "_" + itos(r));
+				mi->set_name(String(meshes[i].name) + "_" + itos(j) + "_" + itos(r));
 				spatial->add_child(mi);
 				mi->set_owner(spatial);
 			}
