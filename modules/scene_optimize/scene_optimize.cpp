@@ -101,9 +101,9 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 		float t1x, t1y;
 	};
 
-	Ref<MeshMergeMaterialRepack> repack;
-	repack.instance();
-	repack->pack(meshes, p_root_node->get_name());
+	// Ref<MeshMergeMaterialRepack> repack;
+	// repack.instance();
+	// repack->pack(meshes, p_root_node->get_name());
 
 	for (int32_t i = 0; i < meshes.size(); i++) {
 		Ref<Mesh> mesh = meshes[i].mesh;
