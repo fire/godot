@@ -107,6 +107,16 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 
 	for (int32_t i = 0; i < meshes.size(); i++) {
 		Ref<Mesh> mesh = meshes[i].mesh;
+		if (mesh->get_blend_shape_count()) {
+			// Don't lod blend shapes.
+			MeshInstance *mi = memnew(MeshInstance);
+			mi->set_mesh(mesh);
+			mi->set_skeleton_path(meshes[i].skeleton_path);
+			mi->set_name(meshes[i].name);
+			meshes[i].original_node->get_parent()->add_child(mi);
+			mi->set_owner(root);
+			continue;
+		}
 		for (int32_t j = 0; j < mesh->get_surface_count(); j++) {
 			// double start = OS::get_singleton()->get_ticks_msec();
 
