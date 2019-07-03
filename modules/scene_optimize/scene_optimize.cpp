@@ -46,33 +46,36 @@
 
 #ifdef TOOLS_ENABLED
 void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
-	Spatial *spatial = memnew(Spatial);
-	if (Node::cast_to<Spatial>(p_root_node)) {
-		spatial->set_transform(Node::cast_to<Spatial>(p_root_node)->get_transform());
-	}
+	Ref<PackedScene> packed_scene;
+	packed_scene.instance();
+	packed_scene->pack(p_root_node);
+	Node *root = packed_scene->instance();
 	ERR_FAIL_COND(p_root_node == NULL);
 	Vector<MeshInstance *> mesh_items;
-	_find_all_mesh_instances(mesh_items, p_root_node, p_root_node);
+	_find_all_mesh_instances(mesh_items, root, root);
 
 	Vector<CSGShape *> csg_items;
-	_find_all_csg_roots(csg_items, p_root_node, p_root_node);
+	_find_all_csg_roots(csg_items, root, root);
 
 	Vector<GridMap *> grid_map_items;
-	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
+	_find_all_gridmaps(grid_map_items, root, root);
 
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
 		MeshInfo mesh_info;
 		mesh_info.mesh = mesh_items[i]->get_mesh();
-		mesh_info.transform = mesh_items[i]->get_global_transform();
+		mesh_info.transform = mesh_items[i]->get_transform();
 		mesh_info.name = mesh_items[i]->get_name();
+		mesh_info.original_node = mesh_items[i];
+		mesh_info.skeleton_path = mesh_items[i]->get_skeleton_path();
 		meshes.push_back(mesh_info);
 	}
 	for (int32_t i = 0; i < csg_items.size(); i++) {
 		MeshInfo mesh_info;
 		mesh_info.mesh = csg_items[i]->get_calculated_mesh();
-		mesh_info.transform = csg_items[i]->get_global_transform();
+		mesh_info.transform = csg_items[i]->get_transform();
 		mesh_info.name = csg_items[i]->get_name();
+		mesh_info.original_node = csg_items[i];
 		meshes.push_back(mesh_info);
 	}
 	for (int32_t i = 0; i < grid_map_items.size(); i++) {
@@ -86,8 +89,9 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 			cell_xform.basis.set_orthogonal_index(grid_map_items[i]->get_cell_item_orientation(cell_location.x, cell_location.y, cell_location.z));
 			cell_xform.basis.scale(Vector3(grid_map_items[i]->get_cell_scale(), grid_map_items[i]->get_cell_scale(), grid_map_items[i]->get_cell_scale()));
 			cell_xform.set_origin(grid_map_items[i]->map_to_world(cell_location.x, cell_location.y, cell_location.z));
-			mesh_info.transform = cell_xform * grid_map_items[i]->get_global_transform();
+			mesh_info.transform = cell_xform * grid_map_items[i]->get_transform();
 			mesh_info.name = grid_map_items[i]->get_mesh_library()->get_item_name(cell);
+			mesh_info.original_node = grid_map_items[i];
 			meshes.push_back(mesh_info);
 		}
 	}
@@ -95,9 +99,6 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 	// const size_t kCacheSize = 16;
 	struct Vertex {
 		float px, py, pz;
-		float nx, ny, nz;
-		float t0x, t0y;
-		float t1x, t1y;
 	};
 
 	// Ref<MeshMergeMaterialRepack> repack;
@@ -115,9 +116,6 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 			st->index();
 			const Array mesh_array = st->commit_to_arrays();
 			PoolVector<Vector3> vertexes = mesh_array[Mesh::ARRAY_VERTEX];
-			PoolVector<Vector3> normals = mesh_array[Mesh::ARRAY_NORMAL];
-			PoolVector<Vector2> uvs = mesh_array[Mesh::ARRAY_TEX_UV];
-			PoolVector<Vector2> uv2s = mesh_array[Mesh::ARRAY_TEX_UV2];
 			// https://github.com/zeux/meshoptimizer/blob/bce99a4bfdc7bbc72479e1d71c4083329d306347/demo/main.cpp#L414
 			// generate 4 LOD levels (1-4), with each subsequent LOD using 70% triangles
 			// note that each LOD uses the same (shared) vertex buffer
@@ -141,22 +139,6 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				meshopt_vertex.px = vertex.x;
 				meshopt_vertex.py = vertex.y;
 				meshopt_vertex.pz = vertex.z;
-				if (k < normals.size()) {
-					Vector3 normal = normals.read()[k];
-					meshopt_vertex.nx = normal.x;
-					meshopt_vertex.ny = normal.y;
-					meshopt_vertex.nz = normal.z;
-				}
-				if (k < uvs.size()) {
-					Vector2 uv = uvs.read()[k];
-					meshopt_vertex.t0x = uv.x;
-					meshopt_vertex.t0y = uv.y;
-				}
-				if (k < uv2s.size()) {
-					Vector2 uv2 = uv2s.read()[k];
-					meshopt_vertex.t1x = uv2.x;
-					meshopt_vertex.t1y = uv2.y;
-				}
 				meshopt_vertices.write()[k] = meshopt_vertex;
 			}
 
@@ -209,98 +191,46 @@ void SceneOptimize::scene_optimize(const String p_file, Node *p_root_node) {
 				total_index_count += lods[n].size();
 			}
 
-			// indices.resize(total_index_count);
-
-			// for (size_t i = 0; i < lod_count; ++i)
-			// {
-			// 	memcpy(unsigned_indices[lod_index_offsets[i]].read().ptr(), lod.write()[i].ptr(), lod.read()[i].size() * sizeof(lod.read()[i][0]));
-			// }
-
-			// vertexes = meshopt_vertices;
-
-			// // vertex fetch optimization should go last as it depends on the final index order
-			// // note that the order of LODs above affects vertex fetch results
-			// meshopt_optimizeVertexFetch(&vertices[0], &indices[0], indices.size(), &vertices[0], vertices.size(), sizeof(Vertex));
-
-			// double end = OS::get_singleton()->get_ticks_msec();
-
-			// printf("%-9s: %d triangles => %d LOD levels down to %d triangles in %.2f msec, optimized in %.2f msec\n",
-			// 		"SimplifyC",
-			// 		int(lod_index_counts[0]) / 3, int(lod_count), int(lod_index_counts[lod_count - 1]) / 3,
-			// 		(middle - start) * 1000, (end - middle) * 1000);
-
-			// // for using LOD data at runtime, in addition to vertices and indices you have to save lod_index_offsets/lod_index_counts.
-
-			// {
-			// 	// meshopt_VertexCacheStatistics vcs0 = meshopt_analyzeVertexCache(&unsigned_indices[lod_index_offsets[0]], lod_index_counts[0], meshopt_vertices.size(), kCacheSize, 0, 0);
-			// 	// meshopt_VertexFetchStatistics vfs0 = meshopt_analyzeVertexFetch(&unsigned_indices[lod_index_offsets[0]], lod_index_counts[0], meshopt_vertices.size(), sizeof(Vertex));
-			// 	// meshopt_VertexCacheStatistics vcsN = meshopt_analyzeVertexCache(&unsigned_indices[lod_index_offsets[lod_count - 1]], lod_index_counts[lod_count - 1], vertices.size(), kCacheSize, 0, 0);
-			// 	// meshopt_VertexFetchStatistics vfsN = meshopt_analyzeVertexFetch(&unsigned_indices[lod_index_offsets[lod_count - 1]], lod_index_counts[lod_count - 1], vertices.size(), sizeof(Vertex));
-
-			// 	typedef PackedVertexOct PV;
-
-			// 	PoolVector<PV> pv(meshopt_vertices.size());
-			// 	packMesh(pv, meshopt_vertices);
-
-			// 	PoolVector<unsigned char> vbuf(meshopt_encodeVertexBufferBound(meshopt_vertices.size(), sizeof(PV)));
-			// 	vbuf.resize(meshopt_encodeVertexBuffer(vbuf.write().ptr(), vbuf.size(), pv.write().ptr(), meshopt_vertices.size(), sizeof(PV)));
-
-			// 	PoolVector<unsigned char> ibuf(meshopt_encodeIndexBufferBound(unsigned_indices.size(), meshopt_vertices.size()));
-			// 	ibuf.resize(meshopt_encodeIndexBuffer(vbuf.write().ptr(), ibuf.size(), unsigned_indices.write().ptr(), unsigned_indices.size()));
-
-			// 	// printf("%-9s  ACMR %f...%f Overfetch %f..%f Codec VB %.1f bits/vertex IB %.1f bits/triangle\n",
-			// 	// 		"",
-			// 	// 		vcs0.acmr, vcsN.acmr, vfs0.overfetch, vfsN.overfetch,
-			// 	// 		double(vbuf.size()) / double(meshopt_vertices.size()) * 8,
-			// 	// 		double(ibuf.size()) / double(unsigned_indices.size() / 3) * 8);
-			// }
-			Array new_mesh_array;
-			new_mesh_array.resize(Mesh::ARRAY_MAX);
-			PoolVector<Vector3> new_vertices;
-			new_vertices.resize(meshopt_vertices.size());
-			PoolVector<Vector3> new_normals;
-			new_normals.resize(meshopt_vertices.size());
-			PoolVector<Vector2> new_uv1s;
-			new_uv1s.resize(meshopt_vertices.size());
-			PoolVector<Vector2> new_uv2s;
-			new_uv2s.resize(meshopt_vertices.size());
-			for (int32_t q = 0; q < meshopt_vertices.size(); q++) {
-				PoolVector<Vertex>::Read r = meshopt_vertices.read();
-				new_vertices.write()[q] = Vector3(r[q].px, r[q].py, r[q].pz);
-				new_normals.write()[q] = Vector3(r[q].nx, r[q].ny, r[q].nz);
-				new_uv1s.write()[q] = Vector2(r[q].t0x, r[q].t0y);
-				new_uv2s.write()[q] = Vector2(r[q].t1x, r[q].t1y);
-			}
-			new_mesh_array[Mesh::ARRAY_VERTEX] = new_vertices;
-			new_mesh_array[Mesh::ARRAY_NORMAL] = new_normals;
-			new_mesh_array[Mesh::ARRAY_TEX_UV] = new_uv1s;
-			new_mesh_array[Mesh::ARRAY_TEX_UV2] = new_uv2s;
-
 			for (int32_t r = 0; r < lods.size(); r++) {
-				Array lod_mesh_array = new_mesh_array.duplicate(true);
-				PoolVector<int32_t> new_indices;
-				new_indices.resize(lods[r].size());
+				Array current_mesh = mesh_array.duplicate(true);
+				PoolIntArray indexes = current_mesh[Mesh::ARRAY_INDEX].duplicate(true);
+				size_t size = indexes.size();
+				indexes.resize(0);
+				indexes.resize(size);
 				for (int32_t p = 0; p < lods[r].size(); p++) {
-					new_indices.write()[p] = lods[r][p];
+					indexes.write()[p] = lods[r][p];
 				}
-				lod_mesh_array[Mesh::ARRAY_INDEX] = new_indices;
-				Ref<ArrayMesh> array_mesh;
-				array_mesh.instance();
-				array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, lod_mesh_array);
+				current_mesh[Mesh::ARRAY_INDEX] = indexes;
+				{
+					st->clear();
+					st->begin(Mesh::PRIMITIVE_TRIANGLES);
+					Ref<ArrayMesh> array_mesh;
+					array_mesh.instance();
+					array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, current_mesh);
+					st->create_from(array_mesh, 0);
+					st->index();
+				}
+				Ref<ArrayMesh> final_mesh = st->commit();
 				if (mesh->surface_get_material(j).is_valid()) {
-					array_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
+					final_mesh->surface_set_material(0, mesh->surface_get_material(j)->duplicate(true));
 				}
 				MeshInstance *mi = memnew(MeshInstance);
-				mi->set_mesh(array_mesh);
+				mi->set_mesh(final_mesh);
+				mi->set_skeleton_path(meshes[i].skeleton_path);
 				mi->set_name(String(meshes[i].name) + itos(j) + "Lod" + itos(r));
-				spatial->add_child(mi);
-				mi->set_owner(spatial);
+				meshes[i].original_node->get_parent()->add_child(mi);
+				mi->set_owner(root);
 			}
 		}
 	}
 
+	for (int32_t i = 0; i < meshes.size(); i++) {
+		Node *node = meshes[i].original_node;
+		node->get_parent()->remove_child(node);
+	}
+
 	PackedScene *scene = memnew(PackedScene);
-	scene->pack(spatial);
+	scene->pack(root);
 	ResourceSaver::save(p_file, scene);
 }
 
@@ -360,8 +290,8 @@ void SceneOptimizePlugin::optimize(Variant p_user_data) {
 }
 
 void SceneOptimizePlugin::_dialog_action(String p_file) {
-	Node *spatial = editor->get_tree()->get_edited_scene_root();
-	if (!spatial) {
+	Node *node = editor->get_tree()->get_edited_scene_root();
+	if (!node) {
 		editor->show_accept(TTR("This operation can't be done without a scene."), TTR("OK"));
 		return;
 	}
@@ -371,10 +301,10 @@ void SceneOptimizePlugin::_dialog_action(String p_file) {
 			editor->show_accept(TTR("Can't load scene for merging!"), TTR("OK"));
 			return;
 		} else {
-			spatial->add_child(scene->instance());
+			node->add_child(scene->instance());
 		}
 	}
-	scene_optimize->scene_optimize(p_file, spatial);
+	scene_optimize->scene_optimize(p_file, node);
 	EditorFileSystem::get_singleton()->scan_changes();
 	file_export_lib->queue_delete();
 	file_export_lib_merge->queue_delete();

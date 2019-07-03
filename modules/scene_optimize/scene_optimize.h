@@ -55,6 +55,8 @@ public:
 		Transform transform;
 		Ref<Mesh> mesh;
 		String name;
+		Node * original_node;
+		NodePath skeleton_path;
 	};
 	void scene_optimize(const String p_file, Node *p_root_node);
 };
