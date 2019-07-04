@@ -145,7 +145,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			aiProcess_TransformUVCoords |
 			aiProcess_FindInstances |
 			//aiProcess_FixInfacingNormals |
-			//aiProcess_ValidateDataStructure |
+			aiProcess_ValidateDataStructure |
 			aiProcess_OptimizeMeshes |
 			//aiProcess_OptimizeGraph |
 			//aiProcess_Debone |
