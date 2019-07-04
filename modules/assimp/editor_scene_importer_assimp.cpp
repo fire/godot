@@ -876,6 +876,9 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_get_track_set(state.scene, tracks);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(mesh_node);
 			if (mi) {
+				Transform xform = child_node->get_transform();
+				xform.basis = Basis();
+				mi->set_transform(xform);
 				_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 				state.meshes.push_back(mi);
 			}
