@@ -438,88 +438,82 @@ String EditorSceneImporterAssimp::_find_skeleton_bone_root(Map<Skeleton *, MeshI
 
 void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
 
-	if (track->mNumRotationKeys || track->mNumPositionKeys || track->mNumScalingKeys) {
-		int track_idx = animation->get_track_count();
-		animation->add_track(Animation::TYPE_TRANSFORM);
-		animation->track_set_path(track_idx, node_path);
+	int track_idx = animation->get_track_count();
+	animation->add_track(Animation::TYPE_TRANSFORM);
+	animation->track_set_path(track_idx, node_path);
 
-		float increment = 1.0 / float(p_bake_fps);
-		float time = 0.0;
+	float increment = 1.0 / float(p_bake_fps);
+	float time = 0.0;
 
-		Vector3 base_pos;
-		Quat base_rot;
-		Vector3 base_scale = Vector3(1, 1, 1);
+	bool last = false;
 
-		bool last = false;
+	Vector<Vector3> pos_values;
+	Vector<float> pos_times;
+	Vector<Vector3> scale_values;
+	Vector<float> scale_times;
+	Vector<Quat> rot_values;
+	Vector<float> rot_times;
 
-		Vector<Vector3> pos_values;
-		Vector<float> pos_times;
-		Vector<Vector3> scale_values;
-		Vector<float> scale_times;
-		Vector<Quat> rot_values;
-		Vector<float> rot_times;
+	for (size_t p = 0; p < track->mNumPositionKeys; p++) {
+		aiVector3D pos = track->mPositionKeys[p].mValue;
+		pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
+		pos_times.push_back(track->mPositionKeys[p].mTime / ticks_per_second);
+	}
 
-		for (size_t p = 0; p < track->mNumPositionKeys; p++) {
-			aiVector3D pos = track->mPositionKeys[p].mValue;
-			pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
-			pos_times.push_back(track->mPositionKeys[p].mTime / ticks_per_second);
+	for (size_t r = 0; r < track->mNumRotationKeys; r++) {
+		aiQuaternion quat = track->mRotationKeys[r].mValue;
+		rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
+		rot_times.push_back(track->mRotationKeys[r].mTime / ticks_per_second);
+	}
+
+	for (size_t sc = 0; sc < track->mNumScalingKeys; sc++) {
+		aiVector3D scale = track->mScalingKeys[sc].mValue;
+		scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
+		scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
+	}
+	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
+		return;
+	}
+	while (true) {
+		Vector3 pos;
+		Quat rot;
+		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
+
+		if (pos_values.size()) {
+			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
 
-		for (size_t r = 0; r < track->mNumRotationKeys; r++) {
-			aiQuaternion quat = track->mRotationKeys[r].mValue;
-			rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
-			rot_times.push_back(track->mRotationKeys[r].mTime / ticks_per_second);
+		if (rot_values.size()) {
+			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
 		}
 
-		for (size_t sc = 0; sc < track->mNumScalingKeys; sc++) {
-			aiVector3D scale = track->mScalingKeys[sc].mValue;
-			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
-			scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
+		if (scale_values.size()) {
+			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
-		if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
-			return;
+
+		if (sk != NULL && sk->find_bone(node_name) != -1) {
+			Transform xform;
+			xform.basis.set_quat_scale(rot, scale);
+			xform.origin = pos;
+
+			int bone = sk->find_bone(node_name);
+			Transform rest_xform = sk->get_bone_rest(bone);
+			xform = rest_xform.affine_inverse() * xform;
+			rot = xform.basis.get_rotation_quat();
+			scale = xform.basis.get_scale();
+			pos = xform.origin;
 		}
-		while (true) {
-			Vector3 pos = base_pos;
-			Quat rot = base_rot;
-			Vector3 scale = base_scale;
+		rot.normalize();
 
-			if (pos_values.size()) {
-				pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
-			}
-
-			if (rot_values.size()) {
-				rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
-			}
-
-			if (scale_values.size()) {
-				scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
-			}
-
-			if (sk != NULL && sk->find_bone(node_name) != -1) {
-				Transform xform;
-				xform.basis.set_quat_scale(rot, scale);
-				xform.origin = pos;
-
-				int bone = sk->find_bone(node_name);
-				Transform rest_xform = sk->get_bone_rest(bone);
-				xform = rest_xform.affine_inverse() * xform;
-				rot = xform.basis.get_rotation_quat();
-				scale = xform.basis.get_scale();
-				pos = xform.origin;
-			}
-			rot.normalize();
-
-			animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
-			animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
-			if (last) {
-				break;
-			}
-			time += increment;
-			if (time >= length) {
-				last = true;
-				time = length;
-			}
+		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
+		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
+		if (last) {
+			break;
+		}
+		time += increment;
+		if (time >= length) {
+			last = true;
+			time = length;
 		}
 	}
 }
@@ -749,31 +743,22 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 		}
 		ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
 
-		if (F[k]->mNumRotationKeys || F[k]->mNumPositionKeys || F[k]->mNumScalingKeys) {
+		for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
+			aiVector3D pos = F[k]->mPositionKeys[p].mValue;
+			pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
+			pos_times.push_back(F[k]->mPositionKeys[p].mTime / ticks_per_second);
+		}
 
-			if (is_translation) {
-				for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
-					aiVector3D pos = F[k]->mPositionKeys[p].mValue;
-					pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
-					pos_times.push_back(F[k]->mPositionKeys[p].mTime / ticks_per_second);
-				}
-			}
+		for (size_t r = 0; r < F[k]->mNumRotationKeys; r++) {
+			aiQuaternion quat = F[k]->mRotationKeys[r].mValue;
+			rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
+			rot_times.push_back(F[k]->mRotationKeys[r].mTime / ticks_per_second);
+		}
 
-			if (is_rotation) {
-				for (size_t r = 0; r < F[k]->mNumRotationKeys; r++) {
-					aiQuaternion quat = F[k]->mRotationKeys[r].mValue;
-					rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
-					rot_times.push_back(F[k]->mRotationKeys[r].mTime / ticks_per_second);
-				}
-			}
-
-			if (is_scaling) {
-				for (size_t sc = 0; sc < F[k]->mNumScalingKeys; sc++) {
-					aiVector3D scale = F[k]->mScalingKeys[sc].mValue;
-					scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
-					scale_times.push_back(F[k]->mScalingKeys[sc].mTime / ticks_per_second);
-				}
-			}
+		for (size_t sc = 0; sc < F[k]->mNumScalingKeys; sc++) {
+			aiVector3D scale = F[k]->mScalingKeys[sc].mValue;
+			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
+			scale_times.push_back(F[k]->mScalingKeys[sc].mTime / ticks_per_second);
 		}
 	}
 	int32_t track_idx = animation->get_track_count();
@@ -782,22 +767,13 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 	float increment = 1.0 / float(state.bake_fps);
 	float time = 0.0;
 	bool last = false;
-	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
-		return;
-	}
 	while (true) {
 		Vector3 pos = Vector3();
 		Quat rot = Quat();
 		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
-		if (pos_values.size()) {
-			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
-		}
-		if (rot_values.size()) {
-			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
-		}
-		if (scale_values.size()) {
-			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
-		}
+		pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
+		rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
+		scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
 		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
 		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
 
