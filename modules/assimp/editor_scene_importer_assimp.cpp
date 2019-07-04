@@ -393,10 +393,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		const aiNode *armature_node = node;
-		for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-			Transform xform = state.skeleton->get_bone_rest(i);
-			state.skeleton->set_bone_rest(i, _get_global_ai_node_transform(state.scene, armature_node).affine_inverse() * xform);
-		}
 		state.root->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
