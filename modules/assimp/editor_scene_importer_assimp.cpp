@@ -372,6 +372,10 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	}
 	_generate_node(state, state.scene->mRootNode, state.root, state.root);
 
+	if (state.path.get_extension().to_lower() == "fbx") {
+		state.root->set_transform(_format_rot_xform(state) * state.root->get_transform());
+	}
+
 	aiNode *skeleton_root = NULL;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 		if (state.skeleton->get_bone_parent(i) == -1) {
