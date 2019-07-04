@@ -397,7 +397,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		const aiNode *armature_node = node;
-		state.root->find_node(_assimp_string_to_string(armature_node->mName))->add_child(state.skeleton);
+		state.root->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
@@ -905,7 +905,8 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			if (mi) {
 				state.meshes.push_back(mi);
 			}
-			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner, child_node->get_transform());
+			mi->set_transform(child_node->get_transform());
+			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 		}
 		if (state.skeleton->get_bone_count() > 0) {
 			aiNode *skeleton_root = NULL;
@@ -1052,26 +1053,10 @@ void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<Strin
 	}
 }
 
-void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner, Transform p_mesh_xform) {
+void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner) {
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
-
-	const Transform mesh_parent_global_xform;
-	//	= _get_global_ai_node_transform(state.scene, p_node->mParent);
-	Transform mesh_xform = p_mesh_xform;
-	bool is_pivoted = p_owner->find_node("*" + ASSIMP_FBX_KEY + "*");
-	if (p_mesh_instance->get_parent() != state.root) {
-		//mesh_xform = mesh_parent_global_xform.affine_inverse();
-		bool has_pivot = mesh_xform.basis != Basis() && is_pivoted;
-		if (!has_pivot) {
-			mesh_xform = Transform();
-		}
-	} else {
-		mesh_xform = mesh_parent_global_xform;
-	}
-	mesh_xform = mesh_xform * p_mesh_xform.affine_inverse();
-
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
@@ -1179,7 +1164,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
-			godot_pos = mesh_xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
