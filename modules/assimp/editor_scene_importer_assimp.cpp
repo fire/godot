@@ -393,7 +393,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		const aiNode *armature_node = node;
-		state.root->add_child(state.skeleton);
+		state.root->find_node(_assimp_string_to_string(armature_node->mName))->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
