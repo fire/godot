@@ -115,7 +115,6 @@ private:
 		Map<Skeleton *, MeshInstance *> skeletons;
 		Map<String, Transform> bone_rests;
 		Vector<MeshInstance *> meshes;
-		int32_t mesh_count = 0;
 		Skeleton *skeleton = NULL;
 		Map<MeshInstance *, Skeleton *> mesh_skeletons;
 		String path;

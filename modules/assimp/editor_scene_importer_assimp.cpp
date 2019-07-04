@@ -304,10 +304,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		state.ap->set_name(TTR("AnimationPlayer"));
 	}
 
-	if (state.path.get_extension().to_lower() == "fbx") {
-		state.root->set_transform(_format_rot_xform(state) * state.root->get_transform());
-	}
-
 	String ext = state.path.get_file().get_extension().to_lower();
 	for (size_t l = 0; l < state.scene->mNumLights; l++) {
 		Light *light = NULL;
@@ -374,7 +370,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		camera->set_owner(state.root);
 		state.camera_names.insert(_assimp_string_to_string(state.scene->mCameras[c]->mName));
 	}
-	state.mesh_count = 0;
 	_generate_node(state, state.scene->mRootNode, state.root, state.root);
 
 	aiNode *skeleton_root = NULL;
@@ -1709,11 +1704,9 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 		mesh->add_surface_from_arrays(primitive, array_mesh, morphs);
 		mesh->surface_set_material(i, mat);
 		mesh->surface_set_name(i, _assimp_string_to_string(ai_mesh->mName));
-		state.mesh_count++;
 		if (ai_mesh->HasBones()) {
 			state.mesh_skeletons.insert(p_mesh_instance, state.skeleton);
 		}
-		print_verbose(String("Open Asset Import: Created mesh (including instances) ") + _assimp_string_to_string(ai_mesh->mName) + " " + itos(state.mesh_count) + " of " + itos(state.scene->mNumMeshes));
 	}
 	p_mesh_instance->set_mesh(mesh);
 }
