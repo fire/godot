@@ -135,7 +135,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			aiProcess_ImproveCacheLocality |
 			aiProcess_LimitBoneWeights |
 			aiProcess_RemoveRedundantMaterials |
-			aiProcess_SplitLargeMeshes |
+			//aiProcess_SplitLargeMeshes |
 			aiProcess_Triangulate |
 			//aiProcess_GenUVCoords |
 			aiProcess_FindDegenerates |
