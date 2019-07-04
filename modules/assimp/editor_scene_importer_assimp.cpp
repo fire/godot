@@ -114,7 +114,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	// Cannot remove pivot points because the static mesh will be in the wrong place
 	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, false);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
 	importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, true);
 	int32_t max_bone_weights = 4;
 	//importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, max_bone_weights);
@@ -375,9 +375,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		state.camera_names.insert(_assimp_string_to_string(state.scene->mCameras[c]->mName));
 	}
 	state.mesh_count = 0;
-	for (size_t i = 0; i < state.scene->mRootNode->mNumChildren; i++) {
-		_generate_node(state, state.scene->mRootNode->mChildren[i], state.root, state.root);
-	}
+	_generate_node(state, state.scene->mRootNode, state.root, state.root);
 
 	aiNode *skeleton_root = NULL;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
@@ -386,6 +384,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			break;
 		}
 	}
+	// TODO(Ernest) Remove assimp root node.
 
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = skeleton_root;
@@ -399,11 +398,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		const aiNode *armature_node = node;
-		if (armature_node != state.scene->mRootNode) {
-			state.root->find_node(_assimp_string_to_string(armature_node->mName))->add_child(state.skeleton);
-		} else {
-			state.root->add_child(state.skeleton);
-		}
+		state.root->find_node(_assimp_string_to_string(armature_node->mName))->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
@@ -881,9 +876,6 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
 	Spatial *child_node = NULL;
-	if (p_node == NULL) {
-		return;
-	}
 	String node_name = _assimp_string_to_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();
 	{
@@ -945,7 +937,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				}
 			}
 			_set_bone_parent(state.skeleton, state.scene);
-
 			state.skeletons.insert(state.skeleton, mesh_node);
 		}
 	} else if (state.light_names.has(node_name)) {
