@@ -124,7 +124,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	//	max_bone_weights = eight_bones;
 	//}
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
-	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
+	//importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 	//importer.SetPropertyFloat(AI_CONFIG_PP_DB_THRESHOLD, 1.0f);
 	int32_t post_process_Steps = //aiProcess_CalcTangentSpace |
 			//aiProcess_FlipUVs |
@@ -138,7 +138,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 			//aiProcess_SplitLargeMeshes |
 			aiProcess_Triangulate |
 			//aiProcess_GenUVCoords |
-			aiProcess_FindDegenerates |
+			//aiProcess_FindDegenerates |
 			aiProcess_RemoveComponent |
 			aiProcess_SortByPType |
 			aiProcess_FindInvalidData |
