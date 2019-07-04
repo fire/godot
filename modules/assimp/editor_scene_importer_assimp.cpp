@@ -399,11 +399,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
 		String path = String(E->key()->get_path_to(E->key()->get_owner()));
-		if (E->key()->get_parent() == state.root) {
-			E->key()->set_skeleton_path("../" + state.root->get_path_to(E->get()));
-		} else {
-			E->key()->set_skeleton_path(path.plus_file(E->get()->get_owner()->get_path_to(E->get())));
-		}
+		E->key()->set_skeleton_path(path.plus_file(E->get()->get_owner()->get_path_to(E->get())));
 	}
 	ResourceImporterScene::get_singleton()->_optimize_scene(state.root);
 	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
@@ -880,10 +876,10 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_get_track_set(state.scene, tracks);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(mesh_node);
 			if (mi) {
+				mi->set_transform(child_node->get_transform());
+				_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 				state.meshes.push_back(mi);
 			}
-			mi->set_transform(child_node->get_transform());
-			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 		}
 		if (state.skeleton->get_bone_count() > 0) {
 			aiNode *skeleton_root = NULL;
@@ -1850,7 +1846,7 @@ String EditorSceneImporterAssimp::_assimp_string_to_string(const aiString p_stri
 	String name;
 	name.parse_utf8(raw_name.ptrw(), raw_name.size());
 	if (name.find(":") != -1) {
-		String replaced_name = name.split(":")[1];
+		String replaced_name = name.replace(":", "");
 		print_verbose("Replacing " + name + " containing : with " + replaced_name);
 		name = replaced_name;
 	}
