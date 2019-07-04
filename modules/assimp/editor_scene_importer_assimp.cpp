@@ -876,7 +876,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_get_track_set(state.scene, tracks);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(mesh_node);
 			if (mi) {
-				mi->set_transform(child_node->get_transform());
 				_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 				state.meshes.push_back(mi);
 			}
@@ -1137,6 +1136,8 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
+			Transform xform = _ai_matrix_transform(p_node->mTransformation);
+			godot_pos = xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
