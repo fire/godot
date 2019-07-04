@@ -384,7 +384,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			break;
 		}
 	}
-	// TODO(Ernest) Remove assimp root node.
+	// TODO(Ernest) Remove assimp root node by packing into a packed scene and instancing
 
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = skeleton_root;
@@ -875,6 +875,9 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 }
 
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
+	if (state.scene->mRootNode == p_node) {
+		state.ai_root = p_node;
+	}
 	Spatial *child_node = NULL;
 	String node_name = _assimp_string_to_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();

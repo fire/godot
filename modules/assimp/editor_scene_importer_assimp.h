@@ -107,7 +107,7 @@ private:
 	const String ASSIMP_FBX_KEY = "_$AssimpFbx$";
 
 	struct State {
-		Spatial *root;
+		Spatial *root = NULL;
 		AnimationPlayer *ap = NULL;
 		Set<String> bone_names;
 		Set<String> light_names;
@@ -116,13 +116,14 @@ private:
 		Map<String, Transform> bone_rests;
 		Vector<MeshInstance *> meshes;
 		int32_t mesh_count = 0;
-		Skeleton *skeleton;
+		Skeleton *skeleton = NULL;
 		Map<MeshInstance *, Skeleton *> mesh_skeletons;
 		String path;
 		int32_t max_bone_weights = 0;
-		const aiScene *scene;
-		uint32_t flags;
-		int32_t bake_fps;
+		const aiScene *scene = NULL;
+		uint32_t flags = 0;
+		int32_t bake_fps = 0;
+		const aiNode *ai_root = NULL;
 	};
 
 	struct AssetImportAnimation {
