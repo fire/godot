@@ -9,6 +9,7 @@ env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/include'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/code/Importer/IFC'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/misc'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/code'])
+env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/common'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/contrib/irrXML/'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/contrib/unzip/'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/code/Importer/STEPParser'])
@@ -89,7 +90,11 @@ elif(env['platform'] == 'osx'):
     
 env_thirdparty = env_assimp.Clone()
 env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/*.cpp'))
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Common/*.cpp'))
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/PostProcessing/*.cpp'))
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Material/*.cpp'))
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/FBX/*.cpp'))
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/MMD/*.cpp'))
 
 # Godot's own source files
 env_assimp.add_source_files(env.modules_sources, "*.cpp")
