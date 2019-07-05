@@ -855,7 +855,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 	String ext = state.path.get_file().get_extension().to_lower();
 	{
 		Transform xform = _ai_matrix_transform(p_node->mTransformation);
-
 		child_node = memnew(Spatial);
 		p_parent->add_child(child_node);
 		child_node->set_owner(p_owner);
@@ -864,24 +863,20 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
-		child_node->get_parent()->add_child(mesh_node);
-		mesh_node->set_owner(p_owner);
-		memdelete(child_node);
-		child_node = mesh_node;
 		{
+			mesh_node->set_name(_assimp_string_to_string(p_node->mName) + mesh_node->get_class_name());
+			child_node->add_child(mesh_node);
+			mesh_node->set_owner(p_owner);
+			Transform xform = _ai_matrix_transform(p_node->mTransformation);
+			xform.basis = Basis();
+			mesh_node->set_transform(xform.affine_inverse());
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
 			_generate_node_bone(state.scene, p_node, mesh_bones, state.skeleton, state.path, state.max_bone_weights);
 			Set<String> tracks;
 			_get_track_set(state.scene, tracks);
-			MeshInstance *mi = Object::cast_to<MeshInstance>(mesh_node);
-			if (mi) {
-				Transform xform = child_node->get_transform();
-				xform.basis = Basis();
-				mi->set_transform(xform);
-				_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
-				state.meshes.push_back(mi);
-			}
+			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
+			state.meshes.push_back(mesh_node);
 		}
 		if (state.skeleton->get_bone_count() > 0) {
 			aiNode *skeleton_root = NULL;
@@ -1139,8 +1134,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
-			Transform xform = _ai_matrix_transform(p_node->mTransformation);
-			godot_pos = xform.xform(godot_pos);
 			st->add_vertex(godot_pos);
 		}
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
