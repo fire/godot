@@ -865,11 +865,11 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		{
 			mesh_node->set_name(_assimp_string_to_string(p_node->mName) + mesh_node->get_class_name());
-			child_node->add_child(mesh_node);
+			child_node->get_parent()->add_child(mesh_node);
 			mesh_node->set_owner(p_owner);
-			//Transform xform = _ai_matrix_transform(p_node->mTransformation);
-			//xform.basis = Basis();
-			//mesh_node->set_transform(xform.affine_inverse());
+			Transform xform = _ai_matrix_transform(p_node->mTransformation);
+			xform.basis = Basis();
+			state.skeleton->set_transform(xform.affine_inverse());
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
 			_generate_node_bone(state.scene, p_node, mesh_bones, state.skeleton, state.path, state.max_bone_weights);
