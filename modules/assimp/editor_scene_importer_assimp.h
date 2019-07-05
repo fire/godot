@@ -125,6 +125,7 @@ private:
 		int32_t bake_fps = 0;
 		const aiNode *ai_root = NULL;
 		aiNode *armature_node = NULL;
+		aiNode *skeleton_root_node = NULL;
 	};
 
 	struct AssetImportAnimation {
