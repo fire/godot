@@ -860,11 +860,12 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		child_node->set_owner(p_owner);
 		child_node->set_transform(xform);
 	}
-
+	child_node->set_name(node_name);
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		{
-			mesh_node->set_name(_assimp_string_to_string(p_node->mName) + mesh_node->get_class_name());
+			child_node->set_name(node_name + child_node->get_class_name());
+			mesh_node->set_name(_assimp_string_to_string(p_node->mName));
 			child_node->get_parent()->add_child(mesh_node);
 			mesh_node->set_owner(p_owner);
 			Transform xform = _ai_matrix_transform(p_node->mTransformation);
@@ -916,28 +917,25 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(light_node == NULL);
 		if (!p_parent->has_node(light_node->get_path())) {
-			p_parent->add_child(light_node);
+			p_parent->get_parent()->add_child(light_node);
 		}
 		light_node->set_owner(p_owner);
 		light_node->set_transform(child_node->get_transform() *
 								  light_node->get_transform());
-		child_node->get_parent()->remove_child(child_node);
-		memdelete(child_node);
-		child_node = light_node;
+		child_node->set_name(node_name + child_node->get_class_name());
+		light_node->set_name(node_name);
 	} else if (state.camera_names.has(node_name)) {
 		Spatial *camera_node = Object::cast_to<Camera>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(camera_node == NULL);
 		if (!p_parent->has_node(camera_node->get_path())) {
-			p_parent->add_child(camera_node);
+			p_parent->get_parent()->add_child(camera_node);
 		}
 		camera_node->set_owner(p_owner);
 		camera_node->set_transform(child_node->get_transform() *
 								   camera_node->get_transform());
-		child_node->get_parent()->remove_child(child_node);
-		memdelete(child_node);
-		child_node = camera_node;
+		child_node->set_name(node_name + child_node->get_class_name());
+		camera_node->set_name(node_name);
 	}
-	child_node->set_name(node_name);
 	for (size_t i = 0; i < p_node->mNumChildren; i++) {
 		_generate_node(state, p_node->mChildren[i], child_node, p_owner);
 	}
