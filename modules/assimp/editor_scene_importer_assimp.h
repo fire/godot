@@ -108,6 +108,7 @@ private:
 
 	struct State {
 		Spatial *root = NULL;
+		Node *godot_assimp_root = NULL;
 		AnimationPlayer *ap = NULL;
 		Set<String> bone_names;
 		Set<String> light_names;
@@ -123,6 +124,7 @@ private:
 		uint32_t flags = 0;
 		int32_t bake_fps = 0;
 		const aiNode *ai_root = NULL;
+		aiNode *armature_node = NULL;
 	};
 
 	struct AssetImportAnimation {
