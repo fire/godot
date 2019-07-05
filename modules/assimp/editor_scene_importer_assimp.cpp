@@ -468,9 +468,7 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 		scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
 		scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
 	}
-	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
-		return;
-	}
+
 	while (true) {
 		Vector3 pos;
 		Quat rot;
@@ -582,7 +580,6 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
 			const String bare_name = split_name[0];
 			if (split_name.size() > 1) {
-				// const Node *node = state.ap->get_owner()->find_node(bare_name);
 				bool is_bone = sk->find_bone(bare_name) != -1;
 				if (is_bone) {
 					continue;
@@ -731,32 +728,29 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 		String p_track_type = _assimp_string_to_string(F[k]->mNodeName).split(ASSIMP_FBX_KEY)[1];
 		if (p_track_type == "_Translation") {
 			is_translation = is_translation || true;
+			for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
+				aiVector3D pos = F[k]->mPositionKeys[p].mValue;
+				pos_values.push_back(Vector3(pos.x, pos.z, pos.y));
+				pos_times.push_back(F[k]->mPositionKeys[p].mTime / ticks_per_second);
+			}
 		} else if (p_track_type == "_Rotation") {
 			is_rotation = is_rotation || true;
+			for (size_t r = 0; r < F[k]->mNumRotationKeys; r++) {
+				aiQuaternion quat = F[k]->mRotationKeys[r].mValue;
+				rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
+				rot_times.push_back(F[k]->mRotationKeys[r].mTime / ticks_per_second);
+			}
 		} else if (p_track_type == "_Scaling") {
 			is_scaling = is_scaling || true;
+			for (size_t sc = 0; sc < F[k]->mNumScalingKeys; sc++) {
+				aiVector3D scale = F[k]->mScalingKeys[sc].mValue;
+				scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
+				scale_times.push_back(F[k]->mScalingKeys[sc].mTime / ticks_per_second);
+			}
 		} else {
 			continue;
 		}
 		ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
-
-		for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
-			aiVector3D pos = F[k]->mPositionKeys[p].mValue;
-			pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
-			pos_times.push_back(F[k]->mPositionKeys[p].mTime / ticks_per_second);
-		}
-
-		for (size_t r = 0; r < F[k]->mNumRotationKeys; r++) {
-			aiQuaternion quat = F[k]->mRotationKeys[r].mValue;
-			rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
-			rot_times.push_back(F[k]->mRotationKeys[r].mTime / ticks_per_second);
-		}
-
-		for (size_t sc = 0; sc < F[k]->mNumScalingKeys; sc++) {
-			aiVector3D scale = F[k]->mScalingKeys[sc].mValue;
-			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
-			scale_times.push_back(F[k]->mScalingKeys[sc].mTime / ticks_per_second);
-		}
 	}
 	int32_t track_idx = animation->get_track_count();
 	animation->add_track(Animation::TYPE_TRANSFORM);
@@ -766,11 +760,17 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 	bool last = false;
 	while (true) {
 		Vector3 pos = Vector3();
+		if (pos_values.size()) {
+			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
 		Quat rot = Quat();
+		if (rot_values.size()) {
+			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
+		}
 		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
-		pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
-		rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
-		scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
+		if (scale_values.size()) {
+			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
 		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
 		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
 
