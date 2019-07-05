@@ -847,9 +847,7 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 }
 
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
-	if (state.scene->mRootNode == p_node) {
-		state.ai_root = p_node;
-	}
+
 	Spatial *child_node = NULL;
 	String node_name = _assimp_string_to_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();
@@ -860,7 +858,10 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		child_node->set_owner(p_owner);
 		child_node->set_transform(xform);
 	}
-
+	if (state.scene->mRootNode == p_node) {
+		state.ai_root = p_node;
+		state.godot_assimp_root = child_node;
+	}
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		{
