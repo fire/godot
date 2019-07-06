@@ -887,10 +887,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				}
 			}
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-				if (state.skeleton->find_bone(node_name) != -1 || node_name.split(ASSIMP_FBX_KEY).size() != 1) {
-					continue;
-				}
-
 				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 				while (node != NULL) {
 					String node_name = _assimp_string_to_string(node->mName);
