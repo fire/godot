@@ -925,6 +925,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(light_node == NULL);
 		if (!p_parent->has_node(light_node->get_path())) {
+			light_node->get_parent()->remove_child(light_node);
 			p_parent->add_child(light_node);
 		}
 		light_node->set_owner(p_owner);
@@ -937,6 +938,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		Spatial *camera_node = Object::cast_to<Camera>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(camera_node == NULL);
 		if (!p_parent->has_node(camera_node->get_path())) {
+			camera_node->get_parent()->remove_child(camera_node);
 			p_parent->add_child(camera_node);
 		}
 		camera_node->set_owner(p_owner);
