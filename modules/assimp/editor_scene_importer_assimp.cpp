@@ -393,11 +393,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		state.armature_node = node;
-		if (state.root->find_node("*" + ASSIMP_FBX_KEY + "*")) {
-			state.mesh_skeletons.front()->key()->add_child(state.skeleton);
-		} else {
-			state.root->add_child(state.skeleton);
-		}
+		state.mesh_skeletons.front()->key()->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
