@@ -999,8 +999,8 @@ Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
 		int32_t coord_axis = 0;
 		int32_t coord_axis_sign = 0;
 		if (p_scene->mMetaData != NULL) {
-			p_scene->mMetaData->Get("OriginalUpAxis", up_axis);
-			p_scene->mMetaData->Get("OriginalUpAxisSign", up_axis_sign);
+			p_scene->mMetaData->Get("UpAxis", up_axis);
+			p_scene->mMetaData->Get("UpAxisSign", up_axis_sign);
 			p_scene->mMetaData->Get("FrontAxis", front_axis);
 			p_scene->mMetaData->Get("FrontAxisSign", front_axis_sign);
 			p_scene->mMetaData->Get("CoordAxis", coord_axis);
@@ -1045,7 +1045,11 @@ Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_u
 			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
 		quat.set_euler(rotation);
 	}
-
+	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
 	//print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
 	//print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
 	//print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
