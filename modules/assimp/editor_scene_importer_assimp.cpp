@@ -297,6 +297,12 @@ T EditorSceneImporterAssimp::_interpolate_track(const Vector<float> &p_times, co
 
 Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	ERR_FAIL_COND_V(state.scene == NULL, NULL);
+	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
+		state.ap = memnew(AnimationPlayer);
+		state.root->add_child(state.ap);
+		state.ap->set_owner(state.root);
+		state.ap->set_name(TTR("AnimationPlayer"));
+	}
 
 	String ext = state.path.get_file().get_extension().to_lower();
 	for (size_t l = 0; l < state.scene->mNumLights; l++) {
@@ -366,13 +372,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	}
 	_generate_node(state, state.scene->mRootNode, state.root, state.root);
 
-	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
-		state.ap = memnew(AnimationPlayer);
-		state.godot_assimp_root->add_child(state.ap);
-		state.ap->set_owner(state.root);
-		state.ap->set_name(TTR("AnimationPlayer"));
-	}
-
 	aiNode *skeleton_root = NULL;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 		if (state.skeleton->get_bone_parent(i) == -1) {
@@ -410,7 +409,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		List<StringName> animation_names;
 		state.ap->get_animation_list(&animation_names);
 		if (animation_names.empty()) {
-			state.godot_assimp_root->remove_child(state.ap);
+			state.root->remove_child(state.ap);
 			memdelete(state.ap);
 		}
 	}
