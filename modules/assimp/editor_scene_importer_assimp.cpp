@@ -875,6 +875,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		{
 			p_parent->add_child(mesh_node);
 			mesh_node->set_owner(p_owner);
+			mesh_node->set_transform(_ai_matrix_transform(p_node->mTransformation));
 			child_node->get_parent()->remove_child(child_node);
 			memdelete(child_node);
 			child_node = mesh_node;
