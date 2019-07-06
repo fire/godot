@@ -297,12 +297,6 @@ T EditorSceneImporterAssimp::_interpolate_track(const Vector<float> &p_times, co
 
 Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	ERR_FAIL_COND_V(state.scene == NULL, NULL);
-	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
-		state.ap = memnew(AnimationPlayer);
-		state.root->add_child(state.ap);
-		state.ap->set_owner(state.root);
-		state.ap->set_name(TTR("AnimationPlayer"));
-	}
 
 	String ext = state.path.get_file().get_extension().to_lower();
 	for (size_t l = 0; l < state.scene->mNumLights; l++) {
@@ -343,7 +337,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 		ERR_CONTINUE(light == NULL);
 		light->set_color(Color(ai_light->mColorDiffuse.r, ai_light->mColorDiffuse.g, ai_light->mColorDiffuse.b));
-		state.root->add_child(light);
+		state.godot_assimp_root->add_child(light);
 		light->set_name(_assimp_string_to_string(ai_light->mName));
 		light->set_owner(state.root);
 		state.light_names.insert(_assimp_string_to_string(state.scene->mLights[l]->mName));
@@ -364,13 +358,20 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		Transform xform;
 		xform.basis = quat;
 		xform.set_origin(pos);
-		state.root->add_child(camera);
+		state.godot_assimp_root->add_child(camera);
 		camera->set_transform(xform);
 		camera->set_name(_assimp_string_to_string(ai_camera->mName));
 		camera->set_owner(state.root);
 		state.camera_names.insert(_assimp_string_to_string(state.scene->mCameras[c]->mName));
 	}
 	_generate_node(state, state.scene->mRootNode, state.root, state.root);
+
+	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
+		state.ap = memnew(AnimationPlayer);
+		state.godot_assimp_root->add_child(state.ap);
+		state.ap->set_owner(state.root);
+		state.ap->set_name(TTR("AnimationPlayer"));
+	}
 
 	aiNode *skeleton_root = NULL;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
@@ -413,7 +414,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		List<StringName> animation_names;
 		state.ap->get_animation_list(&animation_names);
 		if (animation_names.empty()) {
-			state.root->remove_child(state.ap);
+			state.godot_assimp_root->remove_child(state.ap);
 			memdelete(state.ap);
 		}
 	}
