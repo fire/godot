@@ -394,7 +394,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		state.armature_node = node;
-		state.mesh_skeletons.back()->key()->get_parent()->add_child(state.skeleton);
+		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
 
 		state.skeleton->set_owner(state.root);
 	}
