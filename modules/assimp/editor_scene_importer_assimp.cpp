@@ -337,7 +337,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 		ERR_CONTINUE(light == NULL);
 		light->set_color(Color(ai_light->mColorDiffuse.r, ai_light->mColorDiffuse.g, ai_light->mColorDiffuse.b));
-		state.godot_assimp_root->add_child(light);
+		state.root->add_child(light);
 		light->set_name(_assimp_string_to_string(ai_light->mName));
 		light->set_owner(state.root);
 		state.light_names.insert(_assimp_string_to_string(state.scene->mLights[l]->mName));
@@ -358,7 +358,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		Transform xform;
 		xform.basis = quat;
 		xform.set_origin(pos);
-		state.godot_assimp_root->add_child(camera);
+		state.root->add_child(camera);
 		camera->set_transform(xform);
 		camera->set_name(_assimp_string_to_string(ai_camera->mName));
 		camera->set_owner(state.root);
