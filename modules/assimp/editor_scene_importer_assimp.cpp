@@ -1035,6 +1035,11 @@ Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_u
 			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
 		quat.set_euler(rotation);
 	}
+	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
 	if (p_up_front_coord.up_axis == 1 && p_up_front_coord.up_axis_sign == 1 &&
 			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
 			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
