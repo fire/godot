@@ -769,9 +769,15 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 		Vector3 pos = Vector3();
 		Quat rot = Quat();
 		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
-		pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
-		rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
-		scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
+		if (pos_values.size()) {
+			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
+		if (rot_values.size()) {
+			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
+		}
+		if (scale_values.size()) {
+			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
 		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
 		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
 
