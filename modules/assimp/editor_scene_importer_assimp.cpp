@@ -395,8 +395,11 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 		state.armature_node = node;
 		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
-
 		state.skeleton->set_owner(state.root);
+
+		Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
+		mesh_xform.basis = Basis();
+		state.skeleton->set_transform(mesh_xform.affine_inverse());
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
