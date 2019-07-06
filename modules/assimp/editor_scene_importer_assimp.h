@@ -108,7 +108,6 @@ private:
 
 	struct State {
 		Spatial *root = NULL;
-		Node *godot_assimp_root = NULL;
 		AnimationPlayer *ap = NULL;
 		Set<String> bone_names;
 		Set<String> light_names;

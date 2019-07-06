@@ -370,7 +370,9 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		camera->set_owner(state.root);
 		state.camera_names.insert(_assimp_string_to_string(state.scene->mCameras[c]->mName));
 	}
-	_generate_node(state, state.scene->mRootNode, state.root, state.root);
+	for (size_t i = 0; i < state.scene->mRootNode->mNumChildren; i++) {
+		_generate_node(state, state.scene->mRootNode->mChildren[i], state.root, state.root);
+	}
 
 	aiNode *skeleton_root = NULL;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
@@ -380,7 +382,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 	// TODO(Ernest) Remove assimp root node by packing into a packed scene and instancing
-
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = skeleton_root;
 		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
@@ -393,7 +394,8 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		state.armature_node = node;
-		state.mesh_skeletons.front()->key()->get_parent()->add_child(state.skeleton);
+		state.mesh_skeletons.back()->key()->get_parent()->add_child(state.skeleton);
+
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
@@ -415,7 +417,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	}
 
 	if (state.path.get_extension().to_lower() == "fbx") {
-		Object::cast_to<Spatial>(state.godot_assimp_root)->set_transform(_format_rot_xform(state) * state.root->get_transform());
+		Object::cast_to<Spatial>(state.root)->set_transform(_format_rot_xform(state) * state.root->get_transform());
 	}
 
 	return state.root;
@@ -852,6 +854,9 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
 
 	Spatial *child_node = NULL;
+	if (p_node == NULL) {
+		return;
+	}
 	String node_name = _assimp_string_to_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();
 	{
@@ -863,7 +868,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 	}
 	if (state.scene->mRootNode == p_node) {
 		state.ai_root = p_node;
-		state.godot_assimp_root = child_node;
+		state.root = child_node;
 	}
 	if (p_node->mNumMeshes > 0) {
 		MeshInstance *mesh_node = memnew(MeshInstance);
@@ -913,6 +918,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				}
 			}
 			_set_bone_parent(state.skeleton, state.scene);
+
 			state.skeletons.insert(state.skeleton, mesh_node);
 		}
 	} else if (state.light_names.has(node_name)) {
