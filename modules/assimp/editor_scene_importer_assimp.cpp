@@ -625,7 +625,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const String mesh_name = prop_name.split("*")[0];
 			ERR_CONTINUE(prop_name.split("*").size() != 2);
 			MeshInstance *mi = memnew(MeshInstance);
-			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name + mi->get_class_name()));
+			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name));
 			memdelete(mi);
 			ERR_CONTINUE(mesh_instance == NULL);
 			if (state.ap->get_owner()->find_node(mesh_instance->get_name()) == NULL) {
