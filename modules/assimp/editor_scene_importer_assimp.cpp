@@ -502,7 +502,9 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 			int bone = sk->find_bone(node_name);
 			Transform rest_xform = sk->get_bone_rest(bone);
 			xform = rest_xform.affine_inverse() * xform;
-			rot = xform.basis.get_rotation_quat();
+			if (xform.basis.determinant() != 0) {
+				rot = xform.basis.get_rotation_quat();
+			}
 			scale = xform.basis.get_scale();
 			pos = xform.origin;
 		}
