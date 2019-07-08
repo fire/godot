@@ -474,7 +474,7 @@ String EditorSceneImporterAssimp::_find_skeleton_bone_root(Map<Skeleton *, MeshI
 	return "";
 }
 
-void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
+void EditorSceneImporterAssimp::_insert_animation_track(State &state, const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
 
 	int track_idx = animation->get_track_count();
 	animation->add_track(Animation::TYPE_TRANSFORM);
@@ -537,6 +537,7 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 			int bone = sk->find_bone(node_name);
 			Transform rest_xform = sk->get_bone_rest(bone);
 			xform = rest_xform.affine_inverse() * xform;
+			xform = _format_rot_xform(state) * xform;
 			if (xform.basis.determinant() != 0) {
 				rot = xform.basis.get_rotation_quat();
 			}
@@ -619,7 +620,8 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				node_path = path + ":" + node_name;
 				ERR_CONTINUE(node_path.is_empty());
 				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
-				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
+				//TODO (Ernest) use state variable
+				_insert_animation_track(state, state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
 				continue;
 			}
 			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
@@ -657,7 +659,7 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			if (!state.ap->get_owner()->has_node(node_path)) {
 				continue;
 			}
-			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
+			_insert_animation_track(state, state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
 		}
 		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
 			_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
