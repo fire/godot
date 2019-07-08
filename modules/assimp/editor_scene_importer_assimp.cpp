@@ -394,12 +394,19 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		state.armature_node = node;
-		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
+		//if (state.root->find_node("*" + ASSIMP_FBX_KEY + "*")) {
+		//	state.root->add_child(state.skeleton);
+		//	Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
+		//	Basis basis;
+		//	basis.set_quat_scale(Quat(), mesh_xform.basis.get_scale());
+		//	mesh_xform.origin = Vector3();
+		//	mesh_xform.basis = basis;
+		//	state.skeleton->set_transform(mesh_xform);
+		//} else {
+		//	state.mesh_skeletons.back()->key()->add_child(state.skeleton);
+		//}
+		state.root->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
-
-		Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
-		mesh_xform.basis = Basis();
-		state.skeleton->set_transform(mesh_xform.affine_inverse());
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
