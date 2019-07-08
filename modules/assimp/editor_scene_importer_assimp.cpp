@@ -422,6 +422,39 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			node = node->mParent;
 		}
 		state.armature_node = node;
+		//node = skeleton_root;
+		//aiNode *prev_node = skeleton_root;
+		//while (node != state.armature_node && node != state.scene->mRootNode) {
+		//	String node_name = _assimp_string_to_string(node->mName);
+		//	state.skeleton->add_bone(node_name);
+		//	int32_t idx = state.skeleton->find_bone(node_name);
+		//	Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+		//	//Transform xform = _ai_matrix_transform(node->mTransformation);
+		//	//xform = _format_rot_xform(state) * xform;
+		//	//double unit_scale_factor = 0;
+		//	//if (state.scene->mMetaData != NULL) {
+		//	//	state.scene->mMetaData->Get("UnitScaleFactor", unit_scale_factor);
+		//	//}
+		//	//Vector3 scale = Vector3(unit_scale_factor, unit_scale_factor, unit_scale_factor);
+		//	//scale = scale * 0.01f;
+		//	//xform.scale(scale.inverse());
+		//	String prev_bone_name = _assimp_string_to_string(prev_node->mName);
+		//	int32_t prev_idx = state.skeleton->find_bone(node_name);
+		//	//state.skeleton->get_bone_rest(prev_idx)
+		//	state.skeleton->set_bone_rest(idx, xform);
+		//	while (node->mParent) {
+		//		if (_assimp_string_to_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_string_to_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+
+		//			break;
+		//		}
+		//		node = node->mParent;
+		//	}
+		//	prev_node = node;
+		//	node = node->mParent;
+		//}
+		_set_bone_parent(state.skeleton, state.scene);
+		// Add bones
+
 		//if (state.root->find_node("*" + ASSIMP_FBX_KEY + "*")) {
 		//	state.root->add_child(state.skeleton);
 		//	Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
