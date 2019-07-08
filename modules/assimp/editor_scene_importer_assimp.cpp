@@ -382,7 +382,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			break;
 		}
 	}
-	// TODO(Ernest) Remove assimp root node by packing into a packed scene and instancing
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = skeleton_root;
 		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
@@ -1033,8 +1032,8 @@ Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_u
 		return quat;
 	}
 	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
-		p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
-		p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1){
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
 		return quat;
 	}
 	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
