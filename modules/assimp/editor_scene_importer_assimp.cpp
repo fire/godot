@@ -121,8 +121,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	// Cannot remove pivot points because the static mesh will be in the wrong place
 	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, false);
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, false);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
 	importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
 	int32_t max_bone_weights = 4;
 	//importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, max_bone_weights);
@@ -374,17 +373,17 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 	if (state.skeleton->get_bone_count()) {
-		aiNode *node = skeleton_root;
-		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-			while (node->mParent) {
-				if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-					break;
-				}
-				node = node->mParent;
-			}
-			node = node->mParent;
-		}
-		state.armature_node = node;
+		// aiNode *node = skeleton_root;
+		// while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+		// 	while (node->mParent) {
+		// 		if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+		// 			break;
+		// 		}
+		// 		node = node->mParent;
+		// 	}
+		// 	node = node->mParent;
+		// }
+		// state.armature_node = node;
 		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
 		state.skeleton->set_owner(state.root);
 

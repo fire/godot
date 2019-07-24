@@ -5573,9 +5573,9 @@ EditorNode::EditorNode() {
 			import_obj2.instance();
 			import_scene->add_importer(import_obj2);
 
-			Ref<EditorSceneImporterGLTF> import_gltf;
-			import_gltf.instance();
-			import_scene->add_importer(import_gltf);
+			// Ref<EditorSceneImporterGLTF> import_gltf;
+			// import_gltf.instance();
+			// import_scene->add_importer(import_gltf);
 
 			Ref<EditorSceneImporterESCN> import_escn;
 			import_escn.instance();
