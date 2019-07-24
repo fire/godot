@@ -819,7 +819,7 @@ Transform EditorSceneImporterAssimp::_get_global_ai_node_transform(const aiScene
 	aiNode const *current_node = p_current_node;
 	Transform xform;
 	while (current_node != NULL) {
-		xform = _ai_matrix_transform(current_node->mTransformation) * xform;
+		xform = _assimp_matrix_transform(current_node->mTransformation) * xform;
 		current_node = current_node->mParent;
 	}
 	return xform;
@@ -840,7 +840,7 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 			p_mesh_bones.insert(bone_name, true);
 			p_skeleton->add_bone(bone_name);
 			int32_t idx = p_skeleton->find_bone(bone_name);
-			Transform xform = _ai_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
+			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
 			String ext = p_path.get_file().get_extension().to_lower();
 			if (ext == "fbx") {
 				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
@@ -861,7 +861,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 	String node_name = _assimp_get_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();
 	{
-		Transform xform = _ai_matrix_transform(p_node->mTransformation);
+		Transform xform = _assimp_matrix_transform(p_node->mTransformation);
 		child_node = memnew(Spatial);
 		p_parent->add_child(child_node);
 		child_node->set_owner(p_owner);
@@ -876,7 +876,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		{
 			p_parent->add_child(mesh_node);
 			mesh_node->set_owner(p_owner);
-			mesh_node->set_transform(_ai_matrix_transform(p_node->mTransformation));
+			mesh_node->set_transform(_assimp_matrix_transform(p_node->mTransformation));
 			child_node->get_parent()->remove_child(child_node);
 			memdelete(child_node);
 			child_node = mesh_node;
@@ -1876,7 +1876,7 @@ Ref<Animation> EditorSceneImporterAssimp::import_animation(const String &p_path,
 	return Ref<Animation>();
 }
 
-const Transform EditorSceneImporterAssimp::_ai_matrix_transform(const aiMatrix4x4 p_matrix) {
+const Transform EditorSceneImporterAssimp::_assimp_matrix_transform(const aiMatrix4x4 p_matrix) {
 	aiMatrix4x4 matrix = p_matrix;
 	Transform xform;
 	xform.set(matrix.a1, matrix.a2, matrix.a3, matrix.b1, matrix.b2, matrix.b3, matrix.c1, matrix.c2, matrix.c3, matrix.a4, matrix.b4, matrix.c4);

@@ -203,7 +203,7 @@ private:
 	float _get_fbx_fps(int32_t time_mode, const aiScene *p_scene);
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, float p_time, AssetImportAnimation::Interpolation p_interp);
-	const Transform _ai_matrix_transform(const aiMatrix4x4 p_matrix);
+	const Transform _assimp_matrix_transform(const aiMatrix4x4 p_matrix);
 	void _register_project_setting_import(const String generic, const String import_setting_string, const Vector<String> &exts, List<String> *r_extensions, const bool p_enabled) const;
 
 	struct ImportFormat {
