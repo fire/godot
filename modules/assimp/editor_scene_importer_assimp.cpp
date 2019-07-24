@@ -1692,13 +1692,6 @@ Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String
 			} else if (tex->CheckFormat("dds")) {
 				ERR_EXPLAIN("Open Asset Import: Embedded dds not implemented");
 				ERR_FAIL_COND_V(true, Ref<Texture>());
-				//Ref<Image> img = Image::_dds_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				//ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
-				//Ref<ImageTexture> t;
-				//t.instance();
-				//t->create_from_image(img);
-				//t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
-				//return t;
 			}
 		} else {
 			Ref<Image> img;
