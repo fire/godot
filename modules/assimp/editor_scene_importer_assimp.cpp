@@ -89,7 +89,7 @@ void EditorSceneImporterAssimp::_register_project_setting_import(const String ge
 }
 
 uint32_t EditorSceneImporterAssimp::get_import_flags() const {
-	return EditorSceneImporter::IMPORT_SCENE;
+	return EditorSceneImporter::IMPORT_SCENE | EditorSceneImporter::IMPORT_ANIMATION;
 }
 
 AssimpStream::AssimpStream() {
