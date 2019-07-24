@@ -89,7 +89,7 @@ void EditorSceneImporterAssimp::_register_project_setting_import(const String ge
 }
 
 uint32_t EditorSceneImporterAssimp::get_import_flags() const {
-	return IMPORT_SCENE;
+	return EditorSceneImporter::IMPORT_SCENE;
 }
 
 AssimpStream::AssimpStream() {
@@ -113,45 +113,60 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	std::string s_path(w_path.begin(), w_path.end());
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	// Cannot remove pivot points because the static mesh will be in the wrong place
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, false);
+	importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
 	int32_t max_bone_weights = 4;
-	//if (p_flags & IMPORT_ANIMATION_EIGHT_WEIGHTS) {
+	//importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, max_bone_weights);
+	//if (p_flags & EditorSceneImporter::IMPORT_ANIMATION_8_WEIGHTS) {
 	//	const int eight_bones = 8;
-	//	importer.SetPropertyBool(AI_CONFIG_PP_LBW_MAX_WEIGHTS, eight_bones);
+	//	importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, eight_bones);
 	//	max_bone_weights = eight_bones;
 	//}
-
-	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
+	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
+	//importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 	//importer.SetPropertyFloat(AI_CONFIG_PP_DB_THRESHOLD, 1.0f);
-	int32_t post_process_Steps = aiProcess_CalcTangentSpace |
-								 //aiProcess_FlipUVs |
-								 //aiProcess_FlipWindingOrder |
-								 //aiProcess_DropNormals |
-								 //aiProcess_GenSmoothNormals |
-								 aiProcess_JoinIdenticalVertices |
-								 aiProcess_ImproveCacheLocality |
-								 aiProcess_LimitBoneWeights |
-								 //aiProcess_RemoveRedundantMaterials | // Causes a crash
-								 aiProcess_SplitLargeMeshes |
-								 aiProcess_Triangulate |
-								 aiProcess_GenUVCoords |
-								 //aiProcess_FindDegenerates |
-								 aiProcess_SortByPType |
-								 aiProcess_FindInvalidData |
-								 aiProcess_TransformUVCoords |
-								 aiProcess_FindInstances |
-								 //aiProcess_FixInfacingNormals |
-								 //aiProcess_ValidateDataStructure |
-								 aiProcess_OptimizeMeshes |
-								 //aiProcess_OptimizeGraph |
-								 //aiProcess_Debone |
-								 aiProcess_EmbedTextures |
-								 aiProcess_SplitByBoneCount |
-								 0;
-	const aiScene *scene = importer.ReadFile(s_path.c_str(),
+	int32_t post_process_Steps = //aiProcess_CalcTangentSpace |
+			//aiProcess_FlipUVs |
+			aiProcess_FlipWindingOrder |
+			//aiProcess_DropNormals |
+			//aiProcess_GenSmoothNormals |
+			aiProcess_JoinIdenticalVertices |
+			aiProcess_ImproveCacheLocality |
+			aiProcess_LimitBoneWeights |
+			aiProcess_RemoveRedundantMaterials |
+			//aiProcess_SplitLargeMeshes |
+			aiProcess_Triangulate |
+			//aiProcess_GenUVCoords |
+			//aiProcess_FindDegenerates |
+			aiProcess_RemoveComponent |
+			aiProcess_SortByPType |
+			aiProcess_FindInvalidData |
+			aiProcess_TransformUVCoords |
+			aiProcess_FindInstances |
+			//aiProcess_FixInfacingNormals |
+			aiProcess_ValidateDataStructure |
+			aiProcess_OptimizeMeshes |
+			//aiProcess_OptimizeGraph |
+			//aiProcess_Debone |
+			//aiProcess_EmbedTextures |
+			//aiProcess_SplitByBoneCount |
+			0;
+	const aiScene *ai_scene = importer.ReadFile(s_path.c_str(),
 			post_process_Steps);
-	ERR_FAIL_COND_V_MSG(scene == NULL, NULL, String("Open Asset Import failed to open: ") + String(importer.GetErrorString()) + ".");
-	return _generate_scene(p_path, scene, p_flags, p_bake_fps, max_bone_weights);
+	ERR_EXPLAIN(String("Open Asset Import failed to open: ") + String(importer.GetErrorString()));
+	ERR_FAIL_COND_V(ai_scene == NULL, NULL);
+	State state;
+	state.scene = ai_scene;
+	state.path = p_path;
+	state.max_bone_weights = max_bone_weights;
+	state.flags = p_flags;
+	state.bake_fps = p_bake_fps;
+	state.skeleton = memnew(Skeleton);
+	state.root = memnew(Spatial);
+	Node *scene = _generate_scene(state);
+	return scene;
 }
 
 template <class T>
@@ -281,257 +296,158 @@ T EditorSceneImporterAssimp::_interpolate_track(const Vector<float> &p_times, co
 	ERR_FAIL_V(p_values[0]);
 }
 
-void EditorSceneImporterAssimp::_generate_bone_groups(ImportState &state, const aiNode *p_assimp_node, Map<String, int> &ownership, Map<String, Transform> &bind_xforms) {
-
-	Transform mesh_offset = _get_global_assimp_node_transform(p_assimp_node);
-	//mesh_offset.basis = Basis();
-	for (uint32_t i = 0; i < p_assimp_node->mNumMeshes; i++) {
-		const aiMesh *mesh = state.assimp_scene->mMeshes[i];
-		int owned_by = -1;
-		for (uint32_t j = 0; j < mesh->mNumBones; j++) {
-			const aiBone *bone = mesh->mBones[j];
-			String name = _assimp_get_string(bone->mName);
-
-			if (ownership.has(name)) {
-				owned_by = ownership[name];
-				break;
-			}
-		}
-
-		if (owned_by == -1) { //no owned, create new unique id
-			owned_by = 1;
-			for (Map<String, int>::Element *E = ownership.front(); E; E = E->next()) {
-				owned_by = MAX(E->get() + 1, owned_by);
-			}
-		}
-
-		for (uint32_t j = 0; j < mesh->mNumBones; j++) {
-			const aiBone *bone = mesh->mBones[j];
-			String name = _assimp_get_string(bone->mName);
-			ownership[name] = owned_by;
-			//store the actual full path for the bone transform
-			//when skeleton finds its place in the tree, it will be restored
-			bind_xforms[name] = mesh_offset * _assimp_matrix_transform(bone->mOffsetMatrix);
-		}
+Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
+	ERR_FAIL_COND_V(state.scene == NULL, NULL);
+	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
+		state.ap = memnew(AnimationPlayer);
+		state.root->add_child(state.ap);
+		state.ap->set_owner(state.root);
+		state.ap->set_name(TTR("AnimationPlayer"));
 	}
 
-	for (size_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-		_generate_bone_groups(state, p_assimp_node->mChildren[i], ownership, bind_xforms);
-	}
-}
-
-void EditorSceneImporterAssimp::_fill_node_relationships(ImportState &state, const aiNode *p_assimp_node, Map<String, int> &ownership, Map<int, int> &skeleton_map, int p_skeleton_id, Skeleton *p_skeleton, const String &p_parent_name, int &holecount, const Vector<SkeletonHole> &p_holes, const Map<String, Transform> &bind_xforms) {
-
-	String name = _assimp_get_string(p_assimp_node->mName);
-	if (name == String()) {
-		name = "AuxiliaryBone" + itos(holecount++);
-	}
-
-	Transform pose = _assimp_matrix_transform(p_assimp_node->mTransformation);
-
-	if (!ownership.has(name)) {
-		//not a bone, it's a hole
-		Vector<SkeletonHole> holes = p_holes;
-		SkeletonHole hole; //add a new one
-		hole.name = name;
-		hole.pose = pose;
-		hole.node = p_assimp_node;
-		hole.parent = p_parent_name;
-		holes.push_back(hole);
-
-		for (size_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-			_fill_node_relationships(state, p_assimp_node->mChildren[i], ownership, skeleton_map, p_skeleton_id, p_skeleton, name, holecount, holes, bind_xforms);
-		}
-
-		return;
-	} else if (ownership[name] != p_skeleton_id) {
-		//oh, it's from another skeleton? fine.. reparent all bones to this skeleton.
-		int prev_owner = ownership[name];
-		ERR_FAIL_COND_MSG(skeleton_map.has(prev_owner), "A previous skeleton exists for bone '" + name + "', this type of skeleton layout is unsupported.");
-		for (Map<String, int>::Element *E = ownership.front(); E; E = E->next()) {
-			if (E->get() == prev_owner) {
-				E->get() = p_skeleton_id;
-			}
-		}
-	}
-
-	//valid bone, first fill holes if needed
-	for (int i = 0; i < p_holes.size(); i++) {
-
-		int bone_idx = p_skeleton->get_bone_count();
-		p_skeleton->add_bone(p_holes[i].name);
-		int parent_idx = p_skeleton->find_bone(p_holes[i].parent);
-		if (parent_idx >= 0) {
-			p_skeleton->set_bone_parent(bone_idx, parent_idx);
-		}
-
-		Transform pose_transform = _get_global_assimp_node_transform(p_holes[i].node);
-		p_skeleton->set_bone_rest(bone_idx, pose_transform);
-
-		state.bone_owners[p_holes[i].name] = skeleton_map[p_skeleton_id];
-	}
-
-	//finally fill bone
-
-	int bone_idx = p_skeleton->get_bone_count();
-	p_skeleton->add_bone(name);
-	int parent_idx = p_skeleton->find_bone(p_parent_name);
-	if (parent_idx >= 0) {
-		p_skeleton->set_bone_parent(bone_idx, parent_idx);
-	}
-	//p_skeleton->set_bone_pose(bone_idx, pose);
-	if (bind_xforms.has(name)) {
-		//for now this is the full path to the bone in rest pose
-		//when skeleton finds it's place in the tree, it will get fixed
-		p_skeleton->set_bone_rest(bone_idx, bind_xforms[name]);
-	}
-	state.bone_owners[name] = skeleton_map[p_skeleton_id];
-	//go to children
-	for (size_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-		_fill_node_relationships(state, p_assimp_node->mChildren[i], ownership, skeleton_map, p_skeleton_id, p_skeleton, name, holecount, Vector<SkeletonHole>(), bind_xforms);
-	}
-}
-
-void EditorSceneImporterAssimp::_generate_skeletons(ImportState &state, const aiNode *p_assimp_node, Map<String, int> &ownership, Map<int, int> &skeleton_map, const Map<String, Transform> &bind_xforms) {
-
-	//find skeletons at this level, there may be multiple root nodes for each
-	Map<int, List<aiNode *> > skeletons_found;
-	for (size_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-		String name = _assimp_get_string(p_assimp_node->mChildren[i]->mName);
-		if (ownership.has(name)) {
-			int skeleton = ownership[name];
-			if (!skeletons_found.has(skeleton)) {
-				skeletons_found[skeleton] = List<aiNode *>();
-			}
-			skeletons_found[skeleton].push_back(p_assimp_node->mChildren[i]);
-		}
-	}
-
-	//go via the potential skeletons found and generate the actual skeleton
-	for (Map<int, List<aiNode *> >::Element *E = skeletons_found.front(); E; E = E->next()) {
-		ERR_CONTINUE(skeleton_map.has(E->key())); //skeleton already exists? this can't be.. skip
-		Skeleton *skeleton = memnew(Skeleton);
-		//this the only way to reliably use multiple meshes with one skeleton, at the cost of less precision
-		skeleton->set_use_bones_in_world_transform(true);
-		skeleton_map[E->key()] = state.skeletons.size();
-		state.skeletons.push_back(skeleton);
-		int holecount = 1;
-		//fill the bones and their relationships
-		for (List<aiNode *>::Element *F = E->get().front(); F; F = F->next()) {
-			_fill_node_relationships(state, F->get(), ownership, skeleton_map, E->key(), skeleton, "", holecount, Vector<SkeletonHole>(), bind_xforms);
-		}
-	}
-
-	//go to the children
-	for (uint32_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-		String name = _assimp_get_string(p_assimp_node->mChildren[i]->mName);
-		if (ownership.has(name)) {
-			continue; //a bone, so don't bother with this
-		}
-		_generate_skeletons(state, p_assimp_node->mChildren[i], ownership, skeleton_map, bind_xforms);
-	}
-}
-
-Spatial *EditorSceneImporterAssimp::_generate_scene(const String &p_path, const aiScene *scene, const uint32_t p_flags, int p_bake_fps, const int32_t p_max_bone_weights) {
-	ERR_FAIL_COND_V(scene == NULL, NULL);
-
-	ImportState state;
-	state.path = p_path;
-	state.assimp_scene = scene;
-	state.max_bone_weights = p_max_bone_weights;
-	state.root = memnew(Spatial);
-	state.fbx = false;
-	state.animation_player = NULL;
-
-	real_t scale_factor = 1.0f;
-	{
-		//handle scale
-		String ext = p_path.get_file().get_extension().to_lower();
-		if (ext == "fbx") {
-			if (scene->mMetaData != NULL) {
-				float factor = 1.0;
-				scene->mMetaData->Get("UnitScaleFactor", factor);
-				scale_factor = factor * 0.01f;
-			}
-			state.fbx = true;
-		}
-	}
-
-	state.root->set_scale(Vector3(scale_factor, scale_factor, scale_factor));
-
-	//fill light map cache
-	for (size_t l = 0; l < scene->mNumLights; l++) {
-
-		aiLight *ai_light = scene->mLights[l];
+	String ext = state.path.get_file().get_extension().to_lower();
+	for (size_t l = 0; l < state.scene->mNumLights; l++) {
+		Light *light = NULL;
+		aiLight *ai_light = state.scene->mLights[l];
 		ERR_CONTINUE(ai_light == NULL);
-		state.light_cache[_assimp_get_string(ai_light->mName)] = l;
+		if (ai_light->mType == aiLightSource_DIRECTIONAL) {
+			light = memnew(DirectionalLight);
+			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
+			dir.normalize();
+			Transform xform;
+			Quat quat;
+			quat.set_euler(dir);
+			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
+			xform.origin = pos;
+			light->set_transform(xform);
+		} else if (ai_light->mType == aiLightSource_POINT) {
+			light = memnew(OmniLight);
+			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
+			Transform xform;
+			xform.origin = pos;
+			light->set_transform(xform);
+			// No idea for energy
+			light->set_param(Light::PARAM_ATTENUATION, 0.0f);
+		} else if (ai_light->mType == aiLightSource_SPOT) {
+			light = memnew(SpotLight);
+			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
+			Transform xform;
+			xform.origin = pos;
+			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
+			dir.normalize();
+			Quat quat;
+			quat.set_euler(dir);
+			xform.basis = quat;
+			light->set_transform(xform);
+			// No idea for energy
+			light->set_param(Light::PARAM_ATTENUATION, 0.0f);
+		}
+		ERR_CONTINUE(light == NULL);
+		light->set_color(Color(ai_light->mColorDiffuse.r, ai_light->mColorDiffuse.g, ai_light->mColorDiffuse.b));
+		state.root->add_child(light);
+		light->set_name(_assimp_get_string(ai_light->mName));
+		light->set_owner(state.root);
+		state.light_names.insert(_assimp_get_string(state.scene->mLights[l]->mName));
+	}
+	for (size_t c = 0; c < state.scene->mNumCameras; c++) {
+		aiCamera *ai_camera = state.scene->mCameras[c];
+		Camera *camera = memnew(Camera);
+		float near = ai_camera->mClipPlaneNear;
+		if (Math::is_equal_approx(near, 0.0f)) {
+			near = 0.1f;
+		}
+		camera->set_perspective(Math::rad2deg(ai_camera->mHorizontalFOV) * 2.0f, near, ai_camera->mClipPlaneFar);
+		Vector3 pos = Vector3(ai_camera->mPosition.x, ai_camera->mPosition.y, ai_camera->mPosition.z);
+
+		Vector3 look_at = Vector3(ai_camera->mLookAt.y, ai_camera->mLookAt.x, ai_camera->mLookAt.z).normalized();
+		Quat quat;
+		quat.set_euler(look_at);
+		Transform xform;
+		xform.basis = quat;
+		xform.set_origin(pos);
+		state.root->add_child(camera);
+		camera->set_transform(xform);
+		camera->set_name(_assimp_get_string(ai_camera->mName));
+		camera->set_owner(state.root);
+		state.camera_names.insert(_assimp_get_string(state.scene->mCameras[c]->mName));
+	}
+	for (size_t i = 0; i < state.scene->mRootNode->mNumChildren; i++) {
+		_generate_node(state, state.scene->mRootNode->mChildren[i], state.root, state.root);
 	}
 
-	//fill camera cache
-	for (size_t c = 0; c < scene->mNumCameras; c++) {
-		aiCamera *ai_camera = scene->mCameras[c];
-		ERR_CONTINUE(ai_camera == NULL);
-		state.camera_cache[_assimp_get_string(ai_camera->mName)] = c;
-	}
-
-	if (scene->mRootNode) {
-		Map<String, Transform> bind_xforms; //temporary map to store bind transforms
-		//guess the skeletons, since assimp does not really support them directly
-		Map<String, int> ownership; //bone names to groups
-		//fill this map with bone names and which group where they detected to, going mesh by mesh
-		_generate_bone_groups(state, state.assimp_scene->mRootNode, ownership, bind_xforms);
-		Map<int, int> skeleton_map; //maps previously created groups to actual skeletons
-		//generates the skeletons when bones are found in the hierarchy, and follows them (including gaps/holes).
-		_generate_skeletons(state, state.assimp_scene->mRootNode, ownership, skeleton_map, bind_xforms);
-
-		//generate nodes
-		for (uint32_t i = 0; i < scene->mRootNode->mNumChildren; i++) {
-			_generate_node(state, scene->mRootNode->mChildren[i], state.root);
-		}
-
-		//assign skeletons to nodes
-
-		for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
-			MeshInstance *mesh = E->key();
-			Skeleton *skeleton = E->get();
-			NodePath skeleton_path = mesh->get_path_to(skeleton);
-			mesh->set_skeleton_path(skeleton_path);
+	aiNode *skeleton_root = NULL;
+	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+		if (state.skeleton->get_bone_parent(i) == -1) {
+			skeleton_root = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+			break;
 		}
 	}
-
-	if (p_flags & IMPORT_ANIMATION && scene->mNumAnimations) {
-
-		state.animation_player = memnew(AnimationPlayer);
-		state.root->add_child(state.animation_player);
-		state.animation_player->set_owner(state.root);
-
-		for (uint32_t i = 0; i < scene->mNumAnimations; i++) {
-			_import_animation(state, i, p_bake_fps);
+	if (state.skeleton->get_bone_count()) {
+		aiNode *node = skeleton_root;
+		while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+			while (node->mParent) {
+				if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+					break;
+				}
+				node = node->mParent;
+			}
+			node = node->mParent;
 		}
+		state.armature_node = node;
+		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
+		state.skeleton->set_owner(state.root);
+
+		Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
+		mesh_xform.basis = Basis();
+		state.skeleton->set_transform(mesh_xform.affine_inverse());
+	}
+	state.skeleton->localize_rests();
+	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
+		String path = String(E->key()->get_path_to(E->key()->get_owner()));
+		E->key()->set_skeleton_path(path.plus_file(E->get()->get_owner()->get_path_to(E->get())));
+	}
+	ResourceImporterScene::get_singleton()->_optimize_scene(state.root);
+	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
+		for (size_t i = 0; i < state.scene->mNumAnimations; i++) {
+			_import_animation(state, i);
+		}
+		List<StringName> animation_names;
+		state.ap->get_animation_list(&animation_names);
+		if (animation_names.empty()) {
+			state.root->remove_child(state.ap);
+			memdelete(state.ap);
+		}
+	}
+
+	if (state.path.get_extension().to_lower() == "fbx") {
+		Object::cast_to<Spatial>(state.root)->set_transform(_format_rot_xform(state) * state.root->get_transform());
 	}
 
 	return state.root;
 }
 
-void EditorSceneImporterAssimp::_insert_animation_track(ImportState &scene, const aiAnimation *assimp_anim, int p_track, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, Skeleton *p_skeleton, const NodePath &p_path, const String &p_name) {
+String EditorSceneImporterAssimp::_find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root) {
+	for (Map<Skeleton *, MeshInstance *>::Element *E = skeletons.front(); E; E = E->next()) {
+		if (meshes.has(E->get())) {
+			String name = meshes[E->get()];
+			if (name != "") {
+				return name;
+			}
+		}
+	}
+	return "";
+}
 
-	const aiNodeAnim *assimp_track = assimp_anim->mChannels[p_track];
-	//make transform track
+void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path) {
+
 	int track_idx = animation->get_track_count();
 	animation->add_track(Animation::TYPE_TRANSFORM);
-	animation->track_set_path(track_idx, p_path);
-	//first determine animation length
+	animation->track_set_path(track_idx, node_path);
 
 	float increment = 1.0 / float(p_bake_fps);
 	float time = 0.0;
 
 	bool last = false;
-
-	int skeleton_bone = -1;
-
-	if (p_skeleton) {
-		skeleton_bone = p_skeleton->find_bone(p_name);
-	}
 
 	Vector<Vector3> pos_values;
 	Vector<float> pos_times;
@@ -540,27 +456,30 @@ void EditorSceneImporterAssimp::_insert_animation_track(ImportState &scene, cons
 	Vector<Quat> rot_values;
 	Vector<float> rot_times;
 
-	for (size_t p = 0; p < assimp_track->mNumPositionKeys; p++) {
-		aiVector3D pos = assimp_track->mPositionKeys[p].mValue;
+	for (size_t p = 0; p < track->mNumPositionKeys; p++) {
+		aiVector3D pos = track->mPositionKeys[p].mValue;
 		pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
-		pos_times.push_back(assimp_track->mPositionKeys[p].mTime / ticks_per_second);
+		pos_times.push_back(track->mPositionKeys[p].mTime / ticks_per_second);
 	}
 
-	for (size_t r = 0; r < assimp_track->mNumRotationKeys; r++) {
-		aiQuaternion quat = assimp_track->mRotationKeys[r].mValue;
+	for (size_t r = 0; r < track->mNumRotationKeys; r++) {
+		aiQuaternion quat = track->mRotationKeys[r].mValue;
 		rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
-		rot_times.push_back(assimp_track->mRotationKeys[r].mTime / ticks_per_second);
+		rot_times.push_back(track->mRotationKeys[r].mTime / ticks_per_second);
 	}
 
-	for (size_t sc = 0; sc < assimp_track->mNumScalingKeys; sc++) {
-		aiVector3D scale = assimp_track->mScalingKeys[sc].mValue;
+	for (size_t sc = 0; sc < track->mNumScalingKeys; sc++) {
+		aiVector3D scale = track->mScalingKeys[sc].mValue;
 		scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
-		scale_times.push_back(assimp_track->mScalingKeys[sc].mTime / ticks_per_second);
+		scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
+	}
+	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
+		return;
 	}
 	while (true) {
 		Vector3 pos;
 		Quat rot;
-		Vector3 scale(1, 1, 1);
+		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
 
 		if (pos_values.size()) {
 			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
@@ -574,144 +493,305 @@ void EditorSceneImporterAssimp::_insert_animation_track(ImportState &scene, cons
 			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
 		}
 
-		if (skeleton_bone >= 0) {
+		if (sk != NULL && sk->find_bone(node_name) != -1) {
 			Transform xform;
 			xform.basis.set_quat_scale(rot, scale);
 			xform.origin = pos;
 
-			Transform rest_xform = p_skeleton->get_bone_rest(skeleton_bone);
+			int bone = sk->find_bone(node_name);
+			Transform rest_xform = sk->get_bone_rest(bone);
 			xform = rest_xform.affine_inverse() * xform;
-			rot = xform.basis.get_rotation_quat();
+			if (xform.basis.determinant() != 0) {
+				rot = xform.basis.get_rotation_quat();
+			}
 			scale = xform.basis.get_scale();
 			pos = xform.origin;
 		}
-
 		rot.normalize();
 
 		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
 		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
-
-		if (last) { //done this way so a key is always inserted past the end (for proper interpolation)
+		if (last) {
 			break;
 		}
 		time += increment;
-		if (time >= animation->get_length()) {
+		if (time >= length) {
 			last = true;
+			time = length;
 		}
 	}
 }
 
-void EditorSceneImporterAssimp::_import_animation(ImportState &state, int p_animation_index, int p_bake_fps) {
-
-	ERR_FAIL_INDEX(p_animation_index, (int)state.assimp_scene->mNumAnimations);
-
-	const aiAnimation *anim = state.assimp_scene->mAnimations[p_animation_index];
-	String name = _assimp_anim_string_to_string(anim->mName);
-	if (name == String()) {
-		name = "Animation " + itos(p_animation_index + 1);
+void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index) {
+	String name = "Animation";
+	aiAnimation const *anim = NULL;
+	if (p_index != -1) {
+		anim = state.scene->mAnimations[p_index];
+		if (anim->mName.length > 0) {
+			name = _assimp_anim_string_to_string(anim->mName);
+		}
 	}
 
-	float ticks_per_second = anim->mTicksPerSecond;
+	Ref<Animation> animation;
+	animation.instance();
+	float length = 0.0f;
+	animation->set_name(name);
+	float ticks_per_second = state.scene->mAnimations[p_index]->mTicksPerSecond;
 
-	if (state.assimp_scene->mMetaData != NULL && Math::is_equal_approx(ticks_per_second, 0.0f)) {
+	if (state.scene->mMetaData != NULL && Math::is_equal_approx(ticks_per_second, 0.0f)) {
 		int32_t time_mode = 0;
-		state.assimp_scene->mMetaData->Get("TimeMode", time_mode);
-		ticks_per_second = _get_fbx_fps(time_mode, state.assimp_scene);
+		state.scene->mMetaData->Get("TimeMode", time_mode);
+		ticks_per_second = _get_fbx_fps(time_mode, state.scene);
 	}
 
-	//?
-	//if ((p_path.get_file().get_extension().to_lower() == "glb" || p_path.get_file().get_extension().to_lower() == "gltf") && Math::is_equal_approx(ticks_per_second, 0.0f)) {
-	//	ticks_per_second = 1000.0f;
-	//}
+	if ((state.path.get_file().get_extension().to_lower() == "glb" || state.path.get_file().get_extension().to_lower() == "gltf") && Math::is_equal_approx(ticks_per_second, 0.0f)) {
+		ticks_per_second = 1000.0f;
+	}
 
 	if (Math::is_equal_approx(ticks_per_second, 0.0f)) {
 		ticks_per_second = 25.0f;
 	}
 
-	Ref<Animation> animation;
-	animation.instance();
-	animation->set_name(name);
-	animation->set_length(anim->mDuration / ticks_per_second);
+	length = anim->mDuration / ticks_per_second;
+	if (anim) {
+		Map<String, Vector<const aiNodeAnim *> > pivot_tracks;
+		for (size_t i = 0; i < anim->mNumChannels; i++) {
+			const aiNodeAnim *track = anim->mChannels[i];
+			String node_name = _assimp_get_string(track->mNodeName);
+			NodePath node_path = node_name;
+			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
+				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
+				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
+				if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
+					Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
+					Vector<const aiNodeAnim *> ai_tracks;
+					if (E) {
+						ai_tracks = E->get();
+						ai_tracks.push_back(track);
+					} else {
+						ai_tracks.push_back(track);
+					}
+					pivot_tracks.insert(bone_name, ai_tracks);
+					continue;
+				}
+			}
 
-	//regular tracks
-
-	for (size_t i = 0; i < anim->mNumChannels; i++) {
-		const aiNodeAnim *track = anim->mChannels[i];
-		String node_name = _assimp_get_string(track->mNodeName);
-		/*
-		if (node_name.find(ASSIMP_FBX_KEY) != -1) {
-			String p_track_type = node_name.get_slice(ASSIMP_FBX_KEY, 1);
-			if (p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") {
+			Skeleton *sk = state.skeleton;
+			const String path = state.ap->get_owner()->get_path_to(sk);
+			bool is_node_bone = sk->find_bone(node_name) != -1;
+			if (!path.empty() && is_node_bone) {
+				node_path = path + ":" + node_name;
+				ERR_CONTINUE(node_path.is_empty());
+				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
 				continue;
 			}
+			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
+			const String bare_name = split_name[0];
+			if (split_name.size() > 1) {
+				// const Node *node = state.ap->get_owner()->find_node(bare_name);
+				bool is_bone = sk->find_bone(bare_name) != -1;
+				if (is_bone) {
+					continue;
+				}
+				const Node *node = state.ap->get_owner()->find_node(node_name);
+				if (!node) {
+					continue;
+				}
+				const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
+				Vector<const aiNodeAnim *> ai_tracks;
+				if (E) {
+					ai_tracks = E->get();
+					ai_tracks.push_back(track);
+				} else {
+					ai_tracks.push_back(track);
+				}
+				pivot_tracks.insert(bare_name, ai_tracks);
+				continue;
+			}
+			const Node *node = state.ap->get_owner()->find_node(node_name);
+			if (!node) {
+				continue;
+			}
+			if (!state.ap->get_owner()->find_node(node_name) || sk->find_bone(node_name) != -1) {
+				continue;
+			}
+			node_path = state.ap->get_owner()->get_path_to(node);
+			ERR_CONTINUE(node_path.is_empty());
+			if (!state.ap->get_owner()->has_node(node_path)) {
+				continue;
+			}
+			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
 		}
-*/
-		if (track->mNumRotationKeys == 0 && track->mNumPositionKeys == 0 && track->mNumScalingKeys == 0) {
-			continue; //do not bother
+		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
+			_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
 		}
+		for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
+			const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
+			const String prop_name = _assimp_get_string(anim_mesh->mName);
+			const String mesh_name = prop_name.split("*")[0];
+			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name));
+			ERR_CONTINUE(mesh_instance == NULL);
+			if (state.ap->get_owner()->find_node(mesh_instance->get_name()) == NULL) {
+				print_verbose("Can't find mesh in scene: " + mesh_instance->get_name());
+				continue;
+			}
+			const String path = state.ap->get_owner()->get_path_to(mesh_instance);
+			if (path.empty()) {
+				print_verbose("Can't find mesh in scene");
+				continue;
+			}
+			Ref<Mesh> mesh = mesh_instance->get_mesh();
+			ERR_CONTINUE(mesh.is_null());
 
-		bool is_bone = state.bone_owners.has(node_name);
-		NodePath node_path;
-		Skeleton *skeleton = NULL;
+			float base_weight = 0.0f;
+			if (anim_mesh->mNumKeys != 0) {
+				if (anim_mesh->mKeys[0].mNumValuesAndWeights) {
+					base_weight = anim_mesh->mKeys[0].mWeights[0];
+				}
+			}
 
-		if (is_bone) {
-			skeleton = state.skeletons[state.bone_owners[node_name]];
-			String path = state.root->get_path_to(skeleton);
-			path += ":" + node_name;
-			node_path = path;
-		} else {
+			struct Blend {
+				Vector<float> blend_weights;
+				Vector<float> blend_times;
+			};
+			Map<int32_t, Blend> track_blends;
+			for (size_t k = 0; k < anim_mesh->mNumKeys; k++) {
+				for (size_t j = 0; j < anim_mesh->mKeys[k].mNumValuesAndWeights; j++) {
 
-			ERR_CONTINUE(!state.node_map.has(node_name));
-			Node *node = state.node_map[node_name];
-			node_path = state.root->get_path_to(node);
-		}
+					const String prop = "blend_shapes/" + mesh->get_blend_shape_name(anim_mesh->mKeys[k].mValues[j]);
+					const NodePath node_path = String(path) + ":" + prop;
+					ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+					int32_t blend_track_idx = animation->find_track(node_path);
+					if (animation->find_track(node_path) == -1) {
+						blend_track_idx = animation->get_track_count();
+						animation->add_track(Animation::TYPE_VALUE);
+						animation->track_set_interpolation_type(blend_track_idx, Animation::INTERPOLATION_LINEAR);
+						animation->track_set_path(blend_track_idx, node_path);
+						Blend blend = Blend();
+						track_blends.insert(blend_track_idx, blend);
+					}
+					Blend &blend = track_blends.find(blend_track_idx)->get();
+					blend.blend_weights.push_back(anim_mesh->mKeys[k].mWeights[j]);
+					blend.blend_times.push_back(anim_mesh->mKeys[k].mTime / ticks_per_second);
+				}
+			}
+			for (Map<int32_t, Blend>::Element *E = track_blends.front(); E; E = E->next()) {
+				float increment = 1.0 / float(state.bake_fps);
+				float time = 0.0;
+				bool last = false;
+				while (true) {
+					float weight = base_weight;
 
-		_insert_animation_track(state, anim, i, p_bake_fps, animation, ticks_per_second, skeleton, node_path, node_name);
-	}
+					if (E->get().blend_weights.size()) {
+						weight = _interpolate_track<float>(E->get().blend_times, E->get().blend_weights, time, AssetImportAnimation::INTERP_LINEAR);
+					}
+					animation->track_insert_key(E->key(), time, weight);
 
-	//blend shape tracks
-
-	for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
-
-		const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
-
-		const String prop_name = _assimp_get_string(anim_mesh->mName);
-		const String mesh_name = prop_name.split("*")[0];
-
-		ERR_CONTINUE(prop_name.split("*").size() != 2);
-
-		ERR_CONTINUE(!state.node_map.has(mesh_name));
-
-		const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.node_map[mesh_name]);
-
-		ERR_CONTINUE(mesh_instance == NULL);
-
-		String base_path = state.root->get_path_to(mesh_instance);
-
-		Ref<Mesh> mesh = mesh_instance->get_mesh();
-		ERR_CONTINUE(mesh.is_null());
-
-		//add the tracks for this mesh
-		int base_track = animation->get_track_count();
-		for (int j = 0; j < mesh->get_blend_shape_count(); j++) {
-
-			animation->add_track(Animation::TYPE_VALUE);
-			animation->track_set_path(base_track + j, base_path + ":blend_shapes/" + mesh->get_blend_shape_name(j));
-		}
-
-		for (size_t k = 0; k < anim_mesh->mNumKeys; k++) {
-			for (size_t j = 0; j < anim_mesh->mKeys[k].mNumValuesAndWeights; j++) {
-
-				float t = anim_mesh->mKeys[k].mTime / ticks_per_second;
-				float w = anim_mesh->mKeys[k].mWeights[j];
-
-				animation->track_insert_key(base_track + j, t, w);
+					if (last) {
+						break;
+					}
+					time += increment;
+					if (time >= length) {
+						last = true;
+						time = length;
+					}
+				}
 			}
 		}
 	}
-
+	animation->set_length(length);
 	if (animation->get_track_count()) {
-		state.animation_player->add_animation(name, animation);
+		state.ap->add_animation(name, animation);
+	}
+}
+
+void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const String p_node_name, Vector<const aiNodeAnim *> F, float &length, float ticks_per_second, Ref<Animation> animation) {
+	NodePath node_path;
+	bool is_bone = state.skeleton->find_bone(p_node_name) != -1;
+	if (!is_bone) {
+		Node *node = state.ap->get_owner()->find_node(p_node_name);
+		ERR_FAIL_COND(!node);
+		const String path = state.ap->get_owner()->get_path_to(node);
+		node_path = path;
+	} else {
+		const String path = state.ap->get_owner()->get_path_to(state.skeleton);
+		node_path = path + ":" + p_node_name;
+	}
+	ERR_FAIL_COND(node_path.is_empty());
+
+	Vector<Vector3> pos_values;
+	Vector<float> pos_times;
+	Vector<Vector3> scale_values;
+	Vector<float> scale_times;
+	Vector<Quat> rot_values;
+	Vector<float> rot_times;
+	Vector3 base_pos;
+	Quat base_rot;
+	bool is_translation = false;
+	bool is_rotation = false;
+	bool is_scaling = false;
+	for (int32_t k = 0; k < F.size(); k++) {
+		String p_track_type = _assimp_get_string(F[k]->mNodeName).split(ASSIMP_FBX_KEY)[1];
+		if (p_track_type == "_Translation") {
+			is_translation = is_translation || true;
+		} else if (p_track_type == "_Rotation") {
+			is_rotation = is_rotation || true;
+		} else if (p_track_type == "_Scaling") {
+			is_scaling = is_scaling || true;
+		} else {
+			continue;
+		}
+		ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+
+		for (size_t p = 0; p < F[k]->mNumPositionKeys; p++) {
+			aiVector3D pos = F[k]->mPositionKeys[p].mValue;
+			pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
+			pos_times.push_back(F[k]->mPositionKeys[p].mTime / ticks_per_second);
+		}
+
+		for (size_t r = 0; r < F[k]->mNumRotationKeys; r++) {
+			aiQuaternion quat = F[k]->mRotationKeys[r].mValue;
+			rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
+			rot_times.push_back(F[k]->mRotationKeys[r].mTime / ticks_per_second);
+		}
+
+		for (size_t sc = 0; sc < F[k]->mNumScalingKeys; sc++) {
+			aiVector3D scale = F[k]->mScalingKeys[sc].mValue;
+			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
+			scale_times.push_back(F[k]->mScalingKeys[sc].mTime / ticks_per_second);
+		}
+	}
+	int32_t track_idx = animation->get_track_count();
+	animation->add_track(Animation::TYPE_TRANSFORM);
+	animation->track_set_path(track_idx, node_path);
+	float increment = 1.0 / float(state.bake_fps);
+	float time = 0.0;
+	bool last = false;
+	while (true) {
+		Vector3 pos = Vector3();
+		Quat rot = Quat();
+		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
+		if (pos_values.size()) {
+			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
+		if (rot_values.size()) {
+			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
+		}
+		if (scale_values.size()) {
+			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
+		}
+		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
+		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
+
+		if (last) {
+			break;
+		}
+		time += increment;
+		if (time >= length) {
+			last = true;
+			time = length;
+		}
 	}
 }
 
@@ -739,526 +819,311 @@ float EditorSceneImporterAssimp::_get_fbx_fps(int32_t time_mode, const aiScene *
 	return 0;
 }
 
-Transform EditorSceneImporterAssimp::_get_global_assimp_node_transform(const aiNode *p_current_node) {
+Transform EditorSceneImporterAssimp::_get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node) {
 	aiNode const *current_node = p_current_node;
 	Transform xform;
 	while (current_node != NULL) {
-		xform = _assimp_matrix_transform(current_node->mTransformation) * xform;
+		xform = _ai_matrix_transform(current_node->mTransformation) * xform;
 		current_node = current_node->mParent;
 	}
 	return xform;
 }
 
-Ref<Texture> EditorSceneImporterAssimp::_load_texture(ImportState &state, String p_path) {
-	Vector<String> split_path = p_path.get_basename().split("*");
-	if (split_path.size() == 2) {
-		size_t texture_idx = split_path[1].to_int();
-		ERR_FAIL_COND_V(texture_idx >= state.assimp_scene->mNumTextures, Ref<Texture>());
-		aiTexture *tex = state.assimp_scene->mTextures[texture_idx];
-		String filename = _assimp_raw_string_to_string(tex->mFilename);
-		filename = filename.get_file();
-		print_verbose("Open Asset Import: Loading embedded texture " + filename);
-		if (tex->mHeight == 0) {
-			if (tex->CheckFormat("png")) {
-				Ref<Image> img = Image::_png_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
-
-				Ref<ImageTexture> t;
-				t.instance();
-				t->create_from_image(img);
-				t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
-				return t;
-			} else if (tex->CheckFormat("jpg")) {
-				Ref<Image> img = Image::_jpg_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
-				Ref<ImageTexture> t;
-				t.instance();
-				t->create_from_image(img);
-				t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
-				return t;
-			} else if (tex->CheckFormat("dds")) {
-				ERR_FAIL_V_MSG(Ref<Texture>(), "Open Asset Import: Embedded dds not implemented.");
-				//Ref<Image> img = Image::_dds_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				//ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
-				//Ref<ImageTexture> t;
-				//t.instance();
-				//t->create_from_image(img);
-				//t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
-				//return t;
+void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
+	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
+		const unsigned int mesh_idx = p_node->mMeshes[i];
+		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
+		for (size_t j = 0; j < ai_mesh->mNumBones; j++) {
+			String bone_name = _assimp_get_string(ai_mesh->mBones[j]->mName);
+			if (p_skeleton->find_bone(bone_name) != -1) {
+				continue;
 			}
-		} else {
-			Ref<Image> img;
-			img.instance();
-			PoolByteArray arr;
-			uint32_t size = tex->mWidth * tex->mHeight;
-			arr.resize(size);
-			memcpy(arr.write().ptr(), tex->pcData, size);
-			ERR_FAIL_COND_V(arr.size() % 4 != 0, Ref<Texture>());
-			//ARGB8888 to RGBA8888
-			for (int32_t i = 0; i < arr.size() / 4; i++) {
-				arr.write().ptr()[(4 * i) + 3] = arr[(4 * i) + 0];
-				arr.write().ptr()[(4 * i) + 0] = arr[(4 * i) + 1];
-				arr.write().ptr()[(4 * i) + 1] = arr[(4 * i) + 2];
-				arr.write().ptr()[(4 * i) + 2] = arr[(4 * i) + 3];
+			if (bone_name.split(ASSIMP_FBX_KEY).size() != 1) {
+				continue;
 			}
-			img->create(tex->mWidth, tex->mHeight, true, Image::FORMAT_RGBA8, arr);
-			ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
-
-			Ref<ImageTexture> t;
-			t.instance();
-			t->create_from_image(img);
-			t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
-			return t;
+			p_mesh_bones.insert(bone_name, true);
+			p_skeleton->add_bone(bone_name);
+			int32_t idx = p_skeleton->find_bone(bone_name);
+			Transform xform = _ai_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
+			String ext = p_path.get_file().get_extension().to_lower();
+			if (ext == "fbx") {
+				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
+				mesh_xform.basis = Basis();
+				xform = mesh_xform.affine_inverse() * xform;
+			}
+			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
-		return Ref<Texture>();
 	}
-	Ref<Texture> p_texture = ResourceLoader::load(p_path, "Texture");
-	return p_texture;
 }
 
-Ref<Material> EditorSceneImporterAssimp::_generate_material_from_index(ImportState &state, int p_index, bool p_double_sided) {
+void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
 
-	ERR_FAIL_INDEX_V(p_index, (int)state.assimp_scene->mNumMaterials, Ref<Material>());
-
-	aiMaterial *ai_material = state.assimp_scene->mMaterials[p_index];
-	Ref<SpatialMaterial> mat;
-	mat.instance();
-
-	int32_t mat_two_sided = 0;
-	if (AI_SUCCESS == ai_material->Get(AI_MATKEY_TWOSIDED, mat_two_sided)) {
-		if (mat_two_sided > 0) {
-			mat->set_cull_mode(SpatialMaterial::CULL_DISABLED);
-		}
+	Spatial *child_node = NULL;
+	if (p_node == NULL) {
+		return;
 	}
-
-	//const String mesh_name = _assimp_get_string(ai_mesh->mName);
-	aiString mat_name;
-	if (AI_SUCCESS == ai_material->Get(AI_MATKEY_NAME, mat_name)) {
-		mat->set_name(_assimp_get_string(mat_name));
-	}
-
-	aiTextureType tex_normal = aiTextureType_NORMALS;
+	String node_name = _assimp_get_string(p_node->mName);
+	String ext = state.path.get_file().get_extension().to_lower();
 	{
-		aiString ai_filename = aiString();
-		String filename = "";
-		aiTextureMapMode map_mode[2];
-
-		if (AI_SUCCESS == ai_material->GetTexture(tex_normal, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
-			filename = _assimp_raw_string_to_string(ai_filename);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-
-				if (texture.is_valid()) {
-					_set_texture_mapping_mode(map_mode, texture);
-					mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
-					mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+		Transform xform = _ai_matrix_transform(p_node->mTransformation);
+		child_node = memnew(Spatial);
+		p_parent->add_child(child_node);
+		child_node->set_owner(p_owner);
+		child_node->set_transform(xform);
+	}
+	if (state.scene->mRootNode == p_node) {
+		state.ai_root = p_node;
+		state.root = child_node;
+	}
+	if (p_node->mNumMeshes > 0) {
+		MeshInstance *mesh_node = memnew(MeshInstance);
+		{
+			p_parent->add_child(mesh_node);
+			mesh_node->set_owner(p_owner);
+			mesh_node->set_transform(_ai_matrix_transform(p_node->mTransformation));
+			child_node->get_parent()->remove_child(child_node);
+			memdelete(child_node);
+			child_node = mesh_node;
+			Map<String, bool> mesh_bones;
+			state.skeleton->set_use_bones_in_world_transform(true);
+			_generate_node_bone(state.scene, p_node, mesh_bones, state.skeleton, state.path, state.max_bone_weights);
+			Set<String> tracks;
+			_get_track_set(state.scene, tracks);
+			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
+			state.meshes.push_back(mesh_node);
+		}
+		if (state.skeleton->get_bone_count() > 0) {
+			_set_bone_parent(state.skeleton, state.scene);
+			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+				if (state.skeleton->get_bone_parent(i) == -1) {
+					state.skeleton_root_node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+					break;
 				}
 			}
-		}
-	}
-
-	{
-		aiString ai_filename = aiString();
-		String filename = "";
-
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_NORMAL_TEXTURE, ai_filename)) {
-			filename = _assimp_raw_string_to_string(ai_filename);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
-					mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
-				}
-			}
-		}
-	}
-
-	aiTextureType tex_emissive = aiTextureType_EMISSIVE;
-
-	if (ai_material->GetTextureCount(tex_emissive) > 0) {
-
-		aiString ai_filename = aiString();
-		String filename = "";
-		aiTextureMapMode map_mode[2];
-
-		if (AI_SUCCESS == ai_material->GetTexture(tex_emissive, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
-			filename = _assimp_raw_string_to_string(ai_filename);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					_set_texture_mapping_mode(map_mode, texture);
-					mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
-					mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
-				}
-			}
-		}
-	}
-
-	aiTextureType tex_albedo = aiTextureType_DIFFUSE;
-	if (ai_material->GetTextureCount(tex_albedo) > 0) {
-
-		aiString ai_filename = aiString();
-		String filename = "";
-		aiTextureMapMode map_mode[2];
-		if (AI_SUCCESS == ai_material->GetTexture(tex_albedo, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
-			filename = _assimp_raw_string_to_string(ai_filename);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					if (texture->get_data()->detect_alpha() != Image::ALPHA_NONE) {
-						_set_texture_mapping_mode(map_mode, texture);
-						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+				while (node != NULL) {
+					String node_name = _assimp_get_string(node->mName);
+					if (!node_name.empty()) {
+						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+							break;
+						}
+						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
+							state.skeleton->add_bone(node_name);
+							int32_t idx = state.skeleton->find_bone(node_name);
+							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+							state.skeleton->set_bone_rest(idx, xform);
+							break;
+						}
 					}
-					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-				}
-			}
-		}
-	} else {
-		aiColor4D clr_diffuse;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_COLOR_DIFFUSE, clr_diffuse)) {
-			if (Math::is_equal_approx(clr_diffuse.a, 1.0f) == false) {
-				mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-				mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-			}
-			mat->set_albedo(Color(clr_diffuse.r, clr_diffuse.g, clr_diffuse.b, clr_diffuse.a));
-		}
-	}
-
-	aiString tex_gltf_base_color_path = aiString();
-	aiTextureMapMode map_mode[2];
-	if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_TEXTURE, &tex_gltf_base_color_path, NULL, NULL, NULL, NULL, map_mode)) {
-		String filename = _assimp_raw_string_to_string(tex_gltf_base_color_path);
-		String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-		bool found = false;
-		_find_texture_path(state.path, path, found);
-		if (found) {
-			Ref<Texture> texture = _load_texture(state, path);
-			_find_texture_path(state.path, path, found);
-			if (texture != NULL) {
-				if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
-					_set_texture_mapping_mode(map_mode, texture);
-					mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-					mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-				}
-				mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-			}
-		}
-	} else {
-		aiColor4D pbr_base_color;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, pbr_base_color)) {
-			if (Math::is_equal_approx(pbr_base_color.a, 1.0f) == false) {
-				mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-				mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-			}
-			mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
-		}
-	}
-	{
-		aiString tex_fbx_pbs_base_color_path = aiString();
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				_find_texture_path(state.path, path, found);
-				if (texture != NULL) {
-					if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
-						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+					if (state.skeleton_root_node == node) {
+						break;
 					}
-					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+					node = node->mParent;
 				}
 			}
-		} else {
-			aiColor4D pbr_base_color;
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_FACTOR, pbr_base_color)) {
-				mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
-			}
-		}
+			_set_bone_parent(state.skeleton, state.scene);
 
-		aiUVTransform pbr_base_color_uv_xform;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_UV_XFORM, pbr_base_color_uv_xform)) {
-			mat->set_uv1_offset(Vector3(pbr_base_color_uv_xform.mTranslation.x, pbr_base_color_uv_xform.mTranslation.y, 0.0f));
-			mat->set_uv1_scale(Vector3(pbr_base_color_uv_xform.mScaling.x, pbr_base_color_uv_xform.mScaling.y, 1.0f));
+			state.skeletons.insert(state.skeleton, mesh_node);
 		}
+	} else if (state.light_names.has(node_name)) {
+		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
+		ERR_FAIL_COND(light_node == NULL);
+		if (!p_parent->has_node(light_node->get_path())) {
+			light_node->get_parent()->remove_child(light_node);
+			p_parent->add_child(light_node);
+		}
+		light_node->set_owner(p_owner);
+		light_node->set_transform(child_node->get_transform() *
+								  light_node->get_transform());
+		child_node->get_parent()->remove_child(child_node);
+		memdelete(child_node);
+		child_node = light_node;
+	} else if (state.camera_names.has(node_name)) {
+		Spatial *camera_node = Object::cast_to<Camera>(p_owner->find_node(node_name));
+		ERR_FAIL_COND(camera_node == NULL);
+		if (!p_parent->has_node(camera_node->get_path())) {
+			camera_node->get_parent()->remove_child(camera_node);
+			p_parent->add_child(camera_node);
+		}
+		camera_node->set_owner(p_owner);
+		camera_node->set_transform(child_node->get_transform() *
+								   camera_node->get_transform());
+		child_node->get_parent()->remove_child(child_node);
+		memdelete(child_node);
+		child_node = camera_node;
 	}
-
-	{
-		aiString tex_fbx_pbs_normal_path = aiString();
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_NORMAL_TEXTURE, tex_fbx_pbs_normal_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_normal_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				_find_texture_path(state.path, path, found);
-				if (texture != NULL) {
-					mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
-					mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
-				}
-			}
-		}
+	child_node->set_name(node_name);
+	for (size_t i = 0; i < p_node->mNumChildren; i++) {
+		_generate_node(state, p_node->mChildren[i], child_node, p_owner);
 	}
-
-	if (p_double_sided) {
-		mat->set_cull_mode(SpatialMaterial::CULL_DISABLED);
-	}
-
-	{
-		aiString tex_fbx_stingray_normal_path = aiString();
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_NORMAL_TEXTURE, tex_fbx_stingray_normal_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_stingray_normal_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				_find_texture_path(state.path, path, found);
-				if (texture != NULL) {
-					mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
-					mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
-				}
-			}
-		}
-	}
-
-	{
-		aiString tex_fbx_pbs_base_color_path = aiString();
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				_find_texture_path(state.path, path, found);
-				if (texture != NULL) {
-					if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
-						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-					}
-					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-				}
-			}
-		} else {
-			aiColor4D pbr_base_color;
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_BASE_COLOR_FACTOR, pbr_base_color)) {
-				mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
-			}
-		}
-
-		aiUVTransform pbr_base_color_uv_xform;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_COLOR_UV_XFORM, pbr_base_color_uv_xform)) {
-			mat->set_uv1_offset(Vector3(pbr_base_color_uv_xform.mTranslation.x, pbr_base_color_uv_xform.mTranslation.y, 0.0f));
-			mat->set_uv1_scale(Vector3(pbr_base_color_uv_xform.mScaling.x, pbr_base_color_uv_xform.mScaling.y, 1.0f));
-		}
-	}
-
-	{
-		aiString tex_fbx_pbs_emissive_path = aiString();
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_TEXTURE, tex_fbx_pbs_emissive_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_emissive_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				_find_texture_path(state.path, path, found);
-				if (texture != NULL) {
-					if (texture->get_data()->detect_alpha() == Image::ALPHA_BLEND) {
-						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-					}
-					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-				}
-			}
-		} else {
-			aiColor4D pbr_emmissive_color;
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_FACTOR, pbr_emmissive_color)) {
-				mat->set_emission(Color(pbr_emmissive_color.r, pbr_emmissive_color.g, pbr_emmissive_color.b, pbr_emmissive_color.a));
-			}
-		}
-
-		real_t pbr_emission_intensity;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_INTENSITY_FACTOR, pbr_emission_intensity)) {
-			mat->set_emission_energy(pbr_emission_intensity);
-		}
-	}
-
-	aiString tex_gltf_pbr_metallicroughness_path;
-	if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &tex_gltf_pbr_metallicroughness_path)) {
-		String filename = _assimp_raw_string_to_string(tex_gltf_pbr_metallicroughness_path);
-		String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-		bool found = false;
-		_find_texture_path(state.path, path, found);
-		if (found) {
-			Ref<Texture> texture = _load_texture(state, path);
-			if (texture != NULL) {
-				mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
-				mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
-				mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
-				mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
-			}
-		}
-	} else {
-		float pbr_roughness = 0.0f;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, pbr_roughness)) {
-			mat->set_roughness(pbr_roughness);
-		}
-		float pbr_metallic = 0.0f;
-
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, pbr_metallic)) {
-			mat->set_metallic(pbr_metallic);
-		}
-	}
-	{
-		aiString tex_fbx_pbs_metallic_path;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_METALLIC_TEXTURE, tex_fbx_pbs_metallic_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
-					mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
-				}
-			}
-		} else {
-			float pbr_metallic = 0.0f;
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_METALLIC_FACTOR, pbr_metallic)) {
-				mat->set_metallic(pbr_metallic);
-			}
-		}
-
-		aiString tex_fbx_pbs_rough_path;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
-					mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
-				}
-			}
-		} else {
-			float pbr_roughness = 0.04f;
-
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_ROUGHNESS_FACTOR, pbr_roughness)) {
-				mat->set_roughness(pbr_roughness);
-			}
-		}
-	}
-
-	{
-		aiString tex_fbx_pbs_metallic_path;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_METALNESS_TEXTURE, tex_fbx_pbs_metallic_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
-					mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
-				}
-			}
-		} else {
-			float pbr_metallic = 0.0f;
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_METALNESS_FACTOR, pbr_metallic)) {
-				mat->set_metallic(pbr_metallic);
-			}
-		}
-
-		aiString tex_fbx_pbs_rough_path;
-		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
-			String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
-			String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
-			bool found = false;
-			_find_texture_path(state.path, path, found);
-			if (found) {
-				Ref<Texture> texture = _load_texture(state, path);
-				if (texture != NULL) {
-					mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
-					mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
-				}
-			}
-		} else {
-			float pbr_roughness = 0.04f;
-
-			if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_FACTOR, pbr_roughness)) {
-				mat->set_roughness(pbr_roughness);
-			}
-		}
-	}
-
-	return mat;
 }
 
-Ref<Mesh> EditorSceneImporterAssimp::_generate_mesh_from_surface_indices(ImportState &state, const Vector<int> &p_surface_indices, Skeleton *p_skeleton, bool p_double_sided_material) {
+void EditorSceneImporterAssimp::_set_bone_parent(Skeleton *p_skeleton, const aiScene *p_scene) {
+	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
+		aiNode *node = _assimp_find_node(p_scene->mRootNode, p_skeleton->get_bone_name(i));
+		if (node == NULL) {
+			continue;
+		}
+		node = node->mParent;
+		while (node != NULL) {
+			int32_t bone = p_skeleton->find_bone(_assimp_get_string(node->mName));
+			if (bone != -1) {
+				p_skeleton->set_bone_parent(i, bone);
+				break;
+			}
+			node = node->mParent;
+		}
+	}
+}
 
+aiNode *EditorSceneImporterAssimp::_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask) {
+
+	if (_assimp_get_string(ai_child_node->mName).match(bone_name_mask)) {
+		return ai_child_node;
+	}
+	aiNode *target = NULL;
+	for (size_t i = 0; i < ai_child_node->mNumChildren; i++) {
+
+		target = _assimp_find_node(ai_child_node->mChildren[i], bone_name_mask);
+		if (target != NULL) {
+			return target;
+		}
+	}
+	return target;
+}
+
+Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
+	const aiScene *p_scene = state.scene;
+	String p_path = state.path;
+	String ext = p_path.get_file().get_extension().to_lower();
+	Transform xform;
+	if (ext == "fbx") {
+		int32_t up_axis = 0;
+		int32_t up_axis_sign = 0;
+		int32_t front_axis = 0;
+		int32_t front_axis_sign = 0;
+		int32_t coord_axis = 0;
+		int32_t coord_axis_sign = 0;
+		if (p_scene->mMetaData != NULL) {
+			p_scene->mMetaData->Get("UpAxis", up_axis);
+			p_scene->mMetaData->Get("UpAxisSign", up_axis_sign);
+			p_scene->mMetaData->Get("FrontAxis", front_axis);
+			p_scene->mMetaData->Get("FrontAxisSign", front_axis_sign);
+			p_scene->mMetaData->Get("CoordAxis", coord_axis);
+			p_scene->mMetaData->Get("CoordAxisSign", coord_axis_sign);
+		}
+		AssetImportFbx::UpFrontCoord up_front_coord = { up_axis, up_axis_sign, front_axis, front_axis_sign, coord_axis, coord_axis_sign };
+		xform.basis.set_quat_scale(_get_up_forward(up_front_coord), Vector3(1.0f, 1.0f, 1.0f));
+	}
+	return xform;
+}
+
+Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_up_front_coord) {
+	Quat quat;
+	if (p_up_front_coord.up_axis == 1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		return quat;
+	}
+	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		return quat;
+	}
+	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		return quat;
+	}
+	Vector3 rotation = Vector3(Math::deg2rad(-90.0f), Math::deg2rad(0.0f), Math::deg2rad(0.0f));
+	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
+	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
+	if (p_up_front_coord.up_axis == 1 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
+	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
+			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
+			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
+		quat.set_euler(rotation);
+	}
+	//print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
+	//print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
+	//print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
+	//print_line("Front Axis Sign: " + itos(p_up_front_coord.front_axis_sign));
+	//print_line("Coord Axis: " + itos(p_up_front_coord.coord_axis));
+	//print_line("Coord Sign: " + itos(p_up_front_coord.coord_axis_sign));
+	return quat;
+}
+
+void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<String> &tracks) {
+	for (size_t i = 0; i < p_scene->mNumAnimations; i++) {
+		for (size_t j = 0; j < p_scene->mAnimations[i]->mNumChannels; j++) {
+			aiString ai_name = p_scene->mAnimations[i]->mChannels[j]->mNodeName;
+			String name = _assimp_get_string(ai_name);
+			tracks.insert(name);
+		}
+	}
+}
+
+void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner) {
 	Ref<ArrayMesh> mesh;
 	mesh.instance();
 	bool has_uvs = false;
+	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
+		const unsigned int mesh_idx = p_node->mMeshes[i];
+		const aiMesh *ai_mesh = state.scene->mMeshes[mesh_idx];
 
-	for (int i = 0; i < p_surface_indices.size(); i++) {
-		const unsigned int mesh_idx = p_surface_indices[i];
-		const aiMesh *ai_mesh = state.assimp_scene->mMeshes[mesh_idx];
-
-		Map<uint32_t, Vector<BoneInfo> > vertex_weights;
-
-		if (p_skeleton) {
-			for (size_t b = 0; b < ai_mesh->mNumBones; b++) {
-				aiBone *bone = ai_mesh->mBones[b];
-				String bone_name = _assimp_get_string(bone->mName);
-				int bone_index = p_skeleton->find_bone(bone_name);
-				ERR_CONTINUE(bone_index == -1); //bone refers to an unexisting index, wtf.
-
-				for (size_t w = 0; w < bone->mNumWeights; w++) {
-
-					aiVertexWeight ai_weights = bone->mWeights[w];
-
-					BoneInfo bi;
-
-					uint32_t vertex_index = ai_weights.mVertexId;
-					bi.bone = bone_index;
-					bi.weight = ai_weights.mWeight;
-					;
-
-					if (!vertex_weights.has(vertex_index)) {
-						vertex_weights[vertex_index] = Vector<BoneInfo>();
-					}
-
-					vertex_weights[vertex_index].push_back(bi);
+		Map<uint32_t, Vector<float> > vertex_weight;
+		Map<uint32_t, Vector<String> > vertex_bone_name;
+		for (size_t b = 0; b < ai_mesh->mNumBones; b++) {
+			aiBone *bone = ai_mesh->mBones[b];
+			for (size_t w = 0; w < bone->mNumWeights; w++) {
+				String name = _assimp_get_string(bone->mName);
+				aiVertexWeight ai_weights = bone->mWeights[w];
+				uint32_t vertexId = ai_weights.mVertexId;
+				Map<uint32_t, Vector<float> >::Element *result = vertex_weight.find(vertexId);
+				Vector<float> weights;
+				if (result != NULL) {
+					weights.append_array(result->value());
+				}
+				weights.push_back(ai_weights.mWeight);
+				if (vertex_weight.has(vertexId)) {
+					vertex_weight[vertexId] = weights;
+				} else {
+					vertex_weight.insert(vertexId, weights);
+				}
+				Map<uint32_t, Vector<String> >::Element *bone_result = vertex_bone_name.find(vertexId);
+				Vector<String> bone_names;
+				if (bone_result != NULL) {
+					bone_names.append_array(bone_result->value());
+				}
+				bone_names.push_back(name);
+				if (vertex_bone_name.has(vertexId)) {
+					vertex_bone_name[vertexId] = bone_names;
+				} else {
+					vertex_bone_name.insert(vertexId, bone_names);
 				}
 			}
 		}
-
 		Ref<SurfaceTool> st;
 		st.instance();
+		//VisualServer::ArrayFormat format_flags = (VisualServer::ArrayFormat)0;
+		//if (p_max_bone_weights == 8) {
+		//	format_flags = VisualServer::ARRAY_FLAG_USE_8_WEIGHTS;
+		//}
+		//st->begin(Mesh::PRIMITIVE_TRIANGLES, format_flags);
 		st->begin(Mesh::PRIMITIVE_TRIANGLES);
-
 		for (size_t j = 0; j < ai_mesh->mNumVertices; j++) {
 			if (ai_mesh->HasTextureCoords(0)) {
 				has_uvs = true;
@@ -1286,334 +1151,668 @@ Ref<Mesh> EditorSceneImporterAssimp::_generate_mesh_from_surface_indices(ImportS
 				}
 			}
 
-			if (vertex_weights.has(j)) {
-
-				Vector<BoneInfo> bone_info = vertex_weights[j];
-				Vector<int> bones;
-				bones.resize(bone_info.size());
-				Vector<float> weights;
-				weights.resize(bone_info.size());
-				for (int k = 0; k < bone_info.size(); k++) {
-					bones.write[k] = bone_info[k].bone;
-					weights.write[k] = bone_info[k].weight;
+			if (state.skeleton != NULL && state.skeleton->get_bone_count() > 0) {
+				Map<uint32_t, Vector<String> >::Element *I = vertex_bone_name.find(j);
+				Vector<int32_t> bones;
+				if (I != NULL) {
+					Vector<String> bone_names;
+					bone_names.append_array(I->value());
+					for (int32_t f = 0; f < bone_names.size(); f++) {
+						int32_t bone = state.skeleton->find_bone(bone_names[f]);
+						ERR_EXPLAIN("Asset Importer: Mesh can't find bone " + bone_names[f]);
+						ERR_FAIL_COND(bone == -1);
+						bones.push_back(bone);
+					}
+					if (state.skeleton->get_bone_count()) {
+						int32_t add = CLAMP(state.max_bone_weights - bones.size(), 0, state.max_bone_weights);
+						for (int32_t f = 0; f < add; f++) {
+							bones.push_back(0);
+						}
+					}
+					st->add_bones(bones);
+					Map<uint32_t, Vector<float> >::Element *E = vertex_weight.find(j);
+					Vector<float> weights;
+					if (E != NULL) {
+						weights = E->value();
+						if (weights.size() != state.max_bone_weights) {
+							int32_t add = CLAMP(state.max_bone_weights - weights.size(), 0, state.max_bone_weights);
+							for (int32_t f = 0; f < add; f++) {
+								weights.push_back(0.0f);
+							}
+						}
+					}
+					ERR_CONTINUE(weights.size() == 0);
+					st->add_weights(weights);
 				}
-
-				st->add_bones(bones);
-				st->add_weights(weights);
 			}
-
 			const aiVector3D pos = ai_mesh->mVertices[j];
 			Vector3 godot_pos = Vector3(pos.x, pos.y, pos.z);
 			st->add_vertex(godot_pos);
 		}
-
 		for (size_t j = 0; j < ai_mesh->mNumFaces; j++) {
 			const aiFace face = ai_mesh->mFaces[j];
-			ERR_CONTINUE(face.mNumIndices != 3);
-			Vector<size_t> order;
-			order.push_back(2);
-			order.push_back(1);
-			order.push_back(0);
-			for (int32_t k = 0; k < order.size(); k++) {
-				st->add_index(face.mIndices[order[k]]);
+			for (int32_t k = 0; k < face.mNumIndices; k++) {
+				st->add_index(face.mIndices[k]);
 			}
 		}
 		if (ai_mesh->HasTangentsAndBitangents() == false && has_uvs) {
 			st->generate_tangents();
 		}
+		aiMaterial *ai_material = state.scene->mMaterials[ai_mesh->mMaterialIndex];
+		Ref<SpatialMaterial> mat;
+		mat.instance();
 
-		Ref<Material> material;
-
-		if (!state.material_cache.has(ai_mesh->mMaterialIndex)) {
-			material = _generate_material_from_index(state, ai_mesh->mMaterialIndex, p_double_sided_material);
+		int32_t mat_two_sided = 0;
+		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_TWOSIDED, mat_two_sided)) {
+			if (mat_two_sided > 0) {
+				mat->set_cull_mode(SpatialMaterial::CULL_DISABLED);
+			}
 		}
 
-		Array array_mesh = st->commit_to_arrays();
-		Array morphs;
-		morphs.resize(ai_mesh->mNumAnimMeshes);
-		Mesh::PrimitiveType primitive = Mesh::PRIMITIVE_TRIANGLES;
-		Map<uint32_t, String> morph_mesh_idx_names;
-		for (size_t j = 0; j < ai_mesh->mNumAnimMeshes; j++) {
+		const String mesh_name = _assimp_get_string(ai_mesh->mName);
+		aiString mat_name;
+		if (AI_SUCCESS == ai_material->Get(AI_MATKEY_NAME, mat_name)) {
+			mat->set_name(_assimp_get_string(mat_name));
+		}
 
-			if (i == 0) {
-				//only do this the first time
+		aiTextureType tex_normal = aiTextureType_NORMALS;
+		{
+			aiString ai_filename = aiString();
+			String filename = "";
+			aiTextureMapMode map_mode[2];
+
+			if (AI_SUCCESS == ai_material->GetTexture(tex_normal, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
+				filename = _assimp_raw_string_to_string(ai_filename);
+				String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+				bool found = false;
+				_find_texture_path(state.path, path, found);
+				if (found) {
+					Ref<Image> img = _load_image(state.scene, path);
+					if (img.is_valid()) {
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						texture->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
+						_set_texture_mapping_mode(map_mode, texture);
+						mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
+						mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+					}
+				}
+			}
+
+			{
+				aiString tex_fbx_pbs_emissive_path;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_EMISSION_TEXTURE, tex_fbx_pbs_emissive_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_emissive_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							texture->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
+							mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
+							mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
+						}
+					}
+				} else {
+					float pbr_emission = 0.0f;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_EMISSIVE_FACTOR, pbr_emission)) {
+						mat->set_emission(Color(pbr_emission, pbr_emission, pbr_emission, 1.0f));
+					}
+				}
+			}
+
+			{
+				aiString ai_filename = aiString();
+				String filename = "";
+
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_NORMAL_TEXTURE, ai_filename)) {
+					filename = _assimp_raw_string_to_string(ai_filename);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
+							mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+						}
+					}
+				}
+			}
+
+			aiTextureType tex_emissive = aiTextureType_EMISSIVE;
+
+			if (ai_material->GetTextureCount(tex_emissive) > 0) {
+
+				aiString ai_filename = aiString();
+				String filename = "";
+				aiTextureMapMode map_mode[2];
+
+				if (AI_SUCCESS == ai_material->GetTexture(tex_emissive, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
+					filename = _assimp_raw_string_to_string(ai_filename);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							_set_texture_mapping_mode(map_mode, texture);
+							mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
+							mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
+						}
+					}
+				}
+			}
+
+			aiTextureType tex_albedo = aiTextureType_DIFFUSE;
+			if (ai_material->GetTextureCount(tex_albedo) > 0) {
+
+				aiString ai_filename = aiString();
+				String filename = "";
+				aiTextureMapMode map_mode[2];
+				if (AI_SUCCESS == ai_material->GetTexture(tex_albedo, 0, &ai_filename, NULL, NULL, NULL, NULL, map_mode)) {
+					filename = _assimp_raw_string_to_string(ai_filename);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						if (img.is_valid() && img->detect_alpha() != Image::ALPHA_BIT) {
+							_set_texture_mapping_mode(map_mode, texture);
+							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						}
+						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+					}
+				}
+			} else {
+				aiColor4D clr_diffuse;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_COLOR_DIFFUSE, clr_diffuse)) {
+					if (Math::is_equal_approx(clr_diffuse.a, 1.0f) == false) {
+						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+					}
+					mat->set_albedo(Color(clr_diffuse.r, clr_diffuse.g, clr_diffuse.b, clr_diffuse.a));
+				}
+			}
+
+			aiString tex_gltf_base_color_path = aiString();
+			if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_TEXTURE, &tex_gltf_base_color_path, NULL, NULL, NULL, NULL, map_mode)) {
+				String filename = _assimp_raw_string_to_string(tex_gltf_base_color_path);
+				String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+				bool found = false;
+				_find_texture_path(state.path, path, found);
+				if (found) {
+					Ref<Image> img = _load_image(state.scene, path);
+					_find_texture_path(state.path, path, found);
+					Ref<ImageTexture> texture;
+					texture.instance();
+					texture->create_from_image(img);
+					if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+						_set_texture_mapping_mode(map_mode, texture);
+						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+					}
+					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+				}
+			} else {
+				aiColor4D pbr_base_color;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, pbr_base_color)) {
+					if (Math::is_equal_approx(pbr_base_color.a, 1.0f) == false) {
+						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+					}
+					mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
+				}
+			}
+			{
+				aiString tex_fbx_pbs_base_color_path = aiString();
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						_find_texture_path(state.path, path, found);
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						}
+						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+					}
+				} else {
+					aiColor4D pbr_base_color;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_FACTOR, pbr_base_color)) {
+						mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
+					}
+				}
+
+				aiUVTransform pbr_base_color_uv_xform;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_BASE_COLOR_UV_XFORM, pbr_base_color_uv_xform)) {
+					mat->set_uv1_offset(Vector3(pbr_base_color_uv_xform.mTranslation.x, pbr_base_color_uv_xform.mTranslation.y, 0.0f));
+					mat->set_uv1_scale(Vector3(pbr_base_color_uv_xform.mScaling.x, pbr_base_color_uv_xform.mScaling.y, 1.0f));
+				}
+			}
+
+			{
+				aiString tex_fbx_pbs_normal_path = aiString();
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_NORMAL_TEXTURE, tex_fbx_pbs_normal_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_normal_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						_find_texture_path(state.path, path, found);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
+							mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+						}
+					}
+				}
+			}
+
+			aiString cull_mode;
+			if (p_node->mMetaData) {
+				p_node->mMetaData->Get("Culling", cull_mode);
+			}
+			if (cull_mode.length != 0 && cull_mode == aiString("CullingOff")) {
+				mat->set_cull_mode(SpatialMaterial::CULL_DISABLED);
+			}
+
+			{
+				aiString tex_fbx_stingray_normal_path = aiString();
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_NORMAL_TEXTURE, tex_fbx_stingray_normal_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_stingray_normal_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						_find_texture_path(state.path, path, found);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_feature(SpatialMaterial::Feature::FEATURE_NORMAL_MAPPING, true);
+							mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+						}
+					}
+				}
+			}
+
+			{
+				aiString tex_fbx_pbs_base_color_path = aiString();
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_COLOR_TEXTURE, tex_fbx_pbs_base_color_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_base_color_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						_find_texture_path(state.path, path, found);
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						}
+						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+					}
+				} else {
+					aiColor4D pbr_base_color;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_BASE_COLOR_FACTOR, pbr_base_color)) {
+						mat->set_albedo(Color(pbr_base_color.r, pbr_base_color.g, pbr_base_color.b, pbr_base_color.a));
+					}
+				}
+
+				aiUVTransform pbr_base_color_uv_xform;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_COLOR_UV_XFORM, pbr_base_color_uv_xform)) {
+					mat->set_uv1_offset(Vector3(pbr_base_color_uv_xform.mTranslation.x, pbr_base_color_uv_xform.mTranslation.y, 0.0f));
+					mat->set_uv1_scale(Vector3(pbr_base_color_uv_xform.mScaling.x, pbr_base_color_uv_xform.mScaling.y, 1.0f));
+				}
+			}
+
+			{
+				aiString tex_fbx_pbs_emissive_path = aiString();
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_TEXTURE, tex_fbx_pbs_emissive_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_emissive_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						_find_texture_path(state.path, path, found);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							if (img->detect_alpha() == Image::ALPHA_BLEND) {
+								mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+								mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+							}
+							mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+						}
+					}
+				} else {
+					aiColor4D pbr_emmissive_color;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_FACTOR, pbr_emmissive_color)) {
+						mat->set_emission(Color(pbr_emmissive_color.r, pbr_emmissive_color.g, pbr_emmissive_color.b, pbr_emmissive_color.a));
+					}
+				}
+
+				real_t pbr_emission_intensity;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_EMISSIVE_INTENSITY_FACTOR, pbr_emission_intensity)) {
+					mat->set_emission_energy(pbr_emission_intensity);
+				}
+			}
+
+			aiString tex_gltf_pbr_metallicroughness_path;
+			if (AI_SUCCESS == ai_material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &tex_gltf_pbr_metallicroughness_path)) {
+				String filename = _assimp_raw_string_to_string(tex_gltf_pbr_metallicroughness_path);
+				String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+				bool found = false;
+				_find_texture_path(state.path, path, found);
+				if (found) {
+					Ref<Image> img = _load_image(state.scene, path);
+					if (img.is_valid()) {
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
+						mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
+						mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
+						mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
+					}
+				}
+			} else {
+				float pbr_roughness = 0.0f;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, pbr_roughness)) {
+					mat->set_roughness(pbr_roughness);
+				}
+				float pbr_metallic = 0.0f;
+
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, pbr_metallic)) {
+					mat->set_metallic(pbr_metallic);
+				}
+			}
+			{
+				aiString tex_fbx_pbs_metallic_path;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_METALLIC_TEXTURE, tex_fbx_pbs_metallic_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
+							mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
+						}
+					}
+				} else {
+					float pbr_metallic = 0.0f;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_METALLIC_FACTOR, pbr_metallic)) {
+						mat->set_metallic(pbr_metallic);
+					}
+				}
+
+				aiString tex_fbx_pbs_rough_path;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
+							mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
+						}
+					}
+				} else {
+					float pbr_roughness = 0.04f;
+
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_STINGRAY_ROUGHNESS_FACTOR, pbr_roughness)) {
+						mat->set_roughness(pbr_roughness);
+					}
+				}
+			}
+
+			{
+				aiString tex_fbx_pbs_metallic_path;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_METALNESS_TEXTURE, tex_fbx_pbs_metallic_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_metallic_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
+							mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
+						}
+					}
+				} else {
+					float pbr_metallic = 0.0f;
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_METALNESS_FACTOR, pbr_metallic)) {
+						mat->set_metallic(pbr_metallic);
+					}
+				}
+
+				aiString tex_fbx_pbs_rough_path;
+				if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_TEXTURE, tex_fbx_pbs_rough_path)) {
+					String filename = _assimp_raw_string_to_string(tex_fbx_pbs_rough_path);
+					String path = state.path.get_base_dir().plus_file(filename.replace("\\", "/"));
+					bool found = false;
+					_find_texture_path(state.path, path, found);
+					if (found) {
+						Ref<Image> img = _load_image(state.scene, path);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
+							mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE);
+						}
+					}
+				} else {
+					float pbr_roughness = 0.04f;
+
+					if (AI_SUCCESS == ai_material->Get(AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_FACTOR, pbr_roughness)) {
+						mat->set_roughness(pbr_roughness);
+					}
+				}
+			}
+
+			Array array_mesh = st->commit_to_arrays();
+			Array morphs;
+			morphs.resize(ai_mesh->mNumAnimMeshes);
+			Mesh::PrimitiveType primitive = Mesh::PRIMITIVE_TRIANGLES;
+			Map<uint32_t, String> morph_mesh_idx_names;
+			for (size_t j = 0; j < ai_mesh->mNumAnimMeshes; j++) {
+
 				String ai_anim_mesh_name = _assimp_get_string(ai_mesh->mAnimMeshes[j]->mName);
 				mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
 				if (ai_anim_mesh_name.empty()) {
 					ai_anim_mesh_name = String("morph_") + itos(j);
 				}
 				mesh->add_blend_shape(ai_anim_mesh_name);
+				morph_mesh_idx_names.insert(j, ai_anim_mesh_name);
+				Array array_copy;
+				array_copy.resize(VisualServer::ARRAY_MAX);
+
+				for (int l = 0; l < VisualServer::ARRAY_MAX; l++) {
+					array_copy[l] = array_mesh[l].duplicate(true);
+				}
+
+				const size_t num_vertices = ai_mesh->mAnimMeshes[j]->mNumVertices;
+				array_copy[Mesh::ARRAY_INDEX] = Variant();
+				if (ai_mesh->mAnimMeshes[j]->HasPositions()) {
+					PoolVector3Array vertices;
+					vertices.resize(num_vertices);
+					for (size_t l = 0; l < num_vertices; l++) {
+						const aiVector3D ai_pos = ai_mesh->mAnimMeshes[j]->mVertices[l];
+						Vector3 position = Vector3(ai_pos.x, ai_pos.y, ai_pos.z);
+						vertices.write()[l] = position;
+					}
+					PoolVector3Array new_vertices = array_copy[VisualServer::ARRAY_VERTEX].duplicate(true);
+					ERR_CONTINUE(vertices.size() != new_vertices.size());
+					for (int32_t l = 0; l < new_vertices.size(); l++) {
+						PoolVector3Array::Write w = new_vertices.write();
+						w[l] = vertices[l];
+					}
+					array_copy[VisualServer::ARRAY_VERTEX] = new_vertices;
+				}
+
+				int32_t color_set = 0;
+				if (ai_mesh->mAnimMeshes[j]->HasVertexColors(color_set)) {
+					PoolColorArray colors;
+					colors.resize(num_vertices);
+					for (size_t l = 0; l < num_vertices; l++) {
+						const aiColor4D ai_color = ai_mesh->mAnimMeshes[j]->mColors[color_set][l];
+						Color color = Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
+						colors.write()[l] = color;
+					}
+					PoolColorArray new_colors = array_copy[VisualServer::ARRAY_COLOR].duplicate(true);
+					ERR_CONTINUE(colors.size() != new_colors.size());
+					for (int32_t l = 0; l < colors.size(); l++) {
+						PoolColorArray::Write w = new_colors.write();
+						w[l] = colors[l];
+					}
+					array_copy[VisualServer::ARRAY_COLOR] = new_colors;
+				}
+
+				if (ai_mesh->mAnimMeshes[j]->HasNormals()) {
+					PoolVector3Array normals;
+					normals.resize(num_vertices);
+					for (size_t l = 0; l < num_vertices; l++) {
+						const aiVector3D ai_normal = ai_mesh->mAnimMeshes[i]->mNormals[l];
+						Vector3 normal = Vector3(ai_normal.x, ai_normal.y, ai_normal.z);
+						normals.write()[l] = normal;
+					}
+					PoolVector3Array new_normals = array_copy[VisualServer::ARRAY_NORMAL].duplicate(true);
+					ERR_CONTINUE(normals.size() != new_normals.size());
+					for (int l = 0; l < normals.size(); l++) {
+						PoolVector3Array::Write w = new_normals.write();
+						w[l] = normals[l];
+					}
+					array_copy[VisualServer::ARRAY_NORMAL] = new_normals;
+				}
+
+				if (ai_mesh->mAnimMeshes[j]->HasTangentsAndBitangents()) {
+					PoolColorArray tangents;
+					tangents.resize(num_vertices);
+					PoolColorArray::Write w = tangents.write();
+					for (size_t l = 0; l < num_vertices; l++) {
+						_calc_tangent_from_mesh(ai_mesh, j, l, l, w);
+					}
+					PoolRealArray new_tangents = array_copy[VisualServer::ARRAY_TANGENT].duplicate(true);
+					ERR_CONTINUE(new_tangents.size() != tangents.size() * 4);
+					for (int32_t l = 0; l < tangents.size(); l++) {
+						new_tangents.write()[l + 0] = tangents[l].r;
+						new_tangents.write()[l + 1] = tangents[l].g;
+						new_tangents.write()[l + 2] = tangents[l].b;
+						new_tangents.write()[l + 3] = tangents[l].a;
+					}
+					array_copy[VisualServer::ARRAY_TANGENT] = new_tangents;
+				}
+
+				morphs[j] = array_copy;
 			}
-
-			Array array_copy;
-			array_copy.resize(VisualServer::ARRAY_MAX);
-
-			for (int l = 0; l < VisualServer::ARRAY_MAX; l++) {
-				array_copy[l] = array_mesh[l].duplicate(true);
+			mesh->add_surface_from_arrays(primitive, array_mesh, morphs);
+			mesh->surface_set_material(i, mat);
+			mesh->surface_set_name(i, _assimp_get_string(ai_mesh->mName));
+			if (ai_mesh->HasBones()) {
+				state.mesh_skeletons.insert(p_mesh_instance, state.skeleton);
 			}
-
-			const size_t num_vertices = ai_mesh->mAnimMeshes[j]->mNumVertices;
-			array_copy[Mesh::ARRAY_INDEX] = Variant();
-			if (ai_mesh->mAnimMeshes[j]->HasPositions()) {
-				PoolVector3Array vertices;
-				vertices.resize(num_vertices);
-				for (size_t l = 0; l < num_vertices; l++) {
-					const aiVector3D ai_pos = ai_mesh->mAnimMeshes[j]->mVertices[l];
-					Vector3 position = Vector3(ai_pos.x, ai_pos.y, ai_pos.z);
-					vertices.write()[l] = position;
-				}
-				PoolVector3Array new_vertices = array_copy[VisualServer::ARRAY_VERTEX].duplicate(true);
-
-				for (int32_t l = 0; l < vertices.size(); l++) {
-					PoolVector3Array::Write w = new_vertices.write();
-					w[l] = vertices[l];
-				}
-				ERR_CONTINUE(vertices.size() != new_vertices.size());
-				array_copy[VisualServer::ARRAY_VERTEX] = new_vertices;
-			}
-
-			int32_t color_set = 0;
-			if (ai_mesh->mAnimMeshes[j]->HasVertexColors(color_set)) {
-				PoolColorArray colors;
-				colors.resize(num_vertices);
-				for (size_t l = 0; l < num_vertices; l++) {
-					const aiColor4D ai_color = ai_mesh->mAnimMeshes[j]->mColors[color_set][l];
-					Color color = Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
-					colors.write()[l] = color;
-				}
-				PoolColorArray new_colors = array_copy[VisualServer::ARRAY_COLOR].duplicate(true);
-
-				for (int32_t l = 0; l < colors.size(); l++) {
-					PoolColorArray::Write w = new_colors.write();
-					w[l] = colors[l];
-				}
-				array_copy[VisualServer::ARRAY_COLOR] = new_colors;
-			}
-
-			if (ai_mesh->mAnimMeshes[j]->HasNormals()) {
-				PoolVector3Array normals;
-				normals.resize(num_vertices);
-				for (size_t l = 0; l < num_vertices; l++) {
-					const aiVector3D ai_normal = ai_mesh->mAnimMeshes[i]->mNormals[l];
-					Vector3 normal = Vector3(ai_normal.x, ai_normal.y, ai_normal.z);
-					normals.write()[l] = normal;
-				}
-				PoolVector3Array new_normals = array_copy[VisualServer::ARRAY_NORMAL].duplicate(true);
-
-				for (int l = 0; l < normals.size(); l++) {
-					PoolVector3Array::Write w = new_normals.write();
-					w[l] = normals[l];
-				}
-				array_copy[VisualServer::ARRAY_NORMAL] = new_normals;
-			}
-
-			if (ai_mesh->mAnimMeshes[j]->HasTangentsAndBitangents()) {
-				PoolColorArray tangents;
-				tangents.resize(num_vertices);
-				PoolColorArray::Write w = tangents.write();
-				for (size_t l = 0; l < num_vertices; l++) {
-					_calc_tangent_from_mesh(ai_mesh, j, l, l, w);
-				}
-				PoolRealArray new_tangents = array_copy[VisualServer::ARRAY_TANGENT].duplicate(true);
-				ERR_CONTINUE(new_tangents.size() != tangents.size() * 4);
-				for (int32_t l = 0; l < tangents.size(); l++) {
-					new_tangents.write()[l + 0] = tangents[l].r;
-					new_tangents.write()[l + 1] = tangents[l].g;
-					new_tangents.write()[l + 2] = tangents[l].b;
-					new_tangents.write()[l + 3] = tangents[l].a;
-				}
-
-				array_copy[VisualServer::ARRAY_TANGENT] = new_tangents;
-			}
-
-			morphs[j] = array_copy;
 		}
-
-		mesh->add_surface_from_arrays(primitive, array_mesh, morphs);
-		mesh->surface_set_material(i, material);
-		mesh->surface_set_name(i, _assimp_get_string(ai_mesh->mName));
 	}
-
-	return mesh;
+	p_mesh_instance->set_mesh(mesh);
 }
 
-void EditorSceneImporterAssimp::_generate_node(ImportState &state, const aiNode *p_assimp_node, Node *p_parent) {
-
-	Spatial *new_node = NULL;
-	String node_name = _assimp_get_string(p_assimp_node->mName);
-	Transform node_transform = _assimp_matrix_transform(p_assimp_node->mTransformation);
-
-	if (p_assimp_node->mNumMeshes > 0) {
-		/* MESH NODE */
-		Ref<Mesh> mesh;
-		Skeleton *skeleton = NULL;
-		{
-
-			//see if we have mesh cache for this.
-			Vector<int> surface_indices;
-			for (uint32_t i = 0; i < p_assimp_node->mNumMeshes; i++) {
-				int mesh_index = p_assimp_node->mMeshes[i];
-				surface_indices.push_back(mesh_index);
-
-				//take the chance and attempt to find the skeleton from the bones
-				if (!skeleton) {
-					aiMesh *ai_mesh = state.assimp_scene->mMeshes[p_assimp_node->mMeshes[i]];
-					for (uint32_t j = 0; j < ai_mesh->mNumBones; j++) {
-						aiBone *bone = ai_mesh->mBones[j];
-						String bone_name = _assimp_get_string(bone->mName);
-						if (state.bone_owners.has(bone_name)) {
-							skeleton = state.skeletons[state.bone_owners[bone_name]];
-							break;
-						}
-					}
-				}
+Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String p_path) {
+	Vector<String> split_path = p_path.get_basename().split("*");
+	if (split_path.size() == 2) {
+		size_t texture_idx = split_path[1].to_int();
+		ERR_FAIL_COND_V(texture_idx >= p_scene->mNumTextures, Ref<Texture>());
+		aiTexture *tex = p_scene->mTextures[texture_idx];
+		String filename = _assimp_raw_string_to_string(tex->mFilename);
+		filename = filename.get_file();
+		print_verbose("Open Asset Import: Loading embedded texture " + filename);
+		if (tex->mHeight == 0) {
+			if (tex->CheckFormat("png")) {
+				Ref<Image> img = Image::_png_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
+				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+				return img;
+			} else if (tex->CheckFormat("jpg")) {
+				Ref<Image> img = Image::_jpg_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
+				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+				return img;
+			} else if (tex->CheckFormat("dds")) {
+				ERR_EXPLAIN("Open Asset Import: Embedded dds not implemented");
+				ERR_FAIL_COND_V(true, Ref<Texture>());
+				//Ref<Image> img = Image::_dds_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
+				//ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+				//Ref<ImageTexture> t;
+				//t.instance();
+				//t->create_from_image(img);
+				//t->set_storage(ImageTexture::STORAGE_COMPRESS_LOSSY);
+				//return t;
 			}
-			surface_indices.sort();
-			String mesh_key;
-			for (int i = 0; i < surface_indices.size(); i++) {
-				if (i > 0) {
-					mesh_key += ":";
-				}
-				mesh_key += itos(surface_indices[i]);
+		} else {
+			Ref<Image> img;
+			img.instance();
+			PoolByteArray arr;
+			uint32_t size = tex->mWidth * tex->mHeight;
+			arr.resize(size);
+			memcpy(arr.write().ptr(), tex->pcData, size);
+			ERR_FAIL_COND_V(arr.size() % 4 != 0, Ref<Texture>());
+			//ARGB8888 to RGBA8888
+			for (int32_t i = 0; i < arr.size() / 4; i++) {
+				arr.write().ptr()[(4 * i) + 3] = arr[(4 * i) + 0];
+				arr.write().ptr()[(4 * i) + 0] = arr[(4 * i) + 1];
+				arr.write().ptr()[(4 * i) + 1] = arr[(4 * i) + 2];
+				arr.write().ptr()[(4 * i) + 2] = arr[(4 * i) + 3];
 			}
-
-			if (!state.mesh_cache.has(mesh_key)) {
-				//adding cache
-				aiString cull_mode; //cull is on mesh, which is kind of stupid tbh
-				bool double_sided_material = false;
-				if (p_assimp_node->mMetaData) {
-					p_assimp_node->mMetaData->Get("Culling", cull_mode);
-				}
-				if (cull_mode.length != 0 && cull_mode == aiString("CullingOff")) {
-					double_sided_material = true;
-				}
-
-				mesh = _generate_mesh_from_surface_indices(state, surface_indices, skeleton, double_sided_material);
-				state.mesh_cache[mesh_key] = mesh;
-			}
-
-			mesh = state.mesh_cache[mesh_key];
+			img->create(tex->mWidth, tex->mHeight, true, Image::FORMAT_RGBA8, arr);
+			ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+			return img;
 		}
-
-		MeshInstance *mesh_node = memnew(MeshInstance);
-		if (skeleton) {
-			state.mesh_skeletons[mesh_node] = skeleton;
-		}
-		mesh_node->set_mesh(mesh);
-		new_node = mesh_node;
-
-	} else if (state.light_cache.has(node_name)) {
-
-		Light *light = NULL;
-		aiLight *ai_light = state.assimp_scene->mLights[state.light_cache[node_name]];
-		ERR_FAIL_COND(!ai_light);
-
-		if (ai_light->mType == aiLightSource_DIRECTIONAL) {
-			light = memnew(DirectionalLight);
-			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
-			dir.normalize();
-			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
-			Vector3 up = Vector3(ai_light->mUp.x, ai_light->mUp.y, ai_light->mUp.z);
-			up.normalize();
-
-			Transform light_transform;
-			light_transform.set_look_at(pos, pos + dir, up);
-
-			node_transform *= light_transform;
-
-		} else if (ai_light->mType == aiLightSource_POINT) {
-			light = memnew(OmniLight);
-			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
-			Transform xform;
-			xform.origin = pos;
-
-			node_transform *= xform;
-
-			light->set_transform(xform);
-
-			//light->set_param(Light::PARAM_ATTENUATION, 1);
-		} else if (ai_light->mType == aiLightSource_SPOT) {
-			light = memnew(SpotLight);
-
-			Vector3 dir = Vector3(ai_light->mDirection.y, ai_light->mDirection.x, ai_light->mDirection.z);
-			dir.normalize();
-			Vector3 pos = Vector3(ai_light->mPosition.x, ai_light->mPosition.y, ai_light->mPosition.z);
-			Vector3 up = Vector3(ai_light->mUp.x, ai_light->mUp.y, ai_light->mUp.z);
-			up.normalize();
-
-			Transform light_transform;
-			light_transform.set_look_at(pos, pos + dir, up);
-			node_transform *= light_transform;
-
-			//light->set_param(Light::PARAM_ATTENUATION, 0.0f);
-		}
-		ERR_FAIL_COND(light == NULL);
-		light->set_color(Color(ai_light->mColorDiffuse.r, ai_light->mColorDiffuse.g, ai_light->mColorDiffuse.b));
-		new_node = light;
-	} else if (state.camera_cache.has(node_name)) {
-
-		aiCamera *ai_camera = state.assimp_scene->mCameras[state.camera_cache[node_name]];
-		ERR_FAIL_COND(!ai_camera);
-
-		Camera *camera = memnew(Camera);
-
-		float near = ai_camera->mClipPlaneNear;
-		if (Math::is_equal_approx(near, 0.0f)) {
-			near = 0.1f;
-		}
-		camera->set_perspective(Math::rad2deg(ai_camera->mHorizontalFOV) * 2.0f, near, ai_camera->mClipPlaneFar);
-
-		Vector3 pos = Vector3(ai_camera->mPosition.x, ai_camera->mPosition.y, ai_camera->mPosition.z);
-		Vector3 look_at = Vector3(ai_camera->mLookAt.y, ai_camera->mLookAt.x, ai_camera->mLookAt.z).normalized();
-		Vector3 up = Vector3(ai_camera->mUp.x, ai_camera->mUp.y, ai_camera->mUp.z);
-
-		Transform xform;
-		xform.set_look_at(pos, look_at, up);
-
-		new_node = camera;
-	} else if (state.bone_owners.has(node_name)) {
-
-		//have to actually put the skeleton somewhere, you know.
-		Skeleton *skeleton = state.skeletons[state.bone_owners[node_name]];
-		if (skeleton->get_parent()) {
-			//a bone for a skeleton already added..
-			//could go downwards here to add meshes children of skeleton bones
-			//but let's not support it for now.
-			return;
-		}
-		//restore rest poses to local, now that we know where the skeleton finally is
-		Transform skeleton_transform;
-		if (p_assimp_node->mParent) {
-			skeleton_transform = _get_global_assimp_node_transform(p_assimp_node->mParent);
-		}
-		for (int i = 0; i < skeleton->get_bone_count(); i++) {
-			Transform rest = skeleton_transform.affine_inverse() * skeleton->get_bone_rest(i);
-			skeleton->set_bone_rest(i, rest.affine_inverse());
-		}
-
-		skeleton->localize_rests();
-		node_name = "Skeleton"; //don't use the bone root name
-		node_transform = Transform(); //don't transform
-
-		new_node = skeleton;
-	} else {
-		//generic node
-		new_node = memnew(Spatial);
+		return Ref<Image>();
 	}
-
-	{
-
-		new_node->set_name(node_name);
-		new_node->set_transform(node_transform);
-		p_parent->add_child(new_node);
-		new_node->set_owner(state.root);
-	}
-
-	state.node_map[node_name] = new_node;
-
-	for (size_t i = 0; i < p_assimp_node->mNumChildren; i++) {
-		_generate_node(state, p_assimp_node->mChildren[i], new_node);
-	}
+	return Ref<Image>();
 }
 
 void EditorSceneImporterAssimp::_calc_tangent_from_mesh(const aiMesh *ai_mesh, int i, int tri_index, int index, PoolColorArray::Write &w) {
@@ -1675,43 +1874,43 @@ void EditorSceneImporterAssimp::_find_texture_path(const String &r_p_path, Strin
 }
 
 void EditorSceneImporterAssimp::_find_texture_path(const String &p_path, _Directory &dir, String &path, bool &found, String extension) {
-	String name = path.get_basename() + extension;
-	if (dir.file_exists(name)) {
-		found = true;
-		path = name;
-		return;
-	}
-	String name_ignore_sub_directory = p_path.get_base_dir().plus_file(path.get_file().get_basename()) + extension;
-	if (dir.file_exists(name_ignore_sub_directory)) {
-		found = true;
-		path = name_ignore_sub_directory;
-		return;
-	}
-
-	String name_find_texture_sub_directory = p_path.get_base_dir() + "/textures/" + path.get_file().get_basename() + extension;
-	if (dir.file_exists(name_find_texture_sub_directory)) {
-		found = true;
-		path = name_find_texture_sub_directory;
-		return;
-	}
-	String name_find_texture_upper_sub_directory = p_path.get_base_dir() + "/Textures/" + path.get_file().get_basename() + extension;
-	if (dir.file_exists(name_find_texture_upper_sub_directory)) {
-		found = true;
-		path = name_find_texture_upper_sub_directory;
-		return;
-	}
-	String name_find_texture_outside_sub_directory = p_path.get_base_dir() + "/../textures/" + path.get_file().get_basename() + extension;
-	if (dir.file_exists(name_find_texture_outside_sub_directory)) {
-		found = true;
-		path = name_find_texture_outside_sub_directory;
-		return;
-	}
-
-	String name_find_upper_texture_outside_sub_directory = p_path.get_base_dir() + "/../Textures/" + path.get_file().get_basename() + extension;
-	if (dir.file_exists(name_find_upper_texture_outside_sub_directory)) {
-		found = true;
-		path = name_find_upper_texture_outside_sub_directory;
-		return;
+	Vector<String> paths;
+	paths.push_back(path.get_basename() + extension);
+	paths.push_back(path + extension);
+	paths.push_back(path);
+	paths.push_back(p_path.get_base_dir().plus_file(path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file(path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file(path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("textures/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("textures/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("textures/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("Textures/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("Textures/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("Textures/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("../Textures/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../Textures/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../Textures/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("../textures/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../textures/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../textures/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("texture/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("texture/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("texture/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("Texture/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("Texture/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("Texture/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("../Texture/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../Texture/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../Texture/" + path.get_file()));
+	paths.push_back(p_path.get_base_dir().plus_file("../texture/" + path.get_file().get_basename() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../texture/" + path.get_file() + extension));
+	paths.push_back(p_path.get_base_dir().plus_file("../texture/" + path.get_file()));
+	for (size_t i = 0; i < paths.size(); i++) {
+		if (dir.file_exists(paths[i])) {
+			found = true;
+			path = paths[i];
+			return;
+		}
 	}
 }
 
@@ -1720,13 +1919,15 @@ String EditorSceneImporterAssimp::_assimp_get_string(const aiString &p_string) c
 	String name;
 	name.parse_utf8(p_string.C_Str() /*,p_string.length*/);
 	if (name.find(":") != -1) {
-		String replaced_name = name.split(":")[1];
+		String replaced_name = name.replace(":", "");
 		print_verbose("Replacing " + name + " containing : with " + replaced_name);
 		name = replaced_name;
 	}
-
-	name = name.replace(".", ""); //can break things, specially bone names
-
+	if (name.find(".") != -1) {
+		String replaced_name = name.replace(".", "");
+		print_verbose("Replacing " + name + " containing . with " + replaced_name);
+		name = replaced_name;
+	}
 	return name;
 }
 
@@ -1752,10 +1953,12 @@ Ref<Animation> EditorSceneImporterAssimp::import_animation(const String &p_path,
 	return Ref<Animation>();
 }
 
-const Transform EditorSceneImporterAssimp::_assimp_matrix_transform(const aiMatrix4x4 p_matrix) {
+const Transform EditorSceneImporterAssimp::_ai_matrix_transform(const aiMatrix4x4 p_matrix) {
 	aiMatrix4x4 matrix = p_matrix;
 	Transform xform;
 	//xform.set(matrix.a1, matrix.b1, matrix.c1, matrix.a2, matrix.b2, matrix.c2, matrix.a3, matrix.b3, matrix.c3, matrix.a4, matrix.b4, matrix.c4);
+	//xform.basis.transpose();
+	//xform.basis.inverse();
 	xform.set(matrix.a1, matrix.a2, matrix.a3, matrix.b1, matrix.b2, matrix.b3, matrix.c1, matrix.c2, matrix.c3, matrix.a4, matrix.b4, matrix.c4);
 	return xform;
 }
