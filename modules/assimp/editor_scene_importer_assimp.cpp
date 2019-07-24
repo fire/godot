@@ -287,7 +287,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		state.ap = memnew(AnimationPlayer);
 		state.root->add_child(state.ap);
 		state.ap->set_owner(state.root);
-		state.ap->set_name(TTR("AnimationPlayer"));
 	}
 
 	String ext = state.path.get_file().get_extension().to_lower();
