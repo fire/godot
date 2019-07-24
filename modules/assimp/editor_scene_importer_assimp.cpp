@@ -69,6 +69,13 @@ void EditorSceneImporterAssimp::get_extensions(List<String> *r_extensions) const
 	}
 	{
 		Vector<String> exts;
+		exts.push_back("gltf");
+		exts.push_back("glb");
+		ImportFormat import = { exts, true };
+		import_format.insert("gltf", import);
+	}
+	{
+		Vector<String> exts;
 		exts.push_back("pmx");
 		ImportFormat import = { exts, true };
 		import_format.insert("mmd", import);
