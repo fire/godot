@@ -125,33 +125,19 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	//	max_bone_weights = eight_bones;
 	//}
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
-	//importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
-	//importer.SetPropertyFloat(AI_CONFIG_PP_DB_THRESHOLD, 1.0f);
-	int32_t post_process_Steps = //aiProcess_CalcTangentSpace |
-			//aiProcess_FlipUVs |
-			aiProcess_FlipWindingOrder |
-			//aiProcess_DropNormals |
-			//aiProcess_GenSmoothNormals |
+	int32_t post_process_Steps = aiProcess_FlipWindingOrder |
 			aiProcess_JoinIdenticalVertices |
 			aiProcess_ImproveCacheLocality |
 			aiProcess_LimitBoneWeights |
 			aiProcess_RemoveRedundantMaterials |
-			//aiProcess_SplitLargeMeshes |
 			aiProcess_Triangulate |
-			//aiProcess_GenUVCoords |
-			//aiProcess_FindDegenerates |
 			aiProcess_RemoveComponent |
 			aiProcess_SortByPType |
 			aiProcess_FindInvalidData |
 			aiProcess_TransformUVCoords |
 			aiProcess_FindInstances |
-			//aiProcess_FixInfacingNormals |
 			aiProcess_ValidateDataStructure |
 			aiProcess_OptimizeMeshes |
-			//aiProcess_OptimizeGraph |
-			//aiProcess_Debone |
-			//aiProcess_EmbedTextures |
-			//aiProcess_SplitByBoneCount |
 			0;
 	const aiScene *ai_scene = importer.ReadFile(s_path.c_str(),
 			post_process_Steps);
