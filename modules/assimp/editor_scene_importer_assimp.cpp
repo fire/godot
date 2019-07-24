@@ -419,10 +419,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 
-	if (state.path.get_extension().to_lower() == "fbx") {
-		Object::cast_to<Spatial>(state.root)->set_transform(_format_rot_xform(state) * state.root->get_transform());
-	}
-
 	return state.root;
 }
 
@@ -991,79 +987,6 @@ aiNode *EditorSceneImporterAssimp::_assimp_find_node(aiNode *ai_child_node, cons
 		}
 	}
 	return target;
-}
-
-Transform EditorSceneImporterAssimp::_format_rot_xform(State &state) {
-	const aiScene *p_scene = state.scene;
-	String p_path = state.path;
-	String ext = p_path.get_file().get_extension().to_lower();
-	Transform xform;
-	if (ext == "fbx") {
-		int32_t up_axis = 0;
-		int32_t up_axis_sign = 0;
-		int32_t front_axis = 0;
-		int32_t front_axis_sign = 0;
-		int32_t coord_axis = 0;
-		int32_t coord_axis_sign = 0;
-		if (p_scene->mMetaData != NULL) {
-			p_scene->mMetaData->Get("UpAxis", up_axis);
-			p_scene->mMetaData->Get("UpAxisSign", up_axis_sign);
-			p_scene->mMetaData->Get("FrontAxis", front_axis);
-			p_scene->mMetaData->Get("FrontAxisSign", front_axis_sign);
-			p_scene->mMetaData->Get("CoordAxis", coord_axis);
-			p_scene->mMetaData->Get("CoordAxisSign", coord_axis_sign);
-		}
-		AssetImportFbx::UpFrontCoord up_front_coord = { up_axis, up_axis_sign, front_axis, front_axis_sign, coord_axis, coord_axis_sign };
-		xform.basis.set_quat_scale(_get_up_forward(up_front_coord), Vector3(1.0f, 1.0f, 1.0f));
-	}
-	return xform;
-}
-
-Quat EditorSceneImporterAssimp::_get_up_forward(AssetImportFbx::UpFrontCoord p_up_front_coord) {
-	Quat quat;
-	if (p_up_front_coord.up_axis == 1 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		return quat;
-	}
-	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		return quat;
-	}
-	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		return quat;
-	}
-	Vector3 rotation = Vector3(Math::deg2rad(-90.0f), Math::deg2rad(0.0f), Math::deg2rad(0.0f));
-	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		quat.set_euler(rotation);
-	}
-	if (p_up_front_coord.up_axis == -1 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 2 && p_up_front_coord.front_axis_sign == 1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		quat.set_euler(rotation);
-	}
-	if (p_up_front_coord.up_axis == 1 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		quat.set_euler(rotation);
-	}
-	if (p_up_front_coord.up_axis == 2 && p_up_front_coord.up_axis_sign == 1 &&
-			p_up_front_coord.front_axis == 1 && p_up_front_coord.front_axis_sign == -1 &&
-			p_up_front_coord.coord_axis == 0 && p_up_front_coord.coord_axis_sign == 1) {
-		quat.set_euler(rotation);
-	}
-	//print_line("Up Axis: " + itos(p_up_front_coord.up_axis));
-	//print_line("Up Sign: " + itos(p_up_front_coord.up_axis_sign));
-	//print_line("Front Axis: " + itos(p_up_front_coord.front_axis));
-	//print_line("Front Axis Sign: " + itos(p_up_front_coord.front_axis_sign));
-	//print_line("Coord Axis: " + itos(p_up_front_coord.coord_axis));
-	//print_line("Coord Sign: " + itos(p_up_front_coord.coord_axis_sign));
-	return quat;
 }
 
 void EditorSceneImporterAssimp::_get_track_set(const aiScene *p_scene, Set<String> &tracks) {
@@ -1956,9 +1879,6 @@ Ref<Animation> EditorSceneImporterAssimp::import_animation(const String &p_path,
 const Transform EditorSceneImporterAssimp::_ai_matrix_transform(const aiMatrix4x4 p_matrix) {
 	aiMatrix4x4 matrix = p_matrix;
 	Transform xform;
-	//xform.set(matrix.a1, matrix.b1, matrix.c1, matrix.a2, matrix.b2, matrix.c2, matrix.a3, matrix.b3, matrix.c3, matrix.a4, matrix.b4, matrix.c4);
-	//xform.basis.transpose();
-	//xform.basis.inverse();
 	xform.set(matrix.a1, matrix.a2, matrix.a3, matrix.b1, matrix.b2, matrix.b3, matrix.c1, matrix.c2, matrix.c3, matrix.a4, matrix.b4, matrix.c4);
 	return xform;
 }
