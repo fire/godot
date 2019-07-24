@@ -839,9 +839,7 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner) {
 
 	Spatial *child_node = NULL;
-	if (p_node == NULL) {
-		return;
-	}
+	ERR_FAIL_COND(p_node == NULL);
 	String node_name = _assimp_get_string(p_node->mName);
 	String ext = state.path.get_file().get_extension().to_lower();
 	{
@@ -942,9 +940,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 void EditorSceneImporterAssimp::_set_bone_parent(Skeleton *p_skeleton, const aiScene *p_scene) {
 	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
 		aiNode *node = _assimp_find_node(p_scene->mRootNode, p_skeleton->get_bone_name(i));
-		if (node == NULL) {
-			continue;
-		}
+		ERR_CONTINUE(node == NULL);
 		node = node->mParent;
 		while (node != NULL) {
 			int32_t bone = p_skeleton->find_bone(_assimp_get_string(node->mName));
