@@ -151,8 +151,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	state.bake_fps = p_bake_fps;
 	state.skeleton = memnew(Skeleton);
 	state.root = memnew(Spatial);
-	Node *scene = _generate_scene(state);
-	return scene;
+	return _generate_scene(state);
 }
 
 template <class T>
