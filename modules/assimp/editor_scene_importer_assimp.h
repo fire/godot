@@ -125,7 +125,7 @@ private:
 		const aiNode *ai_root = NULL;
 		aiNode *armature_node = NULL;
 		aiNode *skeleton_root_node = NULL;
-		bool is_fbx_specific = false;
+		bool is_fbx_specific = true;
 	};
 
 	struct AssetImportAnimation {
