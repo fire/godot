@@ -125,6 +125,7 @@ private:
 		const aiNode *ai_root = NULL;
 		aiNode *armature_node = NULL;
 		aiNode *skeleton_root_node = NULL;
+		bool is_fbx_specific = false;
 	};
 
 	struct AssetImportAnimation {
@@ -183,7 +184,7 @@ private:
 	
 	String _find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root);
 	Transform _get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node);
-	void _generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights);
+	void _generate_node_bone(State &state, const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights);
 	void _generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner);
 	void _set_bone_parent(Skeleton *p_skeleton, const aiScene *p_scene);
 	aiNode *_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask);

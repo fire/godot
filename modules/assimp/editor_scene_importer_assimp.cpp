@@ -115,14 +115,15 @@ void EditorSceneImporterAssimp::_bind_methods() {
 }
 
 Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+	State state;
+	state.path = p_path;
+
+	state.flags = p_flags;
+	state.bake_fps = p_bake_fps;
+	state.skeleton = memnew(Skeleton);
+	state.root = memnew(Spatial);
+
 	Assimp::Importer importer;
-	std::wstring w_path = ProjectSettings::get_singleton()->globalize_path(p_path).c_str();
-	std::string s_path(w_path.begin(), w_path.end());
-	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
-	// Cannot remove pivot points because the static mesh will be in the wrong place
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
-	importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
 	int32_t max_bone_weights = 4;
 	//importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, max_bone_weights);
 	//if (p_flags & EditorSceneImporter::IMPORT_ANIMATION_8_WEIGHTS) {
@@ -130,33 +131,37 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	//	importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, eight_bones);
 	//	max_bone_weights = eight_bones;
 	//}
+	state.max_bone_weights = max_bone_weights;
+	std::wstring w_path = ProjectSettings::get_singleton()->globalize_path(p_path).c_str();
+	std::string s_path(w_path.begin(), w_path.end());
+	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
+	if (state.is_fbx_specific) {
+		// Cannot remove pivot points because the static mesh will be in the wrong place
+		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
+		importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
+		importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
+	}
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
 	int32_t post_process_Steps = aiProcess_FlipWindingOrder |
-			aiProcess_JoinIdenticalVertices |
-			aiProcess_ImproveCacheLocality |
-			aiProcess_LimitBoneWeights |
-			aiProcess_RemoveRedundantMaterials |
-			aiProcess_Triangulate |
-			aiProcess_RemoveComponent |
-			aiProcess_SortByPType |
-			aiProcess_FindInvalidData |
-			aiProcess_TransformUVCoords |
-			aiProcess_FindInstances |
-			aiProcess_ValidateDataStructure |
-			aiProcess_OptimizeMeshes |
-			0;
+								 aiProcess_JoinIdenticalVertices |
+								 aiProcess_ImproveCacheLocality |
+								 aiProcess_LimitBoneWeights |
+								 aiProcess_RemoveRedundantMaterials |
+								 aiProcess_Triangulate |
+								 aiProcess_RemoveComponent |
+								 aiProcess_SortByPType |
+								 aiProcess_FindInvalidData |
+								 aiProcess_TransformUVCoords |
+								 aiProcess_FindInstances |
+								 // aiProcess_ValidateDataStructure |
+								 aiProcess_OptimizeMeshes |
+								 0;
 	const aiScene *ai_scene = importer.ReadFile(s_path.c_str(),
 			post_process_Steps);
+	state.scene = ai_scene;
 	ERR_EXPLAIN(String("Open Asset Import failed to open: ") + String(importer.GetErrorString()));
 	ERR_FAIL_COND_V(ai_scene == NULL, NULL);
-	State state;
-	state.scene = ai_scene;
-	state.path = p_path;
-	state.max_bone_weights = max_bone_weights;
-	state.flags = p_flags;
-	state.bake_fps = p_bake_fps;
-	state.skeleton = memnew(Skeleton);
-	state.root = memnew(Spatial);
+
 	return _generate_scene(state);
 }
 
@@ -523,13 +528,13 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 	float length = 0.0f;
 	animation->set_name(name);
 	float ticks_per_second = state.scene->mAnimations[p_index]->mTicksPerSecond;
-
-	if (state.scene->mMetaData != NULL && Math::is_equal_approx(ticks_per_second, 0.0f)) {
-		int32_t time_mode = 0;
-		state.scene->mMetaData->Get("TimeMode", time_mode);
-		ticks_per_second = _get_fbx_fps(time_mode, state.scene);
+	if (state.is_fbx_specific) {
+		if (state.scene->mMetaData != NULL && Math::is_equal_approx(ticks_per_second, 0.0f)) {
+			int32_t time_mode = 0;
+			state.scene->mMetaData->Get("TimeMode", time_mode);
+			ticks_per_second = _get_fbx_fps(time_mode, state.scene);
+		}
 	}
-
 	if ((state.path.get_file().get_extension().to_lower() == "glb" || state.path.get_file().get_extension().to_lower() == "gltf") && Math::is_equal_approx(ticks_per_second, 0.0f)) {
 		ticks_per_second = 1000.0f;
 	}
@@ -545,23 +550,24 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			const aiNodeAnim *track = anim->mChannels[i];
 			String node_name = _assimp_get_string(track->mNodeName);
 			NodePath node_path = node_name;
-			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
-				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
-				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
-				if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
-					Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
-					Vector<const aiNodeAnim *> ai_tracks;
-					if (E) {
-						ai_tracks = E->get();
-						ai_tracks.push_back(track);
-					} else {
-						ai_tracks.push_back(track);
+			if (state.is_fbx_specific) {
+				if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
+					String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
+					String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
+					if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
+						Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
+						Vector<const aiNodeAnim *> ai_tracks;
+						if (E) {
+							ai_tracks = E->get();
+							ai_tracks.push_back(track);
+						} else {
+							ai_tracks.push_back(track);
+						}
+						pivot_tracks.insert(bone_name, ai_tracks);
+						continue;
 					}
-					pivot_tracks.insert(bone_name, ai_tracks);
-					continue;
 				}
 			}
-
 			Skeleton *sk = state.skeleton;
 			const String path = state.ap->get_owner()->get_path_to(sk);
 			bool is_node_bone = sk->find_bone(node_name) != -1;
@@ -572,28 +578,30 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
 				continue;
 			}
-			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
-			const String bare_name = split_name[0];
-			if (split_name.size() > 1) {
-				// const Node *node = state.ap->get_owner()->find_node(bare_name);
-				bool is_bone = sk->find_bone(bare_name) != -1;
-				if (is_bone) {
+			if (state.is_fbx_specific) {
+				const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
+				const String bare_name = split_name[0];
+				if (split_name.size() > 1) {
+					// const Node *node = state.ap->get_owner()->find_node(bare_name);
+					bool is_bone = sk->find_bone(bare_name) != -1;
+					if (is_bone) {
+						continue;
+					}
+					const Node *node = state.ap->get_owner()->find_node(node_name);
+					if (!node) {
+						continue;
+					}
+					const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
+					Vector<const aiNodeAnim *> ai_tracks;
+					if (E) {
+						ai_tracks = E->get();
+						ai_tracks.push_back(track);
+					} else {
+						ai_tracks.push_back(track);
+					}
+					pivot_tracks.insert(bare_name, ai_tracks);
 					continue;
 				}
-				const Node *node = state.ap->get_owner()->find_node(node_name);
-				if (!node) {
-					continue;
-				}
-				const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
-				Vector<const aiNodeAnim *> ai_tracks;
-				if (E) {
-					ai_tracks = E->get();
-					ai_tracks.push_back(track);
-				} else {
-					ai_tracks.push_back(track);
-				}
-				pivot_tracks.insert(bare_name, ai_tracks);
-				continue;
 			}
 			const Node *node = state.ap->get_owner()->find_node(node_name);
 			if (!node) {
@@ -609,8 +617,10 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 			}
 			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
 		}
-		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
-			_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
+		if (state.is_fbx_specific) {
+			for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
+				_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
+			}
 		}
 		for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
 			const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
@@ -815,7 +825,7 @@ Transform EditorSceneImporterAssimp::_get_global_ai_node_transform(const aiScene
 	return xform;
 }
 
-void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
+void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
@@ -832,11 +842,12 @@ void EditorSceneImporterAssimp::_generate_node_bone(const aiScene *p_scene, cons
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
 			String ext = p_path.get_file().get_extension().to_lower();
-			if (ext == "fbx") {
+			if (state.is_fbx_specific) {
 				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
 				mesh_xform.basis = Basis();
 				xform = mesh_xform.affine_inverse() * xform;
 			}
+
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
 	}
@@ -870,7 +881,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			child_node = mesh_node;
 			Map<String, bool> mesh_bones;
 			state.skeleton->set_use_bones_in_world_transform(true);
-			_generate_node_bone(state.scene, p_node, mesh_bones, state.skeleton, state.path, state.max_bone_weights);
+			_generate_node_bone(state, state.scene, p_node, mesh_bones, state.skeleton, state.path, state.max_bone_weights);
 			Set<String> tracks;
 			_get_track_set(state.scene, tracks);
 			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
@@ -884,26 +895,29 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 					break;
 				}
 			}
-			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
-				while (node != NULL) {
-					String node_name = _assimp_get_string(node->mName);
-					if (!node_name.empty()) {
-						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+
+			if (state.is_fbx_specific) {
+				for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+					aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+					while (node != NULL) {
+						String node_name = _assimp_get_string(node->mName);
+						if (!node_name.empty()) {
+							if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+								break;
+							}
+							if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
+								state.skeleton->add_bone(node_name);
+								int32_t idx = state.skeleton->find_bone(node_name);
+								Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+								state.skeleton->set_bone_rest(idx, xform);
+								break;
+							}
+						}
+						if (state.skeleton_root_node == node) {
 							break;
 						}
-						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
-							state.skeleton->add_bone(node_name);
-							int32_t idx = state.skeleton->find_bone(node_name);
-							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
-							state.skeleton->set_bone_rest(idx, xform);
-							break;
-						}
+						node = node->mParent;
 					}
-					if (state.skeleton_root_node == node) {
-						break;
-					}
-					node = node->mParent;
 				}
 			}
 			_set_bone_parent(state.skeleton, state.scene);
