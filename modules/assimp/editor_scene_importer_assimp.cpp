@@ -153,7 +153,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 								 aiProcess_FindInvalidData |
 								 aiProcess_TransformUVCoords |
 								 aiProcess_FindInstances |
-								 // aiProcess_ValidateDataStructure |
+								 aiProcess_ValidateDataStructure |
 								 aiProcess_OptimizeMeshes |
 								 0;
 	const aiScene *ai_scene = importer.ReadFile(s_path.c_str(),
