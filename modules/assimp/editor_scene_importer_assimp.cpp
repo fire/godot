@@ -378,23 +378,32 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 	}
 	if (state.skeleton->get_bone_count()) {
-		// aiNode *node = skeleton_root;
-		// while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-		// 	while (node->mParent) {
-		// 		if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-		// 			break;
-		// 		}
-		// 		node = node->mParent;
-		// 	}
-		// 	node = node->mParent;
-		// }
-		// state.armature_node = node;
-		state.mesh_skeletons.back()->key()->add_child(state.skeleton);
+		aiNode *node = NULL;
+		if (skeleton_root) {
+			node = skeleton_root;
+			while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+				while (node->mParent) {
+					if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
+						break;
+					}
+					node = node->mParent;
+				}
+				node = node->mParent;
+			}
+			state.armature_node = node;
+		}
+		if (node) {
+			Node *armature = state.root->find_node(_assimp_get_string(node->mName));
+			ERR_FAIL_COND_V(armature == NULL, state.root);
+			armature->add_child(state.skeleton);
+		} else {
+			state.root->add_child(state.skeleton);
+		}
 		state.skeleton->set_owner(state.root);
 
-		Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
-		mesh_xform.basis = Basis();
-		state.skeleton->set_transform(mesh_xform.affine_inverse());
+		// Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
+		// mesh_xform.basis = Basis();
+		// state.skeleton->set_transform(mesh_xform.affine_inverse());
 	}
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
@@ -896,7 +905,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				}
 			}
 
-			if (state.is_fbx_specific) {
+			if (false && state.is_fbx_specific) {
 				for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 					aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 					while (node != NULL) {
