@@ -356,6 +356,7 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 	Ref<Image> atlas_img_albedo;
 	atlas_img_albedo.instance();
 	const float scale = 2.0f;
+	ERR_FAIL_COND_V(atlas->width <= 0 && atlas->height <= 0, p_root);
 	atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8);
 	// Rasterize chart triangles.
 	Map<uint16_t, Ref<Image> > image_cache;
@@ -454,6 +455,9 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 					// Need to find source texel position by checking surrounding texels in the atlas.
 					bool foundSample = false;
 					for (uint32_t si = 0; si < 8; si++) {
+						if (x < 0 || y < 0 || x >= (int)atlas->width || x >= (int)atlas->height) {
+							continue; // Sample position is outside of atlas texture.
+						}
 						const int sx = (int)x + sampleXOffsets[si];
 						const int sy = (int)y + sampleYOffsets[si];
 						if (sx < 0 || sy < 0 || sx >= (int)atlas->width || sy >= (int)atlas->height) {
@@ -507,7 +511,9 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 						img->lock();
 						atlas_img_albedo->lock();
 						if (ssx < 0 || ssy < 0 || ssx >= img->get_width() || ssy >= img->get_height()) {
-							atlas_img_albedo->set_pixel(x, y, Color());
+							continue; // Sample position is outside of source texture.
+						}
+						if (x < 0 || y < 0 || x >= atlas_img_albedo->get_width() || y >= atlas_img_albedo->get_height()) {
 							continue; // Sample position is outside of source texture.
 						}
 						atlas_img_albedo->set_pixel(x, y, img->get_pixel(ssx, ssy));

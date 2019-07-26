@@ -7484,6 +7484,9 @@ private:
 	static bool drawTriangleCallback(void *param, int x, int y)
 	{
 		auto args = (DrawTriangleCallbackArgs *)param;
+		if (x >= args->chartBitImage->width() || y >= args->chartBitImage->height()) {
+			return false;
+		}
 		args->chartBitImage->setBitAt(x, y);
 		if (args->chartBitImageRotated)
 			args->chartBitImageRotated->setBitAt(y, x);
