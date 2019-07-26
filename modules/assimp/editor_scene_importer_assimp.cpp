@@ -907,7 +907,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			}
 		}
 
-		if (state.is_fbx_specific) {
+		if (false && state.is_fbx_specific) {
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 				while (node != NULL) {
