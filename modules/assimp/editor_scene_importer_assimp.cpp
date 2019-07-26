@@ -400,7 +400,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			ERR_FAIL_COND_V(armature == NULL, state.root);
 			armature->add_child(state.skeleton);
 		} else {
-			state.root->add_child(state.skeleton);
+			state.mesh_skeletons.front()->key()->add_child(state.skeleton);
 		}
 		state.skeleton->set_owner(state.root);
 	}
