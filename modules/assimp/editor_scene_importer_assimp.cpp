@@ -373,18 +373,18 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		_generate_node(state, state.scene->mRootNode->mChildren[i], state.root, state.root);
 	}
 
-	aiNode *skeleton_root = NULL;
+	Vector<aiNode *> assimp_skeleton_parents;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+		// assume -1 is a parent node.
 		if (state.skeleton->get_bone_parent(i) == -1) {
-			skeleton_root = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
-			break;
+			assimp_skeleton_parents.push_back(_assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i)));
 		}
 	}
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = NULL;
-		if (skeleton_root) {
-			node = skeleton_root;
-			while (node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
+		for (int32_t m = 0; m < assimp_skeleton_parents.size(); m++) {
+			aiNode *node = assimp_skeleton_parents[m];
+			while (node && node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
 				while (node->mParent) {
 					if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
 						break;
@@ -394,18 +394,14 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 				node = node->mParent;
 			}
 			state.armature_node = node;
-			state.root->add_child(state.skeleton);
+		}
+		if (node && node != state.scene->mRootNode) {
 			Node *armature = state.root->find_node(_assimp_get_string(node->mName));
-			if (armature) {
-				armature->add_child(state.skeleton);
-			} else {
-				state.root->add_child(state.skeleton);
-			}
+			ERR_FAIL_COND_V(armature == NULL, state.root);
+			armature->add_child(state.skeleton);
 		} else {
 			state.root->add_child(state.skeleton);
 		}
-		Transform mesh_xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, state.mesh_skeletons.back()->key()->get_name()));
-		state.skeleton->set_transform(mesh_xform);
 		state.skeleton->set_owner(state.root);
 	}
 	state.skeleton->localize_rests();
@@ -853,13 +849,6 @@ void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene 
 			p_skeleton->add_bone(bone_name);
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
-			String ext = p_path.get_file().get_extension().to_lower();
-			if (state.is_fbx_specific) {
-				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
-				mesh_xform.basis = Basis();
-				xform = mesh_xform.affine_inverse() * xform;
-			}
-
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
 	}
