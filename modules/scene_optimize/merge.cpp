@@ -334,6 +334,9 @@ void MeshMergeMaterialRepack::map_vertex_to_material(Vector<MeshInstance *> mesh
 			Array materials;
 			materials.resize(indices.size());
 			Ref<Material> mat = mesh_items[i]->get_mesh()->surface_get_material(j);
+			if (mesh_items[i]->get_surface_material(j).is_valid()) {
+				mat = mesh_items[i]->get_surface_material(j);
+			}
 			if (material_cache.find(mat) == -1) {
 				material_cache.push_back(mat);
 			}
