@@ -849,13 +849,6 @@ void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene 
 			p_skeleton->add_bone(bone_name);
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
-			String ext = p_path.get_file().get_extension().to_lower();
-			if (state.is_fbx_specific) {
-				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
-				mesh_xform.basis = Basis();
-				xform = mesh_xform.affine_inverse() * xform;
-			}
-
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
 	}
