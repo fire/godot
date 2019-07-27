@@ -6,15 +6,14 @@
 #include <servers/audio_server.h>
 #include <core/project_settings.h>
 #include <core/bind/core_bind.h>
-#include <core/os/mutex.h>
 
 #include "opus_codec.h"
 
 using namespace godot;
 
-class VoiceManager : public Node {
-	GDCLASS(VoiceManager, Node)
-	Mutex *mutex = NULL;
+class AudioEffectOpus : public Node {
+	GDCLASS(AudioEffectOpus, Node)
+    Ref<Mutex> mutex;
     static const uint32_t MIX_BUFFER_COUNT = 4;
 
     static const uint32_t VOICE_SAMPLE_RATE = 48000;
