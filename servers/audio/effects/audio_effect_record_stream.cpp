@@ -1,22 +1,22 @@
-#include "audio_effect_opus.h"
+#include "audio_effect_record_stream.h"
 
 #include <algorithm>
 
 #define SET_BUFFER_16_BIT(buffer, buffer_pos, sample) ((int16_t *)buffer)[buffer_pos] = sample >> 16;
 
-void AudioEffectOpus::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("_mix_audio"), &AudioEffectOpus::_mix_audio);
-	ClassDB::bind_method(D_METHOD("start"), &AudioEffectOpus::start);
-	ClassDB::bind_method(D_METHOD("stop"), &AudioEffectOpus::stop);
-	ClassDB::bind_method(D_METHOD("decompress_buffer"), &AudioEffectOpus::decompress_buffer);
+void AudioEffectRecordStreamInstance::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("_mix_audio"), &AudioEffectRecordStreamInstance::_mix_audio);
+	ClassDB::bind_method(D_METHOD("start"), &AudioEffectRecordStreamInstance::start);
+	ClassDB::bind_method(D_METHOD("stop"), &AudioEffectRecordStreamInstance::stop);
+	ClassDB::bind_method(D_METHOD("decompress_buffer"), &AudioEffectRecordStreamInstance::decompress_buffer);
     ADD_SIGNAL(MethodInfo("audio_packet_processed", PropertyInfo(Variant::POOL_BYTE_ARRAY, "packet")));
 }
 
-uint32_t AudioEffectOpus::get_audio_server_mix_frames() {
+uint32_t AudioEffectRecordStreamInstance::get_audio_server_mix_frames() {
 	return 1024; // TODO: expose this
 }
 
-void AudioEffectOpus::_mix_audio() {
+void AudioEffectRecordStreamInstance::_mix_audio() {
 	mutex->lock();
 	if (active) {
 		int8_t *write_buffer = reinterpret_cast<int8_t *>(mix_buffer.write().ptr());
@@ -38,7 +38,7 @@ void AudioEffectOpus::_mix_audio() {
 }
 
 // returns remaining processed frames
-uint32_t AudioEffectOpus::_mix_internal(AudioServer *p_audio_server, const uint32_t &p_frame_count, const uint32_t p_buffer_size, int8_t *p_buffer_out, uint32_t &p_buffer_position_out, uint32_t &p_capture_offset_out) {
+uint32_t AudioEffectRecordStreamInstance::_mix_internal(AudioServer *p_audio_server, const uint32_t &p_frame_count, const uint32_t p_buffer_size, int8_t *p_buffer_out, uint32_t &p_buffer_position_out, uint32_t &p_capture_offset_out) {
 	//PoolIntArray capture_buffer = p_audio_server->get_capture_buffer();
 	//uint32_t capture_size = p_audio_server->get_capture_size();
 	//uint32_t mix_rate = p_audio_server->get_mix_rate();
@@ -87,7 +87,7 @@ uint32_t AudioEffectOpus::_mix_internal(AudioServer *p_audio_server, const uint3
 	return 0;
 }
 
-PoolByteArray AudioEffectOpus::_get_buffer_copy(const PoolByteArray p_mix_buffer) {
+PoolByteArray AudioEffectRecordStreamInstance::_get_buffer_copy(const PoolByteArray p_mix_buffer) {
 	PoolByteArray out;
 
 	uint32_t mix_buffer_size = p_mix_buffer.size();
@@ -99,7 +99,7 @@ PoolByteArray AudioEffectOpus::_get_buffer_copy(const PoolByteArray p_mix_buffer
 	return out;
 }
 
-void AudioEffectOpus::start() {
+void AudioEffectRecordStreamInstance::start() {
 	//if (!ProjectSettings::get_singleton()->get("audio/enable_audio_input")) {
 	//	print_error("Need to enable Project settings > Audio > Enable Audio Input option to use capturing.");
 	//	return;
@@ -118,7 +118,7 @@ void AudioEffectOpus::start() {
 	//mutex->unlock();
 }
 
-void AudioEffectOpus::stop() {
+void AudioEffectRecordStreamInstance::stop() {
 	//mutex->lock();
 	//if (active) {
 	//	AudioServer::get_singleton()->capture_stop();
@@ -127,7 +127,7 @@ void AudioEffectOpus::stop() {
 	//mutex->unlock();
 }
 
-PoolVector2Array AudioEffectOpus::_16_pcm_mono_to_real_stereo(const PoolByteArray p_src_buffer) {
+PoolVector2Array AudioEffectRecordStreamInstance::_16_pcm_mono_to_real_stereo(const PoolByteArray p_src_buffer) {
 	PoolVector2Array real_audio_frames;
 	uint32_t buffer_size = p_src_buffer.size();
 
@@ -152,15 +152,15 @@ PoolVector2Array AudioEffectOpus::_16_pcm_mono_to_real_stereo(const PoolByteArra
 	return real_audio_frames;
 }
 
-PoolByteArray AudioEffectOpus::compress_buffer(const PoolByteArray p_pcm_buffer) {
+PoolByteArray AudioEffectRecordStreamInstance::compress_buffer(const PoolByteArray p_pcm_buffer) {
 	return opus_codec->encode_buffer(p_pcm_buffer);
 }
 
-PoolVector2Array AudioEffectOpus::decompress_buffer(const PoolByteArray p_compressed_buffer) {
+PoolVector2Array AudioEffectRecordStreamInstance::decompress_buffer(const PoolByteArray p_compressed_buffer) {
 	return _16_pcm_mono_to_real_stereo(opus_codec->decode_buffer(p_compressed_buffer));
 }
 
-void AudioEffectOpus::_notification(int p_what) {
+void AudioEffectRecordStreamInstance::_notification(int p_what) {
 	//switch (p_what) {
 	//	case NOTIFICATION_POSTINITIALIZE:
 	//		opus_codec = new OpusCodec<VOICE_SAMPLE_RATE, CHANNEL_COUNT, MILLISECONDS_PER_PACKET>(); // ???

@@ -9,10 +9,10 @@
 
 #include "opus_codec.h"
 
-class AudioEffectOpus : public AudioEffect {
-	GDCLASS(AudioEffectOpus, AudioEffect);
+class AudioEffectRecordStreamInstance : public AudioEffectInstance {
+	GDCLASS(AudioEffectRecordStreamInstance, AudioEffectInstance);
 
-	//friend class AudioEffectOpusInstance;
+	//friend class AudioEffectRecordStream;
     Mutex* mutex;
     static const uint32_t MIX_BUFFER_COUNT = 4;
 
