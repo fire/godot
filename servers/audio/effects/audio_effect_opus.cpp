@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-using namespace godot;
-
 #define SET_BUFFER_16_BIT(buffer, buffer_pos, sample) ((int16_t *)buffer)[buffer_pos] = sample >> 16;
 
 void AudioEffectOpus::_bind_methods() {
@@ -166,6 +164,7 @@ void AudioEffectOpus::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_POSTINITIALIZE:
 			opus_codec = new OpusCodec<VOICE_SAMPLE_RATE, CHANNEL_COUNT, MILLISECONDS_PER_PACKET>(); // ???
+			//mutex = new Mutex;
 			break;
 		case NOTIFICATION_READY:
 			audio_server = AudioServer::get_singleton();
@@ -199,10 +198,9 @@ void AudioEffectOpus::_notification(int p_what) {
 				}
 			}
 			break;
+		case NOTIFICATION_PREDELETE:
+			memdelete(opus_codec);
+			//memdelete(mutex);
+		break;
 	}
-}
-
-void AudioEffectOpus::free() {
-	memdelete(opus_codec);
-	memdelete(mutex);
 }

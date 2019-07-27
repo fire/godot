@@ -9,8 +9,6 @@
 
 #include "opus_codec.h"
 
-using namespace godot;
-
 class AudioEffectOpus : public Node {
 	GDCLASS(AudioEffectOpus, Node)
     Ref<Mutex> mutex;
@@ -49,8 +47,6 @@ public:
     PoolVector2Array decompress_buffer(const PoolByteArray p_compressed_buffer);
 
     void _notification(int p_what);
-
-    void free();
 };
 
 #endif // VOICE_MANAGER_HPP
