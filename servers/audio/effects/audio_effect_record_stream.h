@@ -48,7 +48,27 @@ public:
     PoolByteArray compress_buffer(const PoolByteArray p_pcm_buffer);
     PoolVector2Array decompress_buffer(const PoolByteArray p_compressed_buffer);
 
+	virtual void process(const AudioFrame *p_src_frames, AudioFrame *p_dst_frames, int p_frame_count) {}
+	
     void _notification(int p_what);
 };
+
+class AudioEffectRecordStream : public AudioEffect {
+	GDCLASS(AudioEffectRecordStream, AudioEffect);
+
+	friend class AudioEffectRecordStreamInstance;
+protected:
+	static void _bind_methods();
+
+public:
+	Ref<AudioEffectInstance> instance() {
+		Ref<AudioEffectRecordStreamInstance> ins;
+		ins.instance();
+		return ins;
+	}
+
+	AudioEffectRecordStream() {}
+};
+
 
 #endif
