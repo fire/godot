@@ -928,6 +928,7 @@ void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene 
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
 			if (state.is_fbx_specific && has_pivots) {
 				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
+				mesh_xform.basis = Basis();
 				xform = mesh_xform.affine_inverse() * xform;
 			}
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
