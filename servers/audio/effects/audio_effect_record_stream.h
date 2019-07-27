@@ -1,5 +1,5 @@
-#ifndef VOICE_MANAGER_HPP
-#define VOICE_MANAGER_HPP
+#ifndef AUDIO_EFFECT_RECORD_STREAM
+#define AUDIO_EFFECT_RECORD_STREAM
 
 #include <scene/main/node.h>
 #include <core/engine.h>
@@ -51,4 +51,4 @@ public:
     void _notification(int p_what);
 };
 
-#endif // VOICE_MANAGER_HPP
+#endif
