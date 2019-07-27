@@ -395,7 +395,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 
 	// Find all the root bones e.g. -1 bones :)
 	//Vector<aiNode *> assimp_skeleton_parents;
-	OAHashMap<String, aiNode *> assimp_skeleton_parents;
+	OAHashMap<String, const aiNode *> assimp_skeleton_parents;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 		// assume -1 is a parent node.
 		if (state.skeleton->get_bone_parent(i) == -1) {
@@ -432,10 +432,10 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 
 		// note: first bone is not the root bone.
 
-		for (OAHashMap<String, aiNode *>::Iterator it = assimp_skeleton_parents.iter();
+		for (OAHashMap<String, const aiNode *>::Iterator it = assimp_skeleton_parents.iter();
 				it.valid;
 				it = assimp_skeleton_parents.next_iter(it)) {
-			aiNode *node = *it.value;
+			const aiNode *const node = *it.value;
 			ERR_CONTINUE(!node);
 			ERR_CONTINUE(!node->mParent);
 			aiNode *armature = node->mParent;
@@ -445,7 +445,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			// parent :D (this should be the armature)
 			state.armature_node = armature;
 		}
-
 
 		// if the armature is not the root node
 		// todo: find out why we need to to this :(
