@@ -31,6 +31,8 @@ private:
     uint32_t current_mix_buffer_position = 0;
 
     uint32_t capture_ofs = 0;
+	bool is_recording = false;
+
 public:
 	static void _bind_methods();
     static PoolByteArray _get_buffer_copy(const PoolByteArray p_mix_buffer);
@@ -57,14 +59,39 @@ class AudioEffectRecordStream : public AudioEffect {
 	GDCLASS(AudioEffectRecordStream, AudioEffect);
 
 	friend class AudioEffectRecordStreamInstance;
+	bool recording_active = false;
+
 protected:
-	static void _bind_methods();
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("set_recording_active", "record"), &AudioEffectRecordStream::set_recording_active);
+		ClassDB::bind_method(D_METHOD("is_recording_active"), &AudioEffectRecordStream::is_recording_active);
+	}
+	Ref<AudioEffectRecordStream> current_instance;
 
 public:
 	Ref<AudioEffectInstance> instance() {
 		Ref<AudioEffectRecordStreamInstance> ins;
 		ins.instance();
 		return ins;
+	}
+
+	void set_recording_active(bool p_record) {
+		if (p_record) {
+			if (current_instance.is_null()) {
+				WARN_PRINTS("Recording should not be set as active before Godot has initialized.");
+				recording_active = false;
+				return;
+			}
+
+			//ensure_thread_stopped();
+			//current_instance->init();
+		}
+
+		recording_active = p_record;
+	}
+
+	bool is_recording_active() const {
+		return recording_active;
 	}
 
 	AudioEffectRecordStream() {}
