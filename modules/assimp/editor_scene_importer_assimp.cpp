@@ -910,6 +910,7 @@ Transform EditorSceneImporterAssimp::_get_global_ai_node_transform(const aiScene
 }
 
 void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
+	bool has_pivots = state.root->find_node("*" + ASSIMP_FBX_KEY + "*");
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
@@ -925,8 +926,8 @@ void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene 
 			p_skeleton->add_bone(bone_name);
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
-			if (state.is_fbx_specific) {
-				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node->mParent);
+			if (state.is_fbx_specific && has_pivots) {
+				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node);
 				xform = mesh_xform.affine_inverse() * xform;
 			}
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
@@ -979,8 +980,8 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		}
 
 		print_line("bone count - assimp: " + itos(state.skeleton->get_bone_count()));
-
-		if (state.is_fbx_specific) {
+		bool has_pivots = state.root->find_node("*" + ASSIMP_FBX_KEY + "*");
+		if (state.is_fbx_specific && has_pivots) {
 			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 				while (node != NULL) {
