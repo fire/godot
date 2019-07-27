@@ -436,6 +436,8 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 				it.valid;
 				it = assimp_skeleton_parents.next_iter(it)) {
 			aiNode *node = *it.value;
+			ERR_CONTINUE(!node);
+			ERR_CONTINUE(!node->mParent);
 			aiNode *armature = node->mParent;
 
 			print_line("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
