@@ -925,6 +925,10 @@ void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene 
 			p_skeleton->add_bone(bone_name);
 			int32_t idx = p_skeleton->find_bone(bone_name);
 			Transform xform = _assimp_matrix_transform(ai_mesh->mBones[j]->mOffsetMatrix);
+			if (state.is_fbx_specific) {
+				Transform mesh_xform = _get_global_ai_node_transform(p_scene, p_node->mParent);
+				xform = mesh_xform.affine_inverse() * xform;
+			}
 			p_skeleton->set_bone_rest(idx, xform.affine_inverse());
 		}
 	}
@@ -976,31 +980,30 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 
 		print_line("bone count - assimp: " + itos(state.skeleton->get_bone_count()));
 
-		// if (false) {
-		// 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-		// 		aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
-		// 		while (node != NULL) {
-		// 			String node_name = _assimp_get_string(node->mName);
-		// 			if (!node_name.empty()) {
-		// 				if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
-		// 					break;
-		// 				}
-		// 				if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
-		// 					state.skeleton->add_bone(node_name);
-		// 					int32_t idx = state.skeleton->find_bone(node_name);
-		// 					Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
-		// 					xform = _assimp_matrix_transform(p_node->mTransformation) * xform;
-		// 					state.skeleton->set_bone_rest(idx, xform);
-		// 					break;
-		// 				}
-		// 			}
-		// 			if (state.skeleton_root_node == node) {
-		// 				break;
-		// 			}
-		// 			node = node->mParent;
-		// 		}
-		// 	}
-		// }
+		if (state.is_fbx_specific) {
+			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+				while (node != NULL) {
+					String node_name = _assimp_get_string(node->mName);
+					if (!node_name.empty()) {
+						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+							break;
+						}
+						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
+							state.skeleton->add_bone(node_name);
+							int32_t idx = state.skeleton->find_bone(node_name);
+							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+							state.skeleton->set_bone_rest(idx, xform);
+							break;
+						}
+					}
+					if (state.skeleton_root_node == node) {
+						break;
+					}
+					node = node->mParent;
+				}
+			}
+		}
 		_set_bone_parent(state.skeleton, state.scene);
 
 		state.skeletons.insert(state.skeleton, mesh_node);
