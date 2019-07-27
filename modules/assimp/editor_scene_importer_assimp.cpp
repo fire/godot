@@ -42,6 +42,7 @@
 
 #include "core/bind/core_bind.h"
 #include "core/io/image_loader.h"
+#include "core/oa_hash_map.h"
 #include "editor/editor_file_system.h"
 #include "editor/import/resource_importer_scene.h"
 #include "editor_scene_importer_assimp.h"
@@ -124,6 +125,8 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	state.flags = p_flags;
 	state.bake_fps = p_bake_fps;
 	state.skeleton = memnew(Skeleton);
+
+	// godot root
 	state.root = memnew(Spatial);
 
 	Assimp::Importer importer;
@@ -140,7 +143,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	if (state.is_fbx_specific) {
 		// Cannot remove pivot points because the static mesh will be in the wrong place
-		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
 		importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
 		importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
 	}
@@ -303,6 +306,10 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		state.ap->set_owner(state.root);
 	}
 
+	//
+	// Lighting import
+	//
+
 	String ext = state.path.get_file().get_extension().to_lower();
 	for (size_t l = 0; l < state.scene->mNumLights; l++) {
 		Light *light = NULL;
@@ -347,6 +354,10 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		light->set_owner(state.root);
 		state.light_names.insert(_assimp_get_string(state.scene->mLights[l]->mName));
 	}
+
+	//
+	// Camera import
+	//
 	for (size_t c = 0; c < state.scene->mNumCameras; c++) {
 		aiCamera *ai_camera = state.scene->mCameras[c];
 		Camera *camera = memnew(Camera);
@@ -369,47 +380,94 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		camera->set_owner(state.root);
 		state.camera_names.insert(_assimp_get_string(state.scene->mCameras[c]->mName));
 	}
-	for (size_t i = 0; i < state.scene->mRootNode->mNumChildren; i++) {
-		_generate_node(state, state.scene->mRootNode->mChildren[i], state.root, state.root);
-	}
 
-	Vector<aiNode *> assimp_skeleton_parents;
+	//
+	// Adding entire scene objects
+	//
+
+	// generate tree of nodes for everything
+	// bones
+	// mesh
+	// lights
+	// camera
+	// etc
+	_generate_node(state, state.scene->mRootNode, state.root, state.root);
+
+	// Find all the root bones e.g. -1 bones :)
+	//Vector<aiNode *> assimp_skeleton_parents;
+	OAHashMap<String, aiNode *> assimp_skeleton_parents;
 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 		// assume -1 is a parent node.
 		if (state.skeleton->get_bone_parent(i) == -1) {
-			assimp_skeleton_parents.push_back(_assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i)));
+
+			String name = state.skeleton->get_bone_name(i);
+
+			ERR_EXPLAIN(String("Attempted to add name twice: ") + name);
+			ERR_CONTINUE(assimp_skeleton_parents.has(name));
+
+			if (!assimp_skeleton_parents.has(name)) {
+				print_line(String("adding name ") + name);
+				assimp_skeleton_parents.insert(name, _assimp_find_node(state.scene->mRootNode, name));
+			}
 		}
 	}
+
 	if (state.skeleton->get_bone_count()) {
 		aiNode *node = NULL;
-		for (int32_t m = 0; m < assimp_skeleton_parents.size(); m++) {
-			aiNode *node = assimp_skeleton_parents[m];
-			while (node && node != state.scene->mRootNode && node->mParent != state.scene->mRootNode) {
-				while (node->mParent) {
-					if (_assimp_get_string(node->mName).split(ASSIMP_FBX_KEY)[0] != _assimp_get_string(node->mParent->mName).split(ASSIMP_FBX_KEY)[0]) {
-						break;
-					}
-					node = node->mParent;
-				}
-				node = node->mParent;
-			}
-			state.armature_node = node;
+
+		//  note: could potentially use first in list potentially but need to confirm with tests :*(
+		// every single bone starts out as a root bone - because it doesn't know about its parents
+
+		// list
+		/*
+			elementa
+			elementb
+			elementc
+			elementd
+		*/
+		String node_name = state.skeleton->get_bone_name(0);
+
+		//OS::get_singleton()->print("cupcakes: %s\n", node_name);
+		//print_line("name of first bone :" + atos(root_parent->mName));
+
+		// note: first bone is not the root bone.
+
+		for (OAHashMap<String, aiNode *>::Iterator it = assimp_skeleton_parents.iter();
+				it.valid;
+				it = assimp_skeleton_parents.next_iter(it)) {
+			aiNode *node = *it.value;
+			aiNode *armature = node->mParent;
+
+			print_line("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
+
+			// parent :D (this should be the armature)
+			state.armature_node = armature;
 		}
+
+
+		// if the armature is not the root node
+		// todo: find out why we need to to this :(
 		if (node && node != state.scene->mRootNode) {
+			// make the skeleton a child of the armature node
 			Node *armature = state.root->find_node(_assimp_get_string(node->mName));
 			ERR_FAIL_COND_V(armature == NULL, state.root);
 			armature->add_child(state.skeleton);
 		} else {
+			// skeleton must be pushed on the skeleton list
 			state.mesh_skeletons.back()->key()->add_child(state.skeleton);
 		}
+
+		// make available in the tree
 		state.skeleton->set_owner(state.root);
 	}
+
 	state.skeleton->localize_rests();
 	for (Map<MeshInstance *, Skeleton *>::Element *E = state.mesh_skeletons.front(); E; E = E->next()) {
 		String path = String(E->key()->get_path_to(E->key()->get_owner()));
 		E->key()->set_skeleton_path(path.plus_file(E->get()->get_owner()->get_path_to(E->get())));
 	}
-	ResourceImporterScene::get_singleton()->_optimize_scene(state.root);
+
+	//ResourceImporterScene::get_singleton()->_optimize_scene(state.root);
 	if (state.flags & EditorSceneImporter::IMPORT_ANIMATION) {
 		for (size_t i = 0; i < state.scene->mNumAnimations; i++) {
 			_import_animation(state, i);
@@ -463,7 +521,14 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 
 	for (size_t r = 0; r < track->mNumRotationKeys; r++) {
 		aiQuaternion quat = track->mRotationKeys[r].mValue;
-		rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
+		// assimp row major
+		// godot column major
+
+		/// what we found: inverse made no difference to rotations
+		Quat q = Quat(quat.x, quat.y, quat.z, quat.w);
+		Quat qe = q.inverse();
+		Quat qen = q.normalized();
+		rot_values.push_back(qen);
 		rot_times.push_back(track->mRotationKeys[r].mTime / ticks_per_second);
 	}
 
@@ -524,26 +589,34 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index) {
 	String name = "Animation";
 	aiAnimation const *anim = NULL;
-	if (p_index != -1) {
-		anim = state.scene->mAnimations[p_index];
-		if (anim->mName.length > 0) {
-			name = _assimp_anim_string_to_string(anim->mName);
-		}
+	float ticks_per_second = state.scene->mAnimations[p_index]->mTicksPerSecond;
+	anim = state.scene->mAnimations[p_index];
+
+	ERR_FAIL_COND(!anim);
+
+	if (anim->mName.length > 0) {
+		name = _assimp_anim_string_to_string(anim->mName);
 	}
 
 	Ref<Animation> animation;
 	animation.instance();
-	float length = 0.0f;
 	animation->set_name(name);
-	float ticks_per_second = state.scene->mAnimations[p_index]->mTicksPerSecond;
+
+	float length = 0.0f;
+
 	if (state.is_fbx_specific) {
 		if (state.scene->mMetaData != NULL && Math::is_equal_approx(ticks_per_second, 0.0f)) {
 			int32_t time_mode = 0;
+
+			// enum
 			state.scene->mMetaData->Get("TimeMode", time_mode);
 			ticks_per_second = _get_fbx_fps(time_mode, state.scene);
 		}
 	}
-	if ((state.path.get_file().get_extension().to_lower() == "glb" || state.path.get_file().get_extension().to_lower() == "gltf") && Math::is_equal_approx(ticks_per_second, 0.0f)) {
+
+	String extension = state.path.get_file().get_extension().to_lower();
+
+	if ((extension == "glb" || extension == "gltf") && Math::is_equal_approx(ticks_per_second, 0.0f)) {
 		ticks_per_second = 1000.0f;
 	}
 
@@ -552,54 +625,19 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 	}
 
 	length = anim->mDuration / ticks_per_second;
-	if (anim) {
-		Map<String, Vector<const aiNodeAnim *> > pivot_tracks;
-		for (size_t i = 0; i < anim->mNumChannels; i++) {
-			const aiNodeAnim *track = anim->mChannels[i];
-			String node_name = _assimp_get_string(track->mNodeName);
-			NodePath node_path = node_name;
-			if (state.is_fbx_specific) {
-				if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
-					String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
-					String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
-					if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
-						Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
-						Vector<const aiNodeAnim *> ai_tracks;
-						if (E) {
-							ai_tracks = E->get();
-							ai_tracks.push_back(track);
-						} else {
-							ai_tracks.push_back(track);
-						}
-						pivot_tracks.insert(bone_name, ai_tracks);
-						continue;
-					}
-				}
-			}
-			Skeleton *sk = state.skeleton;
-			const String path = state.ap->get_owner()->get_path_to(sk);
-			bool is_node_bone = sk->find_bone(node_name) != -1;
-			if (!path.empty() && is_node_bone) {
-				node_path = path + ":" + node_name;
-				ERR_CONTINUE(node_path.is_empty());
-				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
-				_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
-				continue;
-			}
-			if (state.is_fbx_specific) {
-				const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
-				const String bare_name = split_name[0];
-				if (split_name.size() > 1) {
-					// const Node *node = state.ap->get_owner()->find_node(bare_name);
-					bool is_bone = sk->find_bone(bare_name) != -1;
-					if (is_bone) {
-						continue;
-					}
-					const Node *node = state.ap->get_owner()->find_node(node_name);
-					if (!node) {
-						continue;
-					}
-					const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
+
+	Map<String, Vector<const aiNodeAnim *> > pivot_tracks;
+
+	for (size_t i = 0; i < anim->mNumChannels; i++) {
+		const aiNodeAnim *track = anim->mChannels[i];
+		String node_name = _assimp_get_string(track->mNodeName);
+		NodePath node_path = node_name;
+		if (state.is_fbx_specific) {
+			if (node_name.split(ASSIMP_FBX_KEY).size() > 1) {
+				String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
+				String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
+				if ((p_track_type == "_Translation" || p_track_type == "_Rotation" || p_track_type == "_Scaling") && state.skeleton->find_bone(bone_name) != -1) {
+					Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bone_name);
 					Vector<const aiNodeAnim *> ai_tracks;
 					if (E) {
 						ai_tracks = E->get();
@@ -607,103 +645,140 @@ void EditorSceneImporterAssimp::_import_animation(State &state, int32_t p_index)
 					} else {
 						ai_tracks.push_back(track);
 					}
-					pivot_tracks.insert(bare_name, ai_tracks);
+					pivot_tracks.insert(bone_name, ai_tracks);
 					continue;
 				}
 			}
-			const Node *node = state.ap->get_owner()->find_node(node_name);
-			if (!node) {
-				continue;
-			}
-			if (!state.ap->get_owner()->find_node(node_name) || sk->find_bone(node_name) != -1) {
-				continue;
-			}
-			node_path = state.ap->get_owner()->get_path_to(node);
+		}
+		Skeleton *sk = state.skeleton;
+		const String path = state.ap->get_owner()->get_path_to(sk);
+		bool is_node_bone = sk->find_bone(node_name) != -1;
+		if (!path.empty() && is_node_bone) {
+			node_path = path + ":" + node_name;
 			ERR_CONTINUE(node_path.is_empty());
-			if (!state.ap->get_owner()->has_node(node_path)) {
-				continue;
-			}
-			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
+			ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+			_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, sk, track, node_name, node_path);
+			continue;
 		}
 		if (state.is_fbx_specific) {
-			for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
-				_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
+			const Vector<String> split_name = node_name.split(ASSIMP_FBX_KEY);
+			const String bare_name = split_name[0];
+			if (split_name.size() > 1) {
+				// const Node *node = state.ap->get_owner()->find_node(bare_name);
+				bool is_bone = sk->find_bone(bare_name) != -1;
+				if (is_bone) {
+					continue;
+				}
+				const Node *node = state.ap->get_owner()->find_node(node_name);
+				if (!node) {
+					continue;
+				}
+				const Map<String, Vector<const aiNodeAnim *> >::Element *E = pivot_tracks.find(bare_name);
+				Vector<const aiNodeAnim *> ai_tracks;
+				if (E) {
+					ai_tracks = E->get();
+					ai_tracks.push_back(track);
+				} else {
+					ai_tracks.push_back(track);
+				}
+				pivot_tracks.insert(bare_name, ai_tracks);
+				continue;
 			}
 		}
-		for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
-			const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
-			const String prop_name = _assimp_get_string(anim_mesh->mName);
-			const String mesh_name = prop_name.split("*")[0];
-			const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name));
-			ERR_CONTINUE(mesh_instance == NULL);
-			if (state.ap->get_owner()->find_node(mesh_instance->get_name()) == NULL) {
-				print_verbose("Can't find mesh in scene: " + mesh_instance->get_name());
-				continue;
-			}
-			const String path = state.ap->get_owner()->get_path_to(mesh_instance);
-			if (path.empty()) {
-				print_verbose("Can't find mesh in scene");
-				continue;
-			}
-			Ref<Mesh> mesh = mesh_instance->get_mesh();
-			ERR_CONTINUE(mesh.is_null());
+		const Node *node = state.ap->get_owner()->find_node(node_name);
+		if (!node) {
+			continue;
+		}
+		if (!state.ap->get_owner()->find_node(node_name) || sk->find_bone(node_name) != -1) {
+			continue;
+		}
+		node_path = state.ap->get_owner()->get_path_to(node);
+		ERR_CONTINUE(node_path.is_empty());
+		if (!state.ap->get_owner()->has_node(node_path)) {
+			continue;
+		}
+		_insert_animation_track(state.scene, state.path, state.bake_fps, animation, ticks_per_second, length, NULL, track, node_name, node_path);
+	}
+	if (state.is_fbx_specific) {
+		for (Map<String, Vector<const aiNodeAnim *> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
+			_insert_pivot_anim_track(state, F->key(), F->get(), length, ticks_per_second, animation);
+		}
+	}
+	for (size_t i = 0; i < anim->mNumMorphMeshChannels; i++) {
+		const aiMeshMorphAnim *anim_mesh = anim->mMorphMeshChannels[i];
+		const String prop_name = _assimp_get_string(anim_mesh->mName);
+		const String mesh_name = prop_name.split("*")[0];
+		const MeshInstance *mesh_instance = Object::cast_to<MeshInstance>(state.ap->get_owner()->find_node(mesh_name));
+		ERR_CONTINUE(mesh_instance == NULL);
+		if (state.ap->get_owner()->find_node(mesh_instance->get_name()) == NULL) {
+			print_verbose("Can't find mesh in scene: " + mesh_instance->get_name());
+			continue;
+		}
+		const String path = state.ap->get_owner()->get_path_to(mesh_instance);
+		if (path.empty()) {
+			print_verbose("Can't find mesh in scene");
+			continue;
+		}
+		Ref<Mesh> mesh = mesh_instance->get_mesh();
+		ERR_CONTINUE(mesh.is_null());
 
-			float base_weight = 0.0f;
-			if (anim_mesh->mNumKeys != 0) {
-				if (anim_mesh->mKeys[0].mNumValuesAndWeights) {
-					base_weight = anim_mesh->mKeys[0].mWeights[0];
+		float base_weight = 0.0f;
+		if (anim_mesh->mNumKeys != 0) {
+			if (anim_mesh->mKeys[0].mNumValuesAndWeights) {
+				base_weight = anim_mesh->mKeys[0].mWeights[0];
+			}
+		}
+
+		struct Blend {
+			Vector<float> blend_weights;
+			Vector<float> blend_times;
+		};
+
+		Map<int32_t, Blend> track_blends;
+		for (size_t k = 0; k < anim_mesh->mNumKeys; k++) {
+			for (size_t j = 0; j < anim_mesh->mKeys[k].mNumValuesAndWeights; j++) {
+
+				const String prop = "blend_shapes/" + mesh->get_blend_shape_name(anim_mesh->mKeys[k].mValues[j]);
+				const NodePath node_path = String(path) + ":" + prop;
+				ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
+				int32_t blend_track_idx = animation->find_track(node_path);
+				if (animation->find_track(node_path) == -1) {
+					blend_track_idx = animation->get_track_count();
+					animation->add_track(Animation::TYPE_VALUE);
+					animation->track_set_interpolation_type(blend_track_idx, Animation::INTERPOLATION_LINEAR);
+					animation->track_set_path(blend_track_idx, node_path);
+					Blend blend = Blend();
+					track_blends.insert(blend_track_idx, blend);
 				}
+				Blend &blend = track_blends.find(blend_track_idx)->get();
+				blend.blend_weights.push_back(anim_mesh->mKeys[k].mWeights[j]);
+				blend.blend_times.push_back(anim_mesh->mKeys[k].mTime / ticks_per_second);
 			}
+		}
+		for (Map<int32_t, Blend>::Element *E = track_blends.front(); E; E = E->next()) {
+			float increment = 1.0 / float(state.bake_fps);
+			float time = 0.0;
+			bool last = false;
+			while (true) {
+				float weight = base_weight;
 
-			struct Blend {
-				Vector<float> blend_weights;
-				Vector<float> blend_times;
-			};
-			Map<int32_t, Blend> track_blends;
-			for (size_t k = 0; k < anim_mesh->mNumKeys; k++) {
-				for (size_t j = 0; j < anim_mesh->mKeys[k].mNumValuesAndWeights; j++) {
-
-					const String prop = "blend_shapes/" + mesh->get_blend_shape_name(anim_mesh->mKeys[k].mValues[j]);
-					const NodePath node_path = String(path) + ":" + prop;
-					ERR_CONTINUE(state.ap->get_owner()->has_node(node_path) == false);
-					int32_t blend_track_idx = animation->find_track(node_path);
-					if (animation->find_track(node_path) == -1) {
-						blend_track_idx = animation->get_track_count();
-						animation->add_track(Animation::TYPE_VALUE);
-						animation->track_set_interpolation_type(blend_track_idx, Animation::INTERPOLATION_LINEAR);
-						animation->track_set_path(blend_track_idx, node_path);
-						Blend blend = Blend();
-						track_blends.insert(blend_track_idx, blend);
-					}
-					Blend &blend = track_blends.find(blend_track_idx)->get();
-					blend.blend_weights.push_back(anim_mesh->mKeys[k].mWeights[j]);
-					blend.blend_times.push_back(anim_mesh->mKeys[k].mTime / ticks_per_second);
+				if (E->get().blend_weights.size()) {
+					weight = _interpolate_track<float>(E->get().blend_times, E->get().blend_weights, time, AssetImportAnimation::INTERP_LINEAR);
 				}
-			}
-			for (Map<int32_t, Blend>::Element *E = track_blends.front(); E; E = E->next()) {
-				float increment = 1.0 / float(state.bake_fps);
-				float time = 0.0;
-				bool last = false;
-				while (true) {
-					float weight = base_weight;
+				animation->track_insert_key(E->key(), time, weight);
 
-					if (E->get().blend_weights.size()) {
-						weight = _interpolate_track<float>(E->get().blend_times, E->get().blend_weights, time, AssetImportAnimation::INTERP_LINEAR);
-					}
-					animation->track_insert_key(E->key(), time, weight);
-
-					if (last) {
-						break;
-					}
-					time += increment;
-					if (time >= length) {
-						last = true;
-						time = length;
-					}
+				if (last) {
+					break;
+				}
+				time += increment;
+				if (time >= length) {
+					last = true;
+					time = length;
 				}
 			}
 		}
 	}
+
 	animation->set_length(length);
 	if (animation->get_track_count()) {
 		state.ap->add_animation(name, animation);
@@ -801,7 +876,7 @@ void EditorSceneImporterAssimp::_insert_pivot_anim_track(State &state, const Str
 
 float EditorSceneImporterAssimp::_get_fbx_fps(int32_t time_mode, const aiScene *p_scene) {
 	switch (time_mode) {
-		case AssetImportFbx::TIME_MODE_DEFAULT: return 24; //hack
+		case AssetImportFbx::TIME_MODE_DEFAULT: return 0;
 		case AssetImportFbx::TIME_MODE_120: return 120;
 		case AssetImportFbx::TIME_MODE_100: return 100;
 		case AssetImportFbx::TIME_MODE_60: return 60;
@@ -859,7 +934,8 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 	Spatial *child_node = NULL;
 	ERR_FAIL_COND(p_node == NULL);
 	String node_name = _assimp_get_string(p_node->mName);
-	String ext = state.path.get_file().get_extension().to_lower();
+
+	// Processing spatial configuration
 	{
 		Transform xform = _assimp_matrix_transform(p_node->mTransformation);
 		child_node = memnew(Spatial);
@@ -867,15 +943,15 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		child_node->set_owner(p_owner);
 		child_node->set_transform(xform);
 	}
-	if (state.scene->mRootNode == p_node) {
-		state.ai_root = p_node;
-		state.root = child_node;
-	}
-	if (p_node->mNumMeshes > 0) {
+
+	if (p_node->mNumMeshes > 0) { // Process mesh functions and bones
 		MeshInstance *mesh_node = memnew(MeshInstance);
 		{
+			// add child to parent
 			p_parent->add_child(mesh_node);
+			// you must set owner to become on the tree
 			mesh_node->set_owner(p_owner);
+
 			mesh_node->set_transform(_assimp_matrix_transform(p_node->mTransformation));
 			child_node->get_parent()->remove_child(child_node);
 			memdelete(child_node);
@@ -888,6 +964,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			_add_mesh_to_mesh_instance(state, p_node, mesh_node, p_owner);
 			state.meshes.push_back(mesh_node);
 		}
+
 		_set_bone_parent(state.skeleton, state.scene);
 		for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
 			if (state.skeleton->get_bone_parent(i) == -1) {
@@ -896,35 +973,37 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			}
 		}
 
-		if (state.is_fbx_specific) {
-			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
-				while (node != NULL) {
-					String node_name = _assimp_get_string(node->mName);
-					if (!node_name.empty()) {
-						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
-							break;
-						}
-						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
-							state.skeleton->add_bone(node_name);
-							int32_t idx = state.skeleton->find_bone(node_name);
-							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
-							xform = _assimp_matrix_transform(p_node->mTransformation) * xform;
-							state.skeleton->set_bone_rest(idx, xform);
-							break;
-						}
-					}
-					if (state.skeleton_root_node == node) {
-						break;
-					}
-					node = node->mParent;
-				}
-			}
-		}
+		print_line("bone count - assimp: " + itos(state.skeleton->get_bone_count()));
+
+		// if (false) {
+		// 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+		// 		aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+		// 		while (node != NULL) {
+		// 			String node_name = _assimp_get_string(node->mName);
+		// 			if (!node_name.empty()) {
+		// 				if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+		// 					break;
+		// 				}
+		// 				if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
+		// 					state.skeleton->add_bone(node_name);
+		// 					int32_t idx = state.skeleton->find_bone(node_name);
+		// 					Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+		// 					xform = _assimp_matrix_transform(p_node->mTransformation) * xform;
+		// 					state.skeleton->set_bone_rest(idx, xform);
+		// 					break;
+		// 				}
+		// 			}
+		// 			if (state.skeleton_root_node == node) {
+		// 				break;
+		// 			}
+		// 			node = node->mParent;
+		// 		}
+		// 	}
+		// }
 		_set_bone_parent(state.skeleton, state.scene);
 
 		state.skeletons.insert(state.skeleton, mesh_node);
-	} else if (state.light_names.has(node_name)) {
+	} else if (state.light_names.has(node_name)) { // Process lighting
 		Spatial *light_node = Object::cast_to<Light>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(light_node == NULL);
 		if (!p_parent->has_node(light_node->get_path())) {
@@ -937,7 +1016,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		child_node->get_parent()->remove_child(child_node);
 		memdelete(child_node);
 		child_node = light_node;
-	} else if (state.camera_names.has(node_name)) {
+	} else if (state.camera_names.has(node_name)) { // Process camera
 		Spatial *camera_node = Object::cast_to<Camera>(p_owner->find_node(node_name));
 		ERR_FAIL_COND(camera_node == NULL);
 		if (!p_parent->has_node(camera_node->get_path())) {
@@ -951,7 +1030,11 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 		memdelete(child_node);
 		child_node = camera_node;
 	}
+
+	// this is because child node is recreated above in mesh and we didn't want to set twice
 	child_node->set_name(node_name);
+
+	// recursive call to create child of parent nodes?
 	for (size_t i = 0; i < p_node->mNumChildren; i++) {
 		_generate_node(state, p_node->mChildren[i], child_node, p_owner);
 	}
