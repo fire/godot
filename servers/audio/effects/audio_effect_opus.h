@@ -9,9 +9,11 @@
 
 #include "opus_codec.h"
 
-class AudioEffectOpus : public Node {
-	GDCLASS(AudioEffectOpus, Node)
-    Ref<Mutex> mutex;
+class AudioEffectOpus : public AudioEffect {
+	GDCLASS(AudioEffectOpus, AudioEffect);
+
+	//friend class AudioEffectOpusInstance;
+    Mutex* mutex;
     static const uint32_t MIX_BUFFER_COUNT = 4;
 
     static const uint32_t VOICE_SAMPLE_RATE = 48000;

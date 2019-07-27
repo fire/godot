@@ -161,46 +161,46 @@ PoolVector2Array AudioEffectOpus::decompress_buffer(const PoolByteArray p_compre
 }
 
 void AudioEffectOpus::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_POSTINITIALIZE:
-			opus_codec = new OpusCodec<VOICE_SAMPLE_RATE, CHANNEL_COUNT, MILLISECONDS_PER_PACKET>(); // ???
-			//mutex = new Mutex;
-			break;
-		case NOTIFICATION_READY:
-			audio_server = AudioServer::get_singleton();
-			if (audio_server != NULL) {
-				mutex->lock();
-				mix_buffer.resize(BUFFER_FRAME_COUNT * BUFFER_BYTE_COUNT);
-				mutex->unlock();
+	//switch (p_what) {
+	//	case NOTIFICATION_POSTINITIALIZE:
+	//		opus_codec = new OpusCodec<VOICE_SAMPLE_RATE, CHANNEL_COUNT, MILLISECONDS_PER_PACKET>(); // ???
+	//		//mutex = new Mutex;
+	//		break;
+	//	case NOTIFICATION_READY:
+	//		audio_server = AudioServer::get_singleton();
+	//		if (audio_server != NULL) {
+	//			mutex->lock();
+	//			mix_buffer.resize(BUFFER_FRAME_COUNT * BUFFER_BYTE_COUNT);
+	//			mutex->unlock();
 
-				audio_server->lock();
-				audio_server->connect("audio_mix_callback", this, "_mix_audio");
-				audio_server->unlock();
+	//			audio_server->lock();
+	//			audio_server->connect("audio_mix_callback", this, "_mix_audio");
+	//			audio_server->unlock();
 
-				start();
-			}
-			break;
-		case NOTIFICATION_EXIT_TREE:
-			if (!Engine::get_singleton()->is_editor_hint()) {
-				print_line(String("VoiceManager::_notification::exit_tree"));
-				if (audio_server != NULL) {
-					stop();
+	//			start();
+	//		}
+	//		break;
+	//	case NOTIFICATION_EXIT_TREE:
+	//		if (!Engine::get_singleton()->is_editor_hint()) {
+	//			print_line(String("VoiceManager::_notification::exit_tree"));
+	//			if (audio_server != NULL) {
+	//				stop();
 
-					audio_server->lock();
-					audio_server->disconnect("audio_mix_callback", this, "_mix_audio");
-					audio_server->unlock();
+	//				audio_server->lock();
+	//				audio_server->disconnect("audio_mix_callback", this, "_mix_audio");
+	//				audio_server->unlock();
 
-					mutex->lock();
-					mix_buffer.resize(BUFFER_FRAME_COUNT * BUFFER_BYTE_COUNT);
-					mutex->unlock();
+	//				mutex->lock();
+	//				mix_buffer.resize(BUFFER_FRAME_COUNT * BUFFER_BYTE_COUNT);
+	//				mutex->unlock();
 
-					audio_server = NULL;
-				}
-			}
-			break;
-		case NOTIFICATION_PREDELETE:
-			memdelete(opus_codec);
-			//memdelete(mutex);
-		break;
-	}
+	//				audio_server = NULL;
+	//			}
+	//		}
+	//		break;
+	//	case NOTIFICATION_PREDELETE:
+	//		memdelete(opus_codec);
+	//		//memdelete(mutex);
+	//	break;
+	//}
 }
