@@ -285,16 +285,40 @@ Ref<AudioStreamSample> AudioEffectRecord::get_recording() const {
 	return sample;
 }
 
+PoolVector2Array AudioEffectRecord::generate_audio_stream() const {
+	PoolVector2Array dst_data;
+	ERR_FAIL_COND_V(current_instance.is_null(), dst_data);
+	Vector<real_t> recorded_data;
+	recorded_data.resize(current_instance->recording_data.size());
+	memcpy(recorded_data.ptrw(), current_instance->recording_data.ptr(), sizeof(real_t) * current_instance->recording_data.size());
+
+	int32_t tframes = recorded_data.size() / 2;
+	dst_data.resize(tframes);
+	PoolVector2Array::Write w = dst_data.write();
+	for (int32_t i = 0; i < tframes; i++) {
+		Vector2 frame = Vector2(recorded_data[i * 2 + 0], recorded_data[i * 2 + 1]);
+		w[i] = frame;
+	}
+	return dst_data;
+}
+
+void AudioEffectRecord::write_audio_stream_playback(Ref<AudioStreamGeneratorPlayback> p_playback) {
+	p_playback->push_buffer(generate_audio_stream());
+}
+
 void AudioEffectRecord::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_recording_active", "record"), &AudioEffectRecord::set_recording_active);
 	ClassDB::bind_method(D_METHOD("is_recording_active"), &AudioEffectRecord::is_recording_active);
 	ClassDB::bind_method(D_METHOD("set_format", "format"), &AudioEffectRecord::set_format);
 	ClassDB::bind_method(D_METHOD("get_format"), &AudioEffectRecord::get_format);
 	ClassDB::bind_method(D_METHOD("get_recording"), &AudioEffectRecord::get_recording);
+	ClassDB::bind_method(D_METHOD("write_audio_stream_playback", "playback"), &AudioEffectRecord::write_audio_stream_playback);
+	ClassDB::bind_method(D_METHOD("generate_audio_stream"), &AudioEffectRecord::generate_audio_stream);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "format", PROPERTY_HINT_ENUM, "8-Bit,16-Bit,IMA-ADPCM"), "set_format", "get_format");
 }
 
 AudioEffectRecord::AudioEffectRecord() {
 	format = AudioStreamSample::FORMAT_16_BITS;
+	current_audio_stream_generator.instance();
 }

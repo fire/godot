@@ -39,6 +39,7 @@
 #include "scene/resources/audio_stream_sample.h"
 #include "servers/audio/audio_effect.h"
 #include "servers/audio_server.h"
+#include "audio_stream_generator.h"
 
 class AudioEffectRecord;
 
@@ -87,6 +88,7 @@ class AudioEffectRecord : public AudioEffect {
 
 	bool recording_active;
 	Ref<AudioEffectRecordInstance> current_instance;
+	Ref<AudioStreamGenerator> current_audio_stream_generator;
 
 	AudioStreamSample::Format format;
 
@@ -103,6 +105,8 @@ public:
 	void set_format(AudioStreamSample::Format p_format);
 	AudioStreamSample::Format get_format() const;
 	Ref<AudioStreamSample> get_recording() const;
+	PoolVector2Array generate_audio_stream() const;
+	void write_audio_stream_playback(Ref<AudioStreamGeneratorPlayback> p_playback);
 
 	AudioEffectRecord();
 };
