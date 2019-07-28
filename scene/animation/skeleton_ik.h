@@ -47,6 +47,15 @@ class FabrikInverseKinematic {
 		Transform goal_transform;
 	};
 
+	struct ChainItem;
+
+	struct IKConstraint {
+		virtual bool initialize() { return true; }
+		virtual void enforce_constraint(
+				ChainItem *item) = 0;
+		virtual void setup_function(ChainItem *item) = 0;
+	};
+
 	struct ChainItem {
 
 		Vector<ChainItem> children;
@@ -55,6 +64,8 @@ class FabrikInverseKinematic {
 		// Bone info
 		BoneId bone;
 		PhysicalBone *pb;
+
+		IKConstraint *constraint;
 
 		real_t length;
 		/// Positions relative to root bone
@@ -67,6 +78,7 @@ class FabrikInverseKinematic {
 				parent_item(NULL),
 				bone(-1),
 				pb(NULL),
+				constraint(NULL),
 				length(0) {}
 
 		ChainItem *find_child(const BoneId p_bone_id);
