@@ -174,6 +174,8 @@ void FabrikInverseKinematic::solve_closed_loop(Task *p_task, bool p_solve_magnet
 		--can_solve;
 
 		solve_simple_backwards(p_task->chain, p_solve_magnet);
+		ERR_EXPLAIN("IK closed loop solver not implemented");
+		ERR_FAIL_COND(true);
 		// TODO Drag the root again, toward the effector (since they're connected in a closed loop)
 		solve_simple_forwards(p_task->chain, p_solve_magnet);
 
