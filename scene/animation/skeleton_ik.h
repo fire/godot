@@ -63,7 +63,6 @@ class FabrikInverseKinematic {
 		IKConstraintNoBone() {}
 	};
 
-
 	struct ChainItem {
 
 		Vector<ChainItem> children;
