@@ -190,8 +190,10 @@ void FabrikInverseKinematic::solve_simple_backwards(Chain &r_chain, bool p_solve
 
 			const Vector3 look_parent((sub_chain_tip->parent_item->current_pos - sub_chain_tip->current_pos).normalized());
 			goal = sub_chain_tip->current_pos + (look_parent * sub_chain_tip->length);
-
-			// [TODO] Constraints goes here
+			if (sub_chain_tip->constraint) {
+				sub_chain_tip->constraint->setup_function(sub_chain_tip);
+				sub_chain_tip->constraint->enforce_constraint(sub_chain_tip);
+			}
 		}
 
 		sub_chain_tip = sub_chain_tip->parent_item;
@@ -221,7 +223,10 @@ void FabrikInverseKinematic::solve_simple_forwards(Chain &r_chain, bool p_solve_
 			sub_chain_root->current_ori = (child.current_pos - sub_chain_root->current_pos).normalized();
 			origin = sub_chain_root->current_pos + (sub_chain_root->current_ori * child.length);
 
-			// [TODO] Constraints goes here
+			if (sub_chain_root->constraint) {
+				sub_chain_root->constraint->setup_function(sub_chain_root);
+				sub_chain_root->constraint->enforce_constraint(sub_chain_root);
+			}
 
 			if (p_solve_magnet && sub_chain_root == r_chain.middle_chain_item) {
 				// In case of magnet solving this is the tip
