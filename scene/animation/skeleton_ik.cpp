@@ -165,6 +165,10 @@ void FabrikInverseKinematic::solve_simple(Task *p_task, bool p_solve_magnet) {
 	}
 }
 
+void FabrikInverseKinematic::solve_closed_loop(Task *p_task, bool p_solve_magnet) {
+	ERR_FAIL_COND(p_task->end_effectors.size() != 2);
+}
+
 void FabrikInverseKinematic::solve_simple_backwards(Chain &r_chain, bool p_solve_magnet) {
 
 	if (p_solve_magnet && !r_chain.middle_chain_item) {
@@ -285,7 +289,7 @@ void FabrikInverseKinematic::make_goal(Task *p_task, const Transform &p_inverse_
 	}
 }
 
-void FabrikInverseKinematic::solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position) {
+void FabrikInverseKinematic::solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position, int32_t mode) {
 
 	if (blending_delta <= 0.01f) {
 		return; // Skip solving
@@ -297,9 +301,21 @@ void FabrikInverseKinematic::solve(Task *p_task, real_t blending_delta, bool ove
 
 	if (p_use_magnet && p_task->chain.middle_chain_item) {
 		p_task->chain.magnet_position = p_task->chain.middle_chain_item->initial_transform.origin.linear_interpolate(p_magnet_position, blending_delta);
-		solve_simple(p_task, true);
+		if (mode == IK_SOLVER_NORMAL) {
+			solve_simple(p_task, true);
+		} else if (mode == IK_SOLVER_CLOSED_LOOP) {
+			solve_closed_loop(p_task, true);
+		} else {
+			ERR_FAIL_COND("Unknown IK solver mode");
+		}
 	}
-	solve_simple(p_task, false);
+	if (mode == IK_SOLVER_NORMAL) {
+		solve_simple(p_task, false);
+	} else if (mode == IK_SOLVER_CLOSED_LOOP) {
+		solve_closed_loop(p_task, false);
+	} else {
+		ERR_FAIL_COND("Unknown IK solver mode");
+	}
 
 	// Assign new bone position.
 	ChainItem *ci(&p_task->chain.chain_root);

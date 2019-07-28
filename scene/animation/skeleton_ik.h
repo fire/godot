@@ -213,6 +213,11 @@ public:
 				root_bone(-1) {}
 	};
 
+	enum {
+		IK_SOLVER_NORMAL,
+		IK_SOLVER_CLOSED_LOOP,
+	};
+
 private:
 	/// Init a chain that starts from the root to tip
 	static bool build_chain(Task *p_task, bool p_force_simple_chain = true);
@@ -220,6 +225,7 @@ private:
 	static void update_chain(const Skeleton *p_sk, ChainItem *p_chain_item);
 
 	static void solve_simple(Task *p_task, bool p_solve_magnet);
+	static void solve_closed_loop(Task *p_task, bool p_solve_magnet);
 	/// Special solvers that solve only chains with one end effector
 	static void solve_simple_backwards(Chain &r_chain, bool p_solve_magnet);
 	static void solve_simple_forwards(Chain &r_chain, bool p_solve_magnet);
@@ -230,7 +236,7 @@ public:
 	// The goal of chain should be always in local space
 	static void set_goal(Task *p_task, const Transform &p_goal);
 	static void make_goal(Task *p_task, const Transform &p_inverse_transf, real_t blending_delta);
-	static void solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position);
+	static void solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position, int32_t mode = IK_SOLVER_NORMAL);
 };
 
 class SkeletonIK : public Node {
