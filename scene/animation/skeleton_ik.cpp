@@ -63,7 +63,6 @@ bool FabrikInverseKinematic::build_chain(Task *p_task, bool p_force_simple_chain
 	chain.tips.resize(p_task->end_effectors.size());
 	chain.chain_root.bone = p_task->root_bone;
 	chain.chain_root.initial_transform = p_task->skeleton->get_bone_global_pose(chain.chain_root.bone);
-	chain.chain_root.constraint = memnew(IKConstraintNone);
 	chain.chain_root.current_pos = chain.chain_root.initial_transform.origin;
 	chain.chain_root.pb = p_task->skeleton->get_physical_bone(chain.chain_root.bone);
 	chain.middle_chain_item = NULL;
@@ -105,7 +104,6 @@ bool FabrikInverseKinematic::build_chain(Task *p_task, bool p_force_simple_chain
 				child_ci->pb = p_task->skeleton->get_physical_bone(child_ci->bone);
 
 				child_ci->initial_transform = p_task->skeleton->get_bone_global_pose(child_ci->bone);
-				child_ci->constraint = memnew(IKConstraintNone);
 				child_ci->current_pos = child_ci->initial_transform.origin;
 
 				if (child_ci->parent_item) {

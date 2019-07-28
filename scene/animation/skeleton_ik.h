@@ -58,12 +58,6 @@ class FabrikInverseKinematic {
 		virtual void setup(ChainItem *item) { return; };
 	};
 
-	struct IKConstraintNone : public IKConstraint {
-		virtual void enforce_constraint(
-				ChainItem *item) override { return; }
-		IKConstraintNone() {}
-	};
-
 	struct IKConstraintPlanarRotation : public IKConstraint {
 		// It should be normalized.
 		// The Vector is in component space.
