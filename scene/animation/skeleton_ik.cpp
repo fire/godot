@@ -63,7 +63,7 @@ bool FabrikInverseKinematic::build_chain(Task *p_task, bool p_force_simple_chain
 	chain.tips.resize(p_task->end_effectors.size());
 	chain.chain_root.bone = p_task->root_bone;
 	chain.chain_root.initial_transform = p_task->skeleton->get_bone_global_pose(chain.chain_root.bone);
-	chain.chain_root.constraint = memnew(IKConstraintNoBone);
+	chain.chain_root.constraint = memnew(IKConstraintNone);
 	chain.chain_root.current_pos = chain.chain_root.initial_transform.origin;
 	chain.chain_root.pb = p_task->skeleton->get_physical_bone(chain.chain_root.bone);
 	chain.middle_chain_item = NULL;
@@ -105,7 +105,7 @@ bool FabrikInverseKinematic::build_chain(Task *p_task, bool p_force_simple_chain
 				child_ci->pb = p_task->skeleton->get_physical_bone(child_ci->bone);
 
 				child_ci->initial_transform = p_task->skeleton->get_bone_global_pose(child_ci->bone);
-				child_ci->constraint = memnew(IKConstraintNoBone);
+				child_ci->constraint = memnew(IKConstraintNone);
 				child_ci->current_pos = child_ci->initial_transform.origin;
 
 				if (child_ci->parent_item) {
@@ -193,7 +193,7 @@ void FabrikInverseKinematic::solve_simple_backwards(Chain &r_chain, bool p_solve
 			const Vector3 look_parent((sub_chain_tip->parent_item->current_pos - sub_chain_tip->current_pos).normalized());
 			goal = sub_chain_tip->current_pos + (look_parent * sub_chain_tip->length);
 			if (sub_chain_tip->constraint) {
-				sub_chain_tip->constraint->setup_function(sub_chain_tip);
+				sub_chain_tip->constraint->setup(sub_chain_tip);
 				sub_chain_tip->constraint->enforce_constraint(sub_chain_tip);
 			}
 		}
@@ -226,7 +226,7 @@ void FabrikInverseKinematic::solve_simple_forwards(Chain &r_chain, bool p_solve_
 			origin = sub_chain_root->current_pos + (sub_chain_root->current_ori * child.length);
 
 			if (sub_chain_root->constraint) {
-				sub_chain_root->constraint->setup_function(sub_chain_root);
+				sub_chain_root->constraint->setup(sub_chain_root);
 				sub_chain_root->constraint->enforce_constraint(sub_chain_root);
 			}
 

@@ -53,14 +53,14 @@ class FabrikInverseKinematic {
 		virtual bool initialize() { return true; }
 		virtual void enforce_constraint(
 				ChainItem *item) = 0;
-		virtual void setup_function(ChainItem *item) = 0;
+		virtual void setup(ChainItem *item) = 0;
 	};
 
-	struct IKConstraintNoBone : public IKConstraint {
+	struct IKConstraintNone : public IKConstraint {
 		virtual void enforce_constraint(
 				ChainItem *item) override { return; }
-		virtual void setup_function(ChainItem *item) { return; };
-		IKConstraintNoBone() {}
+		virtual void setup(ChainItem *item) { return; };
+		IKConstraintNone() {}
 	};
 
 	struct ChainItem {
