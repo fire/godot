@@ -49,18 +49,97 @@ class FabrikInverseKinematic {
 
 	struct ChainItem;
 
+	// IKConstraints based on
+	// https://github.com/hacoo/rtik
 	struct IKConstraint {
 		virtual bool initialize() { return true; }
 		virtual void enforce_constraint(
 				ChainItem *item) = 0;
-		virtual void setup(ChainItem *item) = 0;
+		virtual void setup(ChainItem *item) { return; };
 	};
 
 	struct IKConstraintNone : public IKConstraint {
 		virtual void enforce_constraint(
 				ChainItem *item) override { return; }
-		virtual void setup(ChainItem *item) { return; };
 		IKConstraintNone() {}
+	};
+
+	struct IKConstraintPlanarRotation : public IKConstraint {
+		// It should be normalized.
+		// The Vector is in component space.
+		// The bone direction (parent to child) will rotate around this vector, based at the parent.
+		Vector3 rotation_axis;
+
+		// It should be normalized and normal to RotationAxis.
+		// Vector in component space.
+		// This represents the '0 degree' rotation; for example, the bone has a rotation of 0 degrees if the parent-child vector points in this direction.
+		Vector3 forward_direction;
+
+		// The vector must be normalized.
+		// Vector in component space.
+		// The bone will point in this direction if the constraint method fails (i.e., if the bone direction is normal to the rotation plane).
+		Vector3 failsafe_direction;
+
+		// The maximum angle in the positive direction (toward rotation_axis X forward_direction), relative to forward_direction
+		real_t max_degree;
+
+		// The minimum angle in the positive direction (toward rotation_axis X forward_direction), relative to forward_direction
+		real_t min_degree;
+
+		virtual bool initialize() override {
+			// make sure axes are normalized; compute up axis
+			bool bAxesOK = true;
+			bAxesOK &= forward_direction.is_normalized();
+			bAxesOK &= rotation_axis.is_normalized();
+			bAxesOK &= failsafe_direction.is_normalized();
+
+			ERR_EXPLAIN("Planar Rotation Constraint was set up incorrectly. Forward direction direction and rotation axis must not be colinear.")
+			ERR_FAIL_COND_V(!bAxesOK, false);
+		}
+		virtual void enforce_constraint(
+				ChainItem *item) override {
+			if (!item->children.size()) {
+				// This constraint is not meaningful on the tip bone
+				return;
+			}
+
+			for (int32_t i = 0; i < item->children.size(); i++) {
+				Vector3 up_direction = rotation_axis.cross(forward_direction);
+
+				Vector3 parent_loc = item->parent_item->current_pos;
+				Vector3 child_loc = item->children[0].current_pos;
+
+				// Step 1: project onto rotation plane
+				Vector3 bone_direction = (child_loc - parent_loc).project(rotation_axis);
+				float bone_length = (child_loc - parent_loc).length();
+
+				if (!bone_direction.is_normalized()) {
+					bone_direction = failsafe_direction;
+				}
+
+				// Step 2: Find the current angle
+				float angle_rad = (bone_direction.dot(up_direction) > 0.0f) ?
+										  Math::acos(bone_direction.dot(forward_direction)) :
+										  -1 * Math::acos(bone_direction.dot(forward_direction));
+
+				// Step 3: clamp to within allowed angle
+				float target_deg = CLAMP(Math::rad2deg(angle_rad), min_degree, max_degree);
+
+				bone_direction = forward_direction.rotated(rotation_axis, target_deg);
+
+				bone_direction *= bone_length;
+
+				// Move the child. Don't update the rotations yet; that's done in the fabrik solver.
+				item->children.write[i].current_pos = parent_loc + bone_direction;
+			}
+		}
+
+		IKConstraintPlanarRotation() :
+				rotation_axis(0.0f, 1.0f, 10.0f),
+				forward_direction(1.0f, 0.0f, 0.0f),
+				failsafe_direction(1.0f, 0.0f, 0.0f),
+				max_degree(45.0f),
+				min_degree(-45.0f) {}
 	};
 
 	struct ChainItem {

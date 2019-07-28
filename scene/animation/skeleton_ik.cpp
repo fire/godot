@@ -192,7 +192,7 @@ void FabrikInverseKinematic::solve_simple_backwards(Chain &r_chain, bool p_solve
 
 			const Vector3 look_parent((sub_chain_tip->parent_item->current_pos - sub_chain_tip->current_pos).normalized());
 			goal = sub_chain_tip->current_pos + (look_parent * sub_chain_tip->length);
-			if (sub_chain_tip->constraint) {
+			if (sub_chain_tip->constraint && sub_chain_tip->constraint->initialize()) {
 				sub_chain_tip->constraint->setup(sub_chain_tip);
 				sub_chain_tip->constraint->enforce_constraint(sub_chain_tip);
 			}
@@ -225,7 +225,7 @@ void FabrikInverseKinematic::solve_simple_forwards(Chain &r_chain, bool p_solve_
 			sub_chain_root->current_ori = (child.current_pos - sub_chain_root->current_pos).normalized();
 			origin = sub_chain_root->current_pos + (sub_chain_root->current_ori * child.length);
 
-			if (sub_chain_root->constraint) {
+			if (sub_chain_root->constraint && sub_chain_root->constraint->initialize()) {
 				sub_chain_root->constraint->setup(sub_chain_root);
 				sub_chain_root->constraint->enforce_constraint(sub_chain_root);
 			}
