@@ -166,7 +166,19 @@ void FabrikInverseKinematic::solve_simple(Task *p_task, bool p_solve_magnet) {
 }
 
 void FabrikInverseKinematic::solve_closed_loop(Task *p_task, bool p_solve_magnet) {
-	ERR_FAIL_COND(p_task->end_effectors.size() != 2);
+	real_t distance_to_goal(1e4);
+	real_t previous_distance_to_goal(0);
+	int can_solve(p_task->max_iterations);
+	while (distance_to_goal > p_task->min_distance && Math::abs(previous_distance_to_goal - distance_to_goal) > 0.005 && can_solve) {
+		previous_distance_to_goal = distance_to_goal;
+		--can_solve;
+
+		solve_simple_backwards(p_task->chain, p_solve_magnet);
+		// TODO Drag the root again, toward the effector (since they're connected in a closed loop)
+		solve_simple_forwards(p_task->chain, p_solve_magnet);
+
+		distance_to_goal = (p_task->chain.tips[0].chain_item->current_pos - p_task->chain.tips[0].end_effector->goal_transform.origin).length();
+	}
 }
 
 void FabrikInverseKinematic::solve_simple_backwards(Chain &r_chain, bool p_solve_magnet) {
