@@ -173,12 +173,29 @@ void FabrikInverseKinematic::solve_closed_loop(Task *p_task, bool p_solve_magnet
 		previous_distance_to_goal = distance_to_goal;
 		--can_solve;
 
-		solve_simple_backwards(p_task->chain, p_solve_magnet);
-		ERR_EXPLAIN("IK closed loop solver not implemented");
-		ERR_FAIL_COND(true);
-		// TODO Drag the root again, toward the effector (since they're connected in a closed loop)
 		solve_simple_forwards(p_task->chain, p_solve_magnet);
-
+		// TODO
+		//// Drag the root again, toward the effector (since they're connected in a closed
+		//ChainItem *sub_chain_root(&p_task->chain.chain_root);
+		//Vector3 origin(p_task->chain.chain_root.initial_transform.origin);
+		//// Drag the root if enabled
+		//drag_point_tethered(
+		//		sub_chain_root,
+		//		sub_chain_root->children[0].current_pos,
+		//		sub_chain_root->length,
+		//		p_task->max_root_drag_distance,
+		//		p_task->root_drag_stiffness,
+		//		sub_chain_root->current_pos);
+		//float root_to_effector_length = sub_chain_root->current_pos.distance_to(p_task->chain.tips[0].chain_item->current_pos);
+		//// Drag the root again, toward the effector (since they're connected in a closed loop)
+		//drag_point_tethered(
+		//		sub_chain_root,
+		//		p_task->chain.tips[0].chain_item->current_pos,
+		//		root_to_effector_length,
+		//		p_task->max_root_drag_distance,
+		//		p_task->root_drag_stiffness,
+		//		sub_chain_root->current_pos);
+		solve_simple_backwards(p_task->chain, p_solve_magnet);
 		distance_to_goal = (p_task->chain.tips[0].chain_item->current_pos - p_task->chain.tips[0].end_effector->goal_transform.origin).length();
 	}
 }
@@ -258,6 +275,34 @@ void FabrikInverseKinematic::solve_simple_forwards(Chain &r_chain, bool p_solve_
 			sub_chain_root = NULL;
 		}
 	}
+}
+
+void FabrikInverseKinematic::drag_point_tethered(ChainItem *chain, const Vector3 &maintain_distance_point, float bone_length, float max_drag_distance, float drag_stiffness, Vector3 &point_to_drag) {
+	if (max_drag_distance < CMP_EPSILON || drag_stiffness < CMP_EPSILON) {
+		point_to_drag = chain->initial_transform.origin;
+		return;
+	}
+
+	Vector3 target;
+	if (Math::is_zero_approx(bone_length)) {
+		target = maintain_distance_point;
+	} else {
+		target = maintain_distance_point +
+				 (point_to_drag - maintain_distance_point).normalized() *
+						 bone_length;
+	}
+
+	Vector3 displacement = target - chain->initial_transform.origin;
+
+	// Root drag stiffness 'pulls' the root back (set to 1.0 to disable)
+	displacement /= drag_stiffness;
+
+	// limit root displacement to drag length
+	Vector3 limited_displacement;
+	limited_displacement.x = CLAMP(displacement.x, displacement.x, max_drag_distance);
+	limited_displacement.y = CLAMP(displacement.y, displacement.y, max_drag_distance);
+	limited_displacement.z = CLAMP(displacement.z, displacement.z, max_drag_distance);
+	point_to_drag = (chain->initial_transform.origin + limited_displacement);
 }
 
 FabrikInverseKinematic::Task *FabrikInverseKinematic::create_simple_task(Skeleton *p_sk, BoneId root_bone, BoneId tip_bone, const Transform &goal_transform) {

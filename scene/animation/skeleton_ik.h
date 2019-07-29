@@ -199,6 +199,8 @@ public:
 		// Settings
 		real_t min_distance;
 		int max_iterations;
+		real_t max_root_drag_distance;
+		real_t root_drag_stiffness;
 
 		// Bone data
 		BoneId root_bone;
@@ -210,6 +212,8 @@ public:
 				skeleton(NULL),
 				min_distance(0.01),
 				max_iterations(10),
+				max_root_drag_distance(10),
+				root_drag_stiffness(1.0),
 				root_bone(-1) {}
 	};
 
@@ -229,6 +233,13 @@ private:
 	/// Special solvers that solve only chains with one end effector
 	static void solve_simple_backwards(Chain &r_chain, bool p_solve_magnet);
 	static void solve_simple_forwards(Chain &r_chain, bool p_solve_magnet);
+	static void drag_point_tethered(
+			ChainItem *chain,
+			const Vector3 &maintain_distance_point,
+			float bone_length,
+			float max_drag_distance,
+			float drag_stiffness,
+			Vector3 &point_to_drag);
 
 public:
 	static Task *create_simple_task(Skeleton *p_sk, BoneId root_bone, BoneId tip_bone, const Transform &goal_transform);
