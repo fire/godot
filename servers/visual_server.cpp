@@ -1906,6 +1906,7 @@ void VisualServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_white_texture"), &VisualServer::get_white_texture);
 
 	ClassDB::bind_method(D_METHOD("set_boot_image", "image", "color", "scale", "use_filter"), &VisualServer::set_boot_image, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("set_screen_lut", "lut", "h_slices", "v_slices"), &VisualServer::set_screen_lut);
 	ClassDB::bind_method(D_METHOD("set_default_clear_color", "color"), &VisualServer::set_default_clear_color);
 	ClassDB::bind_method(D_METHOD("set_shader_time_scale", "scale"), &VisualServer::set_shader_time_scale);
 
