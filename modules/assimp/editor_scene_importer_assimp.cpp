@@ -454,8 +454,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			ERR_FAIL_COND_V(armature == NULL, state.root);
 			armature->add_child(state.skeleton);
 		} else {
-			// skeleton must be pushed on the skeleton list
-			state.mesh_skeletons.back()->key()->add_child(state.skeleton);
+			state.root->add_child(state.skeleton);
 		}
 
 		// make available in the tree
