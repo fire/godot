@@ -447,7 +447,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		}
 
 		// if the armature is not the root node
-		// todo: find out why we need to to this :(
+		// todo: find out why we need to do this :(
 		if (node && node != state.scene->mRootNode) {
 			// make the skeleton a child of the armature node
 			Node *armature = state.root->find_node(_assimp_get_string(node->mName));
