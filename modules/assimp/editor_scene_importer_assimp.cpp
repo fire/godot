@@ -1375,15 +1375,17 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						Ref<ImageTexture> texture;
-						texture.instance();
-						texture->create_from_image(img);
-						if (img.is_valid() && img->detect_alpha() != Image::ALPHA_BIT) {
-							_set_texture_mapping_mode(map_mode, texture);
-							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							if (img.is_valid() && img->detect_alpha() != Image::ALPHA_BIT) {
+								_set_texture_mapping_mode(map_mode, texture);
+								mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+								mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+							}
+							mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 						}
-						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 					}
 				}
 			} else {
@@ -1405,16 +1407,17 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 				_find_texture_path(state.path, path, found);
 				if (found) {
 					Ref<Image> img = _load_image(state.scene, path);
-					_find_texture_path(state.path, path, found);
-					Ref<ImageTexture> texture;
-					texture.instance();
-					texture->create_from_image(img);
-					if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
-						_set_texture_mapping_mode(map_mode, texture);
-						mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-						mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+					if (img.is_valid()) {
+						Ref<ImageTexture> texture;
+						texture.instance();
+						texture->create_from_image(img);
+						if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+							_set_texture_mapping_mode(map_mode, texture);
+							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						}
+						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 					}
-					mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 				}
 			} else {
 				aiColor4D pbr_base_color;
@@ -1435,15 +1438,16 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						_find_texture_path(state.path, path, found);
-						Ref<ImageTexture> texture;
-						texture.instance();
-						texture->create_from_image(img);
-						if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
-							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+								mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+								mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+							}
+							mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 						}
-						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 					}
 				} else {
 					aiColor4D pbr_base_color;
@@ -1468,7 +1472,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						_find_texture_path(state.path, path, found);
 						if (img.is_valid()) {
 							Ref<ImageTexture> texture;
 							texture.instance();
@@ -1497,7 +1500,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						_find_texture_path(state.path, path, found);
 						if (img.is_valid()) {
 							Ref<ImageTexture> texture;
 							texture.instance();
@@ -1518,15 +1520,16 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						_find_texture_path(state.path, path, found);
-						Ref<ImageTexture> texture;
-						texture.instance();
-						texture->create_from_image(img);
-						if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
-							mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-							mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+						if (img.is_valid()) {
+							Ref<ImageTexture> texture;
+							texture.instance();
+							texture->create_from_image(img);
+							if (img.is_valid() && img->detect_alpha() == Image::ALPHA_BLEND) {
+								mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+								mat->set_depth_draw_mode(SpatialMaterial::DepthDrawMode::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+							}
+							mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 						}
-						mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 					}
 				} else {
 					aiColor4D pbr_base_color;
@@ -1551,7 +1554,6 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					_find_texture_path(state.path, path, found);
 					if (found) {
 						Ref<Image> img = _load_image(state.scene, path);
-						_find_texture_path(state.path, path, found);
 						if (img.is_valid()) {
 							Ref<ImageTexture> texture;
 							texture.instance();
