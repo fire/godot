@@ -144,14 +144,11 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	if (state.is_fbx_specific) {
 		// Cannot remove pivot points because the static mesh will be in the wrong place
 		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
-		importer.SetPropertyBool(AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES, true);
-		importer.SetPropertyBool(AI_CONFIG_FBX_CONVERT_TO_M, false);
 	}
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
 	int32_t post_process_Steps = aiProcess_FlipWindingOrder |
 								 aiProcess_JoinIdenticalVertices |
 								 aiProcess_ImproveCacheLocality |
-								 aiProcess_LimitBoneWeights |
 								 aiProcess_RemoveRedundantMaterials |
 								 aiProcess_Triangulate |
 								 aiProcess_RemoveComponent |
@@ -413,8 +410,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 	}
 
 	if (state.skeleton->get_bone_count()) {
-		aiNode *node = NULL;
-
 		//  note: could potentially use first in list potentially but need to confirm with tests :*(
 		// every single bone starts out as a root bone - because it doesn't know about its parents
 
@@ -427,11 +422,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 		*/
 		String node_name = state.skeleton->get_bone_name(0);
 
-		//OS::get_singleton()->print("cupcakes: %s\n", node_name);
-		//print_line("name of first bone :" + atos(root_parent->mName));
-
-		// note: first bone is not the root bone.
-
+		// note: first bone is not the root bone
 		for (OAHashMap<String, const aiNode *>::Iterator it = assimp_skeleton_parents.iter();
 				it.valid;
 				it = assimp_skeleton_parents.next_iter(it)) {
@@ -439,25 +430,25 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			ERR_CONTINUE(!node);
 			ERR_CONTINUE(!node->mParent);
 			aiNode *armature = node->mParent;
-
+			if (state.skeleton->find_bone(_assimp_get_string(armature->mName))) {
+				continue;
+			}
 			//print_verbose("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
 
-			// parent :D (this should be the armature)
-			state.armature_node = armature;
+			tate.armature_node = armature;
 		}
 
 		// if the armature is not the root node
 		// todo: find out why we need to do this :(
-		if (node) {
+		if (state.armature_node) {
 			// make the skeleton a child of the armature node
-			Node *armature = state.root->find_node(_assimp_get_string(node->mName));
+			Node *armature = state.root->find_node(_assimp_get_string(state.armature_node->mName));
 			ERR_FAIL_COND_V(armature == NULL, state.root);
 			armature->add_child(state.skeleton);
 		} else {
 			state.root->add_child(state.skeleton);
 		}
 
-		// make available in the tree
 		state.skeleton->set_owner(state.root);
 	}
 
@@ -537,9 +528,7 @@ void EditorSceneImporterAssimp::_insert_animation_track(const aiScene *p_scene, 
 		scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
 		scale_times.push_back(track->mScalingKeys[sc].mTime / ticks_per_second);
 	}
-	if (!pos_values.size() && !rot_values.size() && !scale_values.size()) {
-		return;
-	}
+
 	while (true) {
 		Vector3 pos;
 		Quat rot;
@@ -909,7 +898,6 @@ Transform EditorSceneImporterAssimp::_get_global_ai_node_transform(const aiScene
 }
 
 void EditorSceneImporterAssimp::_generate_node_bone(State &state, const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights) {
-	bool has_pivots = state.root->find_node("*" + ASSIMP_FBX_KEY + "*");
 	for (size_t i = 0; i < p_node->mNumMeshes; i++) {
 		const unsigned int mesh_idx = p_node->mMeshes[i];
 		const aiMesh *ai_mesh = p_scene->mMeshes[mesh_idx];
@@ -1129,6 +1117,12 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 		}
 		Ref<SurfaceTool> st;
 		st.instance();
+		VisualServer::ArrayFormat format_flags = (VisualServer::ArrayFormat)0;
+		if (state.max_bone_weights == 8) {
+			format_flags = VisualServer::ARRAY_FLAG_USE_8_WEIGHTS;
+		}
+		//st->begin(Mesh::PRIMITIVE_TRIANGLES, format_flags);
+		st->begin(Mesh::PRIMITIVE_TRIANGLES);
 		//VisualServer::ArrayFormat format_flags = (VisualServer::ArrayFormat)0;
 		//if (p_max_bone_weights == 8) {
 		//	format_flags = VisualServer::ARRAY_FLAG_USE_8_WEIGHTS;
@@ -1210,7 +1204,7 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 					};
 					temp_bones.sort_custom<BoneCompare>();
 					temp_bones.invert();
-					temp_bones.resize(p_max_bone_weights);
+					temp_bones.resize(state.max_bone_weights);
 					float max_bone_influence = 0.0f;
 					for (int32_t r = 0; r < temp_bones.size(); r++) {
 						max_bone_influence += temp_bones[r].weight;

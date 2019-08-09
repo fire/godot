@@ -82,7 +82,12 @@ elif(env['platform'] == 'x11'):
 elif(env['platform'] == 'osx'):
     env_assimp.Append(CPPDEFINES=['PLATFORM_DARWIN'])
     env_assimp.Append(CPPDEFINES=[('PLATFORM', 'DARWIN')])
-    
+
+if (not env.msvc):
+    env_assimp.Append(CXXFLAGS=['-std=c++11'])
+elif (env.msvc == False and env['platform'] == 'windows'):
+    env_assimp.Append(LDFLAGS=['-pthread'])
+
 env_thirdparty = env_assimp.Clone()
 env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Common/*.cpp'))

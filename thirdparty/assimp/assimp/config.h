@@ -646,6 +646,20 @@ enum aiComponent {
 #define AI_CONFIG_IMPORT_FBX_EMBEDDED_TEXTURES_LEGACY_NAMING \
 	"AI_CONFIG_IMPORT_FBX_EMBEDDED_TEXTURES_LEGACY_NAMING"
 
+/** @brief  Set wether the FBX importer shall not remove empty bones.
+ *  
+ *  
+ *  Empty bone are often used to define connections for other models.
+ */
+#define AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES \
+    "AI_CONFIG_IMPORT_REMOVE_EMPTY_BONES"
+
+// ---------------------------------------------------------------------------
+/** @brief  Set wether the FBX importer shall convert the unit from cm to m.
+ */
+#define AI_CONFIG_FBX_CONVERT_TO_M \
+    "AI_CONFIG_FBX_CONVERT_TO_M"
+
 // ---------------------------------------------------------------------------
 /** @brief  Set wether the FBX importer shall not remove empty bones.
  *  
