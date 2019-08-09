@@ -1451,7 +1451,6 @@ namespace Assimp {
 
             std::vector<aiBone*> bones;
             size_t clusterSize = sk.Clusters().size();
-            printf("Cluster size: %zu\n", clusterSize);
             bones.reserve(clusterSize);
 
             const bool no_mat_check = materialIndex == NO_MATERIAL_SEPARATION;
