@@ -3581,7 +3581,7 @@ void FBXConverter::SetShadingPropertiesRaw(aiMaterial* out_mat, const PropertyTa
             // note: the trailing () ensures initialization with NULL - not
             // many C++ users seem to know this, so pointing it out to avoid
             // confusion why this code works.
-            printf("C++ meshes count: %ld\n", meshes.size());
+            //printf("C++ meshes count: %ld\n", meshes.size());
             //printf("number of meshes read from fbx: %d\n", meshes.si);
 
             assert(out->mNumMeshes == 0);
