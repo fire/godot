@@ -406,7 +406,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			ERR_CONTINUE(assimp_skeleton_parents.has(name));
 
 			if (!assimp_skeleton_parents.has(name)) {
-				print_line(String("adding name ") + name);
+				print_verbose(String("adding name ") + name);
 				assimp_skeleton_parents.insert(name, _assimp_find_node(state.scene->mRootNode, name));
 			}
 		}
@@ -440,7 +440,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(State &state) {
 			ERR_CONTINUE(!node->mParent);
 			aiNode *armature = node->mParent;
 
-			print_line("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
+			//print_verbose("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
 
 			// parent :D (this should be the armature)
 			state.armature_node = armature;
@@ -979,32 +979,32 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 			}
 		}
 
-		print_line("bone count - assimp: " + itos(state.skeleton->get_bone_count()));
-		bool has_pivots = state.root->find_node("*" + ASSIMP_FBX_KEY + "*");
-		if (state.is_fbx_specific && has_pivots) {
-			for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
-				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
-				while (node != NULL) {
-					String node_name = _assimp_get_string(node->mName);
-					if (!node_name.empty()) {
-						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
-							break;
-						}
-						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
-							state.skeleton->add_bone(node_name);
-							int32_t idx = state.skeleton->find_bone(node_name);
-							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
-							state.skeleton->set_bone_rest(idx, xform);
-							break;
-						}
-					}
-					if (state.skeleton_root_node == node) {
-						break;
-					}
-					node = node->mParent;
-				}
-			}
-		}
+		// print_line("bone count - assimp: " + itos(state.skeleton->get_bone_count()));
+		 bool has_pivots = state.root->find_node("*" + ASSIMP_FBX_KEY + "*");
+		 if (state.is_fbx_specific && has_pivots) {
+		 	for (int32_t i = 0; i < state.skeleton->get_bone_count(); i++) {
+		 		aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
+		 		while (node != NULL) {
+		 			String node_name = _assimp_get_string(node->mName);
+		 			if (!node_name.empty()) {
+		 				if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
+		 					break;
+		 				}
+		 				if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
+		 					state.skeleton->add_bone(node_name);
+		 					int32_t idx = state.skeleton->find_bone(node_name);
+		 					Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+		 					state.skeleton->set_bone_rest(idx, xform);
+		 					break;
+		 				}
+		 			}
+		 			if (state.skeleton_root_node == node) {
+		 				break;
+		 			}
+		 			node = node->mParent;
+		 		}
+		 	}
+		 }
 		_set_bone_parent(state.skeleton, state.scene);
 
 		state.skeletons.insert(state.skeleton, mesh_node);
