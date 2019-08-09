@@ -1813,7 +1813,7 @@ Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String
 	Vector<String> split_path = p_path.get_basename().split("*");
 	if (split_path.size() == 2) {
 		size_t texture_idx = split_path[1].to_int();
-		ERR_FAIL_COND_V(texture_idx >= p_scene->mNumTextures, Ref<Texture>());
+		ERR_FAIL_COND_V(texture_idx >= p_scene->mNumTextures, Ref<Image>());
 		aiTexture *tex = p_scene->mTextures[texture_idx];
 		String filename = _assimp_raw_string_to_string(tex->mFilename);
 		filename = filename.get_file();
@@ -1821,15 +1821,15 @@ Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String
 		if (tex->mHeight == 0) {
 			if (tex->CheckFormat("png")) {
 				Ref<Image> img = Image::_png_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+				ERR_FAIL_COND_V(img.is_null(), Ref<Image>());
 				return img;
 			} else if (tex->CheckFormat("jpg")) {
 				Ref<Image> img = Image::_jpg_mem_loader_func((uint8_t *)tex->pcData, tex->mWidth);
-				ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+				ERR_FAIL_COND_V(img.is_null(), Ref<Image>());
 				return img;
 			} else if (tex->CheckFormat("dds")) {
 				ERR_EXPLAIN("Open Asset Import: Embedded dds not implemented");
-				ERR_FAIL_COND_V(true, Ref<Texture>());
+				ERR_FAIL_COND_V(true, Ref<Image>());
 			}
 		} else {
 			Ref<Image> img;
@@ -1838,7 +1838,7 @@ Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String
 			uint32_t size = tex->mWidth * tex->mHeight;
 			arr.resize(size);
 			memcpy(arr.write().ptr(), tex->pcData, size);
-			ERR_FAIL_COND_V(arr.size() % 4 != 0, Ref<Texture>());
+			ERR_FAIL_COND_V(arr.size() % 4 != 0, Ref<Image>());
 			//ARGB8888 to RGBA8888
 			for (int32_t i = 0; i < arr.size() / 4; i++) {
 				arr.write().ptr()[(4 * i) + 3] = arr[(4 * i) + 0];
@@ -1847,7 +1847,7 @@ Ref<Image> EditorSceneImporterAssimp::_load_image(const aiScene *p_scene, String
 				arr.write().ptr()[(4 * i) + 2] = arr[(4 * i) + 3];
 			}
 			img->create(tex->mWidth, tex->mHeight, true, Image::FORMAT_RGBA8, arr);
-			ERR_FAIL_COND_V(img.is_null(), Ref<Texture>());
+			ERR_FAIL_COND_V(img.is_null(), Ref<Image>());
 			return img;
 		}
 		return Ref<Image>();
