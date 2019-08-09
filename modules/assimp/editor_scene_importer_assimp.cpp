@@ -938,10 +938,10 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				ERR_CONTINUE(!node->mParent);
 				aiNode *armature = node->mParent;
 				while (armature) {
-					if (!armature) {
+					if (!armature->mParent) {
 						break;
 					}
-					if (state.skeleton->find_bone(_assimp_get_string(armature->mName)) == -1) {
+					if (state.skeleton->find_bone(_assimp_get_string(armature->mParent->mName)) == -1) {
 						break;
 					}
 					armature = armature->mParent;
@@ -950,25 +950,17 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 					if (!armature->mParent) {
 						break;
 					}
-					bool is_pivoted_bone = _assimp_get_string(armature->mParent->mName).find(ASSIMP_FBX_KEY) != -1;
+					armature = armature->mParent;
+					bool is_pivoted_bone = _assimp_get_string(armature->mName).find(ASSIMP_FBX_KEY) != -1;
 					if (!is_pivoted_bone) {
 						break;
 					}
-					armature = armature->mParent;
 				}
 				//print_verbose("ELEMENT[" + _assimp_get_string(node->mParent->mName) + "] - " + _assimp_get_string(node->mName));
 				// If new armature doesn't contain the state.armature node
-				
-				if (!armature) {
-					continue;
+				if (state.armature_node == NULL || armature->FindNode(state.armature_node->mName)) {
+					state.armature_node = armature;
 				}
-				if (state.armature_node && !armature->FindNode(state.armature_node->mName)) {
-					continue;
-				}
-				if (state.skeleton->find_bone(_assimp_get_string(armature->mName)) != -1) {
-					continue;
-				}
-				state.armature_node = armature;
 			}
 		}
 
@@ -996,7 +988,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
 							state.skeleton->add_bone(node_name);
 							int32_t idx = state.skeleton->find_bone(node_name);
-							Transform xform = _assimp_matrix_transform(_assimp_find_node(state.scene->mRootNode, node_name)->mTransformation);
+							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
 							state.skeleton->set_bone_rest(idx, xform);
 							break;
 						}
