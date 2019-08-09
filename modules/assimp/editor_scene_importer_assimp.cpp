@@ -142,8 +142,8 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	std::string s_path(w_path.begin(), w_path.end());
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	if (state.is_fbx_specific) {
-		// Cannot remove pivot points because the static mesh will be in the wrong place
-		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
+		// Pivot points can cause the static mesh to be in the wrong place
+		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 	}
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_COLORS);
 	int32_t post_process_Steps = aiProcess_FlipWindingOrder |
@@ -928,8 +928,6 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 					}
 				}
 			}
-			// every single bone starts out as a root bone - because it doesn't know about its parents
-			String node_name = state.skeleton->get_bone_name(0);
 
 			// note: first bone is not the root bone
 			for (OAHashMap<String, const aiNode *>::Iterator it = assimp_skeleton_parents.iter();
@@ -980,10 +978,10 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 				aiNode *node = _assimp_find_node(state.scene->mRootNode, state.skeleton->get_bone_name(i));
 				while (node != NULL) {
 					String node_name = _assimp_get_string(node->mName);
+					if (node == state.armature_node) {
+						break;
+					}
 					if (!node_name.empty()) {
-						if (node == state.armature_node) {
-							break;
-						}
 						if (node == _assimp_find_node(state.scene->mRootNode, _assimp_get_string(state.skeleton_root_node->mName).split(ASSIMP_FBX_KEY)[0])) {
 							break;
 						}
