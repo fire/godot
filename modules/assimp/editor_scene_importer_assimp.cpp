@@ -1193,7 +1193,42 @@ void EditorSceneImporterAssimp::_add_mesh_to_mesh_instance(State &state, const a
 						}
 					}
 					ERR_CONTINUE(weights.size() == 0);
-					st->add_weights(weights);
+					Vector<Bone> temp_bones;
+					for (int32_t b = 0; b < bones.size(); b++) {
+						Bone bone = {bones[b], weights[b]};
+						temp_bones.push_back(bone);
+					}
+
+					struct BoneCompare {
+						bool operator()(const Bone &a, const Bone &b) const {
+
+							if (a.weight < b.weight) {
+								return true;
+							}
+							return false;
+						}
+					};
+					temp_bones.sort_custom<BoneCompare>();
+					temp_bones.invert();
+					temp_bones.resize(p_max_bone_weights);
+					float max_bone_influence = 0.0f;
+					for (int32_t r = 0; r < temp_bones.size(); r++) {
+						max_bone_influence += temp_bones[r].weight;
+					}
+					for (int32_t r = 0; r < temp_bones.size(); r++) {
+						ERR_CONTINUE(max_bone_influence <= 0.0f);
+						// sum all the bone weights
+						// (1 / total weight sum) * a bone's weight
+						temp_bones.write[r].weight = (1.0f / max_bone_influence) * temp_bones[r].weight;
+					}
+					Vector<int32_t> final_bones;
+					Vector<float> final_weights;
+					for (int32_t b = 0; b < temp_bones.size(); b++) {
+						final_bones.push_back(temp_bones[b].index);
+						final_weights.push_back(temp_bones[b].weight);
+					}
+					st->add_bones(final_bones);
+					st->add_weights(final_weights);
 				}
 			}
 			const aiVector3D pos = ai_mesh->mVertices[j];
