@@ -179,6 +179,7 @@ private:
 			int32_t coord_axis;
 			int32_t coord_axis_sign;
 		};
+
 	};
 	Spatial *_generate_scene(State &state);
 	
