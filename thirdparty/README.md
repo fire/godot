@@ -513,7 +513,7 @@ File extracted from upstream release tarball:
 ## xatlas
 
 - Upstream: https://github.com/jpcy/xatlas
-- Version: git (24e7e09, 2019)
+- Version: git (375f3ce, 2019)
 - License: MIT
 
 Files extracted from upstream source:
