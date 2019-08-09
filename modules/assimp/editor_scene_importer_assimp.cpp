@@ -988,7 +988,7 @@ void EditorSceneImporterAssimp::_generate_node(State &state, const aiNode *p_nod
 						if (state.skeleton->find_bone(node_name) == -1 && node_name.split(ASSIMP_FBX_KEY).size() == 1) {
 							state.skeleton->add_bone(node_name);
 							int32_t idx = state.skeleton->find_bone(node_name);
-							Transform xform = _get_global_ai_node_transform(state.scene, _assimp_find_node(state.scene->mRootNode, node_name));
+							Transform xform = _assimp_matrix_transform(_assimp_find_node(state.scene->mRootNode, node_name)->mTransformation);
 							state.skeleton->set_bone_rest(idx, xform);
 							break;
 						}
