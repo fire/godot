@@ -444,7 +444,7 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 		temp_atlas_img_albedo.instance();
 		atlas_img_albedo->generate_mipmaps();
 		temp_atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8, atlas_img_albedo->get_data());
-		temp_atlas_img_albedo->fill(Color(0.0f, 0.0f, 0.0f, 0.0f));
+		temp_atlas_img_albedo->fill(Color(0.0f, 0.0f, 0.0f, 1.0f));
 		PoolVector<AtlasLookupTexel> temp_atlas_lookup;
 		temp_atlas_lookup.resize(atlas_lookup.size());
 		const int sampleXOffsets[] = { -1, 0, 1, -1, 1, -1, 0, 1 };
@@ -539,11 +539,6 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 						const int sx = (int)x + sampleXOffsets[si];
 						const int sy = (int)y + sampleYOffsets[si];
 						if (sx < 0 || sy < 0 || sx >= (int)atlas->width || sy >= (int)atlas->height) {
-							rgb_sum[0] += 0.0f;
-							rgb_sum[1] += 0.0f;
-							rgb_sum[2] += 0.0f;
-							rgb_sum[3] += 0.0f;
-							n++;
 							continue; // Sample position is outside of atlas texture.
 						}
 						const AtlasLookupTexel &lookup = temp_atlas_lookup[sx + sy * (int)atlas->width];
@@ -554,20 +549,10 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 						} else {
 							Ref<SpatialMaterial> mat = material_cache[lookup.material_index];
 							if (mat.is_null()) {
-								rgb_sum[0] += 0.0f;
-								rgb_sum[1] += 0.0f;
-								rgb_sum[2] += 0.0f;
-								rgb_sum[3] += 0.0f;
-								n++;
 								continue;
 							}
 							img = mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO)->get_data();
 							if (img.is_null()) {
-								rgb_sum[0] += 0.0f;
-								rgb_sum[1] += 0.0f;
-								rgb_sum[2] += 0.0f;
-								rgb_sum[3] += 0.0f;
-								n++;
 								continue;
 							}
 							if (img->is_compressed()) {
@@ -592,11 +577,6 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 						// 	ssy = Math::fmod((float)ssy, _height);
 						// }
 						if (ssx < 0 || ssy < 0 || ssx >= img->get_width() || ssy >= img->get_height()) {
-							rgb_sum[0] += 0.0f;
-							rgb_sum[1] += 0.0f;
-							rgb_sum[2] += 0.0f;
-							rgb_sum[3] += 0.0f;
-							n++;
 							continue; // Sample position is outside of source texture.
 						}
 
@@ -622,17 +602,13 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 						continue;
 					}
 					// Sample up to 8 surrounding texels in the atlas texture, average their color and assign it to this texel.
-					rgb_sum[0] = rgb_sum[1] = rgb_sum[2] = rgb_sum[3] = 0.0f;
+					rgb_sum[0] = rgb_sum[1] = rgb_sum[2] = 0.0f;
+					rgb_sum[3] = 1.0f;
 					n = 0;
 					for (uint32_t si = 0; si < 8; si++) {
 						const int sx = (int)x + sampleXOffsets[si];
 						const int sy = (int)y + sampleYOffsets[si];
 						if (sx < 0 || sy < 0 || sx >= (int)atlas->width || sy >= (int)atlas->height) {
-							rgb_sum[0] += 0.0f;
-							rgb_sum[1] += 0.0f;
-							rgb_sum[2] += 0.0f;
-							rgb_sum[3] += 0.0f;
-							n++;
 							continue; // Sample position is outside of atlas texture.
 						}
 						atlas_img_albedo->lock();
