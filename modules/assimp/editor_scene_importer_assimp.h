@@ -54,20 +54,20 @@
 class AssimpStream : public Assimp::LogStream {
 public:
 	// Constructor
-	AssimpStream();
+	AssimpStream() {}
 
 	// Destructor
-	~AssimpStream();
+	~AssimpStream() {}
 	// Write something using your own functionality
-	void write(const char *message);
+	void write(const char *message) {
+		print_verbose(String("Open Asset Import: ") + String(message).strip_edges());
+	}
 };
 
 #define AI_MATKEY_FBX_MAYA_BASE_COLOR_FACTOR "$raw.Maya|baseColor", 0, 0
 #define AI_MATKEY_FBX_MAYA_METALNESS_FACTOR "$raw.Maya|metalness", 0, 0
 #define AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_FACTOR "$raw.Maya|diffuseRoughness", 0, 0
 
-#define AI_MATKEY_FBX_MAYA_EMISSION_TEXTURE "$raw.Maya|emissionColor|file", aiTextureType_UNKNOWN, 0
-#define AI_MATKEY_FBX_MAYA_EMISSIVE_FACTOR "$raw.Maya|emission", 0, 0
 #define AI_MATKEY_FBX_MAYA_METALNESS_TEXTURE "$raw.Maya|metalness|file", aiTextureType_UNKNOWN, 0
 #define AI_MATKEY_FBX_MAYA_METALNESS_UV_XFORM "$raw.Maya|metalness|uvtrafo", aiTextureType_UNKNOWN, 0
 #define AI_MATKEY_FBX_MAYA_DIFFUSE_ROUGHNESS_TEXTURE "$raw.Maya|diffuseRoughness|file", aiTextureType_UNKNOWN, 0
@@ -79,7 +79,6 @@ public:
 
 #define AI_MATKEY_FBX_NORMAL_TEXTURE "$raw.Maya|normalCamera|file", aiTextureType_UNKNOWN, 0
 #define AI_MATKEY_FBX_NORMAL_UV_XFORM "$raw.Maya|normalCamera|uvtrafo", aiTextureType_UNKNOWN, 0
-
 
 #define AI_MATKEY_FBX_MAYA_STINGRAY_DISPLACEMENT_SCALING_FACTOR "$raw.Maya|displacementscaling", 0, 0
 #define AI_MATKEY_FBX_MAYA_STINGRAY_BASE_COLOR_FACTOR "$raw.Maya|base_color", 0, 0
@@ -106,28 +105,6 @@ private:
 	GDCLASS(EditorSceneImporterAssimp, EditorSceneImporter);
 	const String ASSIMP_FBX_KEY = "_$AssimpFbx$";
 
-	struct State {
-		Spatial *root = NULL;
-		AnimationPlayer *ap = NULL;
-		Set<String> bone_names;
-		Set<String> light_names;
-		Set<String> camera_names;
-		Map<Skeleton *, MeshInstance *> skeletons;
-		Map<String, Transform> bone_rests;
-		Vector<MeshInstance *> meshes;
-		Skeleton *skeleton = NULL;
-		Map<MeshInstance *, Skeleton *> mesh_skeletons;
-		String path;
-		int32_t max_bone_weights = 0;
-		const aiScene *scene = NULL;
-		uint32_t flags = 0;
-		int32_t bake_fps = 0;
-		const aiNode *ai_root = NULL;
-		aiNode *armature_node = NULL;
-		aiNode *skeleton_root_node = NULL;
-		bool is_fbx_specific = false;
-	};
-
 	struct AssetImportAnimation {
 		enum Interpolation {
 			INTERP_LINEAR,
@@ -137,75 +114,98 @@ private:
 		};
 	};
 
-	struct AssetImportFbx {
-		enum ETimeMode {
-			TIME_MODE_DEFAULT = 0,
-			TIME_MODE_120 = 1,
-			TIME_MODE_100 = 2,
-			TIME_MODE_60 = 3,
-			TIME_MODE_50 = 4,
-			TIME_MODE_48 = 5,
-			TIME_MODE_30 = 6,
-			TIME_MODE_30_DROP = 7,
-			TIME_MODE_NTSC_DROP_FRAME = 8,
-			TIME_MODE_NTSC_FULL_FRAME = 9,
-			TIME_MODE_PAL = 10,
-			TIME_MODE_CINEMA = 11,
-			TIME_MODE_1000 = 12,
-			TIME_MODE_CINEMA_ND = 13,
-			TIME_MODE_CUSTOM = 14,
-			TIME_MODE_TIME_MODE_COUNT = 15
-		};
-		enum UpAxis {
-			UP_VECTOR_AXIS_X = 1,
-			UP_VECTOR_AXIS_Y = 2,
-			UP_VECTOR_AXIS_Z = 3
-		};
-		enum FrontAxis {
-			FRONT_PARITY_EVEN = 1,
-			FRONT_PARITY_ODD = 2,
-		};
+	struct ImportState {
 
-		enum CoordAxis {
-			COORD_RIGHT = 0,
-			COORD_LEFT = 1
-		};
+		String path;
+		const aiScene *assimp_scene;
+		uint32_t max_bone_weights;
 
-		struct UpFrontCoord {
-			int32_t up_axis;
-			int32_t up_axis_sign;
-			int32_t front_axis;
-			int32_t front_axis_sign;
-			int32_t coord_axis;
-			int32_t coord_axis_sign;
-		};
-
+		Spatial *root;
+		Map<String, Ref<Mesh> > mesh_cache;
+		Map<int, Ref<Material> > material_cache;
+		Map<String, int> light_cache;
+		Map<String, int> camera_cache;
+		//Vector<Skeleton *> skeletons;
+		Map<Skeleton *, const Node *> armature_skeletons; // maps skeletons based on their armature nodes.
+		Map<const aiBone *, Skeleton *> bone_to_skeleton_lookup; // maps bones back into their skeleton
+		// very useful for when you need to ask assimp for the bone mesh
+		Map<String, Node *> node_map;
+		Map<const aiNode *, const Node *> assimp_node_map;
+		bool fbx; //for some reason assimp does some things different for FBX
+		AnimationPlayer *animation_player;
 	};
-	Spatial *_generate_scene(State &state);
-	
-	String _find_skeleton_bone_root(Map<Skeleton *, MeshInstance *> &skeletons, Map<MeshInstance *, String> &meshes, Spatial *root);
-	Transform _get_global_ai_node_transform(const aiScene *p_scene, const aiNode *p_current_node);
-	void _generate_node_bone(State &state, const aiScene *p_scene, const aiNode *p_node, Map<String, bool> &p_mesh_bones, Skeleton *p_skeleton, const String p_path, const int32_t p_max_bone_weights);
-	void _generate_node(State &state, const aiNode *p_node, Node *p_parent, Node *p_owner);
-	void _set_bone_parent(Skeleton *p_skeleton, const aiScene *p_scene);
-	aiNode *_assimp_find_node(aiNode *ai_child_node, const String bone_name_mask);
-	void _get_track_set(const aiScene *p_scene, Set<String> &tracks);
-	void _insert_animation_track(const aiScene *p_scene, const String p_path, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, float length, const Skeleton *sk, const aiNodeAnim *track, String node_name, NodePath node_path);
-	void _add_mesh_to_mesh_instance(State &state, const aiNode *p_node, MeshInstance *p_mesh_instance, Node *p_owner);
-	Ref<Image> _load_image(const aiScene *p_scene, String p_path);
+
+	/** Recursive state is used to push state into functions instead of specifying them
+	* This makes the code easier to handle too and add extra arguments without breaking things
+	*/
+	struct RecursiveState {
+		RecursiveState(
+				Transform &_node_transform,
+				Skeleton *_skeleton,
+				Spatial *_new_node,
+				const String &_node_name,
+				const aiNode *_assimp_node,
+				Node *_parent_node,
+				const aiBone *_bone) :
+				node_transform(_node_transform),
+				skeleton(_skeleton),
+				new_node(_new_node),
+				node_name(_node_name),
+				assimp_node(_assimp_node),
+				parent_node(_parent_node),
+				bone(_bone) {}
+
+		Transform &node_transform;
+		Skeleton *skeleton;
+		Spatial *new_node;
+		const String &node_name;
+		const aiNode *assimp_node;
+		Node *parent_node;
+		const aiBone *bone;
+	};
+
+	struct BoneInfo {
+		uint32_t bone;
+		float weight;
+	};
+
+	struct SkeletonHole { //nodes may be part of the skeleton by used by vertex
+		String name;
+		String parent;
+		Transform pose;
+		const aiNode *node;
+	};
+
 	void _calc_tangent_from_mesh(const aiMesh *ai_mesh, int i, int tri_index, int index, PoolColorArray::Write &w);
 	void _set_texture_mapping_mode(aiTextureMapMode *map_mode, Ref<Texture> texture);
-	void _find_texture_path(const String &p_path, String &path, bool &r_found);
-	void _find_texture_path(const String &p_path, _Directory &dir, String &path, bool &found, String extension);
-	String _assimp_get_string(const aiString &p_string) const;
+
+	Ref<Texture> _load_texture(ImportState &state, String p_path);
+	Ref<Material> _generate_material_from_index(ImportState &state, int p_index, bool p_double_sided);
+	Ref<Mesh> _generate_mesh_from_surface_indices(ImportState &state, Transform *parent_node, const Vector<int> &p_surface_indices, Skeleton *p_skeleton = NULL, bool p_double_sided_material = false);
+
+	// utility for node creation
+	void attach_new_node(ImportState &state, Spatial *new_node, const aiNode *node, Node *parent_node, String Name, Transform &transform);
+	// simple object creation functions
+	void create_light(ImportState &state, RecursiveState &recursive_state);
+	void create_camera(ImportState &state, RecursiveState &recursive_state);
+	void create_bone(ImportState &state, RecursiveState &recursive_state);
+	void create_mesh(ImportState &state, RecursiveState &recursive_state);
+
+	// recursive node generator
+	void _generate_node(ImportState &state, Skeleton *skeleton, const aiNode *assimp_node, Node *parent_node);
+	// runs after _generate_node as it must then use pre-created godot skeleton.
+	void generate_mesh_phase_from_skeletal_mesh(ImportState &state, const aiNode *assimp_node, Node *parent_node);
+	void _insert_animation_track(ImportState &scene, const aiAnimation *assimp_anim, int p_track, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, Skeleton *p_skeleton, const NodePath &p_path, const String &p_name);
+
+	void _import_animation(ImportState &state, int p_animation_index, int p_bake_fps);
+
+	Spatial *_generate_scene(const String &p_path, aiScene *scene, const uint32_t p_flags, int p_bake_fps, const int32_t p_max_bone_weights);
+
 	String _assimp_anim_string_to_string(const aiString &p_string) const;
 	String _assimp_raw_string_to_string(const aiString &p_string) const;
-	void _import_animation(State &state, int32_t p_index);
-	void _insert_pivot_anim_track(State &state, const String p_node_name, Vector<const aiNodeAnim *> F, float &length, float ticks_per_second, Ref<Animation> animation);
 	float _get_fbx_fps(int32_t time_mode, const aiScene *p_scene);
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, float p_time, AssetImportAnimation::Interpolation p_interp);
-	const Transform _assimp_matrix_transform(const aiMatrix4x4 p_matrix);
 	void _register_project_setting_import(const String generic, const String import_setting_string, const Vector<String> &exts, List<String> *r_extensions, const bool p_enabled) const;
 
 	struct ImportFormat {
@@ -229,7 +229,6 @@ public:
 	virtual void get_extensions(List<String> *r_extensions) const;
 	virtual uint32_t get_import_flags() const;
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
-	virtual Ref<Animation> import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps);
 };
 #endif
 #endif
