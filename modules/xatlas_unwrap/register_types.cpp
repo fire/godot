@@ -58,8 +58,8 @@ bool xatlas_mesh_lightmap_unwrap_callback(float p_texel_size, const float *p_ver
 	xatlas::ChartOptions chart_options;
 	xatlas::PackOptions pack_options;
 
+	pack_options.resolution = 4096;
 	pack_options.maxChartSize = 4096;
-	pack_options.bruteForce = true;
 	pack_options.texelsPerUnit = 1.0 / p_texel_size;
 
 	xatlas::Atlas *atlas = xatlas::Create();
