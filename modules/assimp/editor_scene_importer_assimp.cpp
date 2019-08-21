@@ -345,96 +345,6 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(const String &p_path, aiScen
 	return state.root;
 }
 
-void EditorSceneImporterAssimp::_insert_pivot_anim_track(ImportState &state, const String p_node_name, Vector<AssimpAnim> F, int p_bake_fps, float ticks_per_second, Ref<Animation> animation) {
-	Vector<Vector3> pos_values;
-	Vector<float> pos_times;
-	Vector<Vector3> scale_values;
-	Vector<float> scale_times;
-	Vector<Quat> rot_values;
-	Vector<float> rot_times;
-	Vector3 base_pos;
-	Quat base_rot;
-	bool is_translation = false;
-	bool is_rotation = false;
-	bool is_scaling = false;
-	for (int32_t k = 0; k < F.size(); k++) {
-		String p_track_type = AssimpUtils::get_assimp_string(F[k].node_anim->mNodeName).split(ASSIMP_FBX_KEY)[1];
-		if (p_track_type == "_Translation") {
-			is_translation = is_translation || true;
-		} else if (p_track_type == "_Rotation") {
-			is_rotation = is_rotation || true;
-		} else if (p_track_type == "_Scaling") {
-			is_scaling = is_scaling || true;
-		} else {
-			continue;
-		}
-
-		for (size_t p = 0; p < F[k].node_anim->mNumPositionKeys; p++) {
-			aiVector3D pos = F[k].node_anim->mPositionKeys[p].mValue;
-			pos_values.push_back(Vector3(pos.x, pos.y, pos.z));
-			pos_times.push_back(F[k].node_anim->mPositionKeys[p].mTime / ticks_per_second);
-		}
-
-		for (size_t r = 0; r < F[k].node_anim->mNumRotationKeys; r++) {
-			aiQuaternion quat = F[k].node_anim->mRotationKeys[r].mValue;
-			rot_values.push_back(Quat(quat.x, quat.y, quat.z, quat.w).normalized());
-			rot_times.push_back(F[k].node_anim->mRotationKeys[r].mTime / ticks_per_second);
-		}
-
-		for (size_t sc = 0; sc < F[k].node_anim->mNumScalingKeys; sc++) {
-			aiVector3D scale = F[k].node_anim->mScalingKeys[sc].mValue;
-			scale_values.push_back(Vector3(scale.x, scale.y, scale.z));
-			scale_times.push_back(F[k].node_anim->mScalingKeys[sc].mTime / ticks_per_second);
-		}
-	}
-	int32_t track_idx = animation->get_track_count();
-	animation->add_track(Animation::TYPE_TRANSFORM);
-
-	NodePath node_path;
-	ERR_FAIL_COND(F.size() == 0);
-	bool is_bone = F[0].skeleton->find_bone(p_node_name) != -1;
-	if (!is_bone) {
-		Node *node = state.root->find_node(p_node_name);
-		ERR_FAIL_COND(!node);
-		const String path = state.root->get_path_to(node);
-		node_path = path;
-	} else {
-		const String path = state.root->get_path_to(F[0].skeleton);
-		node_path = path + ":" + p_node_name;
-	}
-	ERR_FAIL_COND(node_path.is_empty());
-	animation->track_set_path(track_idx, node_path);
-	float increment = 1.0 / float(p_bake_fps);
-	float time = 0.0;
-	bool last = false;
-	while (true) {
-		Vector3 pos = Vector3();
-		Quat rot = Quat();
-		Vector3 scale = Vector3(1.0f, 1.0f, 1.0f);
-		if (pos_values.size()) {
-			pos = _interpolate_track<Vector3>(pos_times, pos_values, time, AssetImportAnimation::INTERP_LINEAR);
-		}
-		if (rot_values.size()) {
-			rot = _interpolate_track<Quat>(rot_times, rot_values, time, AssetImportAnimation::INTERP_LINEAR).normalized();
-		}
-		if (scale_values.size()) {
-			scale = _interpolate_track<Vector3>(scale_times, scale_values, time, AssetImportAnimation::INTERP_LINEAR);
-		}
-
-		animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
-		animation->transform_track_insert_key(track_idx, time, pos, rot, scale);
-
-		if (last) {
-			break;
-		}
-		time += increment;
-		if (time >= animation->get_length()) {
-			last = true;
-			time = animation->get_length();
-		}
-	}
-}
-
 void EditorSceneImporterAssimp::_insert_animation_track(ImportState &scene, const aiAnimation *assimp_anim, int p_track, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, Skeleton *p_skeleton, const NodePath &p_path, const String &p_name) {
 
 	const aiNodeAnim *assimp_track = assimp_anim->mChannels[p_track];
@@ -590,58 +500,6 @@ void EditorSceneImporterAssimp::_import_animation(ImportState &state, int p_anim
 
 			_insert_animation_track(state, anim, i, p_bake_fps, animation, ticks_per_second, skeleton, node_path, node_name);
 		}
-	}
-	Map<String, Vector<AssimpAnim> > pivot_tracks;
-
-	for (size_t i = 0; i < anim->mNumChannels; i++) {
-		const aiNodeAnim *track = anim->mChannels[i];
-		String node_name = AssimpUtils::get_assimp_string(track->mNodeName);
-
-		if (track->mNumRotationKeys == 0 && track->mNumPositionKeys == 0 && track->mNumScalingKeys == 0) {
-			continue; //do not bother
-		}
-		if (node_name.split(ASSIMP_FBX_KEY).size() == 1) {
-			continue;
-		}
- 
-		// todo: let's get rid of bone owners and node_map if possible?
-		// todo: fix the mesh path
-		// todo: fix bug with disappearing mesh
-
-		for (Map<Skeleton *, const Node *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
-			Skeleton *skeleton = key_value_pair->key();
-			AssimpAnim anim_skeleton;
-			anim_skeleton = {track, skeleton};
-			bool is_bone = skeleton->find_bone(node_name) != -1;
-			//print_verbose("Bone " + node_name + " is bone? " + (is_bone ? "Yes" : "No"));
-			NodePath node_path;
-
-			if (is_bone) {
-				String path = state.root->get_path_to(skeleton);
-				path += ":" + node_name;
-				node_path = path;
-			} else {
-				ERR_CONTINUE(!state.node_map.has(node_name));
-				Node *node = state.node_map[node_name];
-				node_path = state.root->get_path_to(node);
-			}
-
-			String bone_name = node_name.split(ASSIMP_FBX_KEY)[0];
-			String p_track_type = node_name.split(ASSIMP_FBX_KEY)[1];
-			Map<String, Vector<AssimpAnim> >::Element *E = pivot_tracks.find(bone_name);
-			Vector<AssimpAnim> ai_tracks;
-			if (E) {
-				ai_tracks = E->get();
-				ai_tracks.push_back(anim_skeleton);
-			} else {
-				ai_tracks.push_back(anim_skeleton);
-			}
-			pivot_tracks.insert(bone_name, ai_tracks);
-		}
-	}
-
-	for (Map<String, Vector<AssimpAnim> >::Element *F = pivot_tracks.front(); F; F = F->next()) {
-		_insert_pivot_anim_track(state, F->key(), F->get(), p_bake_fps, ticks_per_second, animation);
 	}
 
 	//blend shape tracks
@@ -1361,7 +1219,7 @@ Ref<Mesh> EditorSceneImporterAssimp::_generate_mesh_from_surface_indices(ImportS
 				PoolVector3Array normals;
 				normals.resize(num_vertices);
 				for (size_t l = 0; l < num_vertices; l++) {
-					const aiVector3D ai_normal = ai_mesh->mAnimMeshes[j]->mNormals[l];
+					const aiVector3D ai_normal = ai_mesh->mAnimMeshes[i]->mNormals[l];
 					Vector3 normal = Vector3(ai_normal.x, ai_normal.y, ai_normal.z);
 					normals.write()[l] = normal;
 				}

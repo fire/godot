@@ -176,11 +176,6 @@ private:
 		const aiNode *node;
 	};
 
-	struct AssimpAnim {
-		const aiNodeAnim *node_anim;
-		Skeleton *skeleton;
-	};
-
 	void _calc_tangent_from_mesh(const aiMesh *ai_mesh, int i, int tri_index, int index, PoolColorArray::Write &w);
 	void _set_texture_mapping_mode(aiTextureMapMode *map_mode, Ref<Texture> texture);
 
@@ -200,7 +195,6 @@ private:
 	void _generate_node(ImportState &state, Skeleton *skeleton, const aiNode *assimp_node, Node *parent_node);
 	// runs after _generate_node as it must then use pre-created godot skeleton.
 	void generate_mesh_phase_from_skeletal_mesh(ImportState &state, const aiNode *assimp_node, Node *parent_node);
-	void _insert_pivot_anim_track(ImportState &state, const String p_node_name, Vector<AssimpAnim> F, int p_bake_fps, float ticks_per_second, Ref<Animation> animation);
 	void _insert_animation_track(ImportState &scene, const aiAnimation *assimp_anim, int p_track, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, Skeleton *p_skeleton, const NodePath &p_path, const String &p_name);
 
 	void _import_animation(ImportState &state, int p_animation_index, int p_bake_fps);
