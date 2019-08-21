@@ -110,7 +110,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 	std::string s_path(w_path.begin(), w_path.end());
 	importer.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true);
 	// Cannot remove pivot points because the static mesh will be in the wrong place
-	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true);
 	int32_t max_bone_weights = 4;
 	//if (p_flags & IMPORT_ANIMATION_EIGHT_WEIGHTS) {
 	//	const int eight_bones = 8;
@@ -138,7 +138,7 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 								 aiProcess_GenUVCoords |
 								 //aiProcess_FindDegenerates |
 								 aiProcess_SortByPType |
-								 aiProcess_FindInvalidData |
+								// aiProcess_FindInvalidData |
 								 aiProcess_TransformUVCoords |
 								 aiProcess_FindInstances |
 								 //aiProcess_FixInfacingNormals |
@@ -318,7 +318,7 @@ Spatial *EditorSceneImporterAssimp::_generate_scene(const String &p_path, aiScen
 		}
 
 		// finalize skeleton
-		for (Map<Skeleton *, const Node *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
+		for (Map<Skeleton *, const Spatial *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
 			Skeleton *skeleton = key_value_pair->key();
 			// convert world to local for skeleton bone rests
 			skeleton->localize_rests();
@@ -481,7 +481,7 @@ void EditorSceneImporterAssimp::_import_animation(ImportState &state, int p_anim
 		// todo: fix the mesh path
 		// todo: fix bug with disappearing mesh
 
-		for (Map<Skeleton *, const Node *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
+		for (Map<Skeleton *, const Spatial *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
 			Skeleton *skeleton = key_value_pair->key();
 
 			bool is_bone = skeleton->find_bone(node_name) != -1;
@@ -1341,22 +1341,32 @@ void EditorSceneImporterAssimp::create_mesh(ImportState &state, RecursiveState &
 		state.mesh_cache[mesh_key] = mesh;
 	}
 
+	Transform transform = recursive_state.node_transform;
+
+	// we must unfortunately overwrite mesh and skeleton transform with armature data
+	if(skeleton != NULL)
+	{
+		print_verbose("Applying mesh and skeleton to armature");
+		// required for blender, maya etc
+		Map<Skeleton*, const Spatial*>::Element *match = state.armature_skeletons.find(skeleton);
+		transform = match->value()->get_transform();
+	}
+
 	MeshInstance *mesh_node = memnew(MeshInstance);
 	mesh = state.mesh_cache[mesh_key];
 	mesh_node->set_mesh(mesh);
 	recursive_state.new_node = mesh_node;
 
-	// attach new node - done slightly differently since new_node is not in use here.
 	attach_new_node(state,
 			recursive_state.new_node,
 			recursive_state.assimp_node,
 			recursive_state.parent_node,
 			recursive_state.node_name,
-			recursive_state.node_transform);
+			transform);
 
 	// set this once and for all
 	if (skeleton != NULL) {
-		skeleton->set_transform(recursive_state.node_transform);
+		skeleton->set_transform(transform);
 
 		// must be done after added to tree
 		mesh_node->set_skeleton_path(mesh_node->get_path_to(skeleton));
@@ -1527,7 +1537,7 @@ void EditorSceneImporterAssimp::create_bone(ImportState &state, RecursiveState &
 	// prevent more than one skeleton existing per mesh
 	// * multiple root bones have this
 	// * this simply filters the node out if it has already been added then references the skeleton so we know the actual skeleton for this node
-	for (Map<Skeleton *, const Node *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
+	for (Map<Skeleton *, const Spatial *>::Element *key_value_pair = state.armature_skeletons.front(); key_value_pair; key_value_pair = key_value_pair->next()) {
 		if (key_value_pair->value() == recursive_state.parent_node) {
 			// apply the skeleton for this mesh
 			recursive_state.skeleton = key_value_pair->key();
@@ -1556,7 +1566,8 @@ void EditorSceneImporterAssimp::create_bone(ImportState &state, RecursiveState &
 
 		print_verbose("Parent armature node is called " + recursive_state.parent_node->get_name());
 		// store root node for this skeleton / used in animation playback and bone detection.
-		state.armature_skeletons.insert(recursive_state.skeleton, recursive_state.parent_node);
+		
+		state.armature_skeletons.insert(recursive_state.skeleton, Object::cast_to<Spatial>(recursive_state.parent_node));
 
 		//skeleton->set_use_bones_in_world_transform(true);
 		print_verbose("Created new FBX skeleton for armature node");

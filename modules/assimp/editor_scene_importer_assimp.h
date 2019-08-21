@@ -126,7 +126,7 @@ private:
 		Map<String, int> light_cache;
 		Map<String, int> camera_cache;
 		//Vector<Skeleton *> skeletons;
-		Map<Skeleton *, const Node *> armature_skeletons; // maps skeletons based on their armature nodes.
+		Map<Skeleton *, const Spatial *> armature_skeletons; // maps skeletons based on their armature nodes.
 		Map<const aiBone *, Skeleton *> bone_to_skeleton_lookup; // maps bones back into their skeleton
 		// very useful for when you need to ask assimp for the bone mesh
 		Map<String, Node *> node_map;
