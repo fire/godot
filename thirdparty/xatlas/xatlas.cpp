@@ -98,12 +98,19 @@ Copyright (c) 2012 Brandon Pelfrey
 #define XA_NEW(tag, type) new (XA_ALLOC(tag, type)) type()
 #define XA_NEW_ARGS(tag, type, ...) new (XA_ALLOC(tag, type)) type(__VA_ARGS__)
 
+#ifdef _MSC_VER
+#define XA_INLINE __forceinline
+#else
+#define XA_INLINE inline
+#endif
+
 #define XA_UNUSED(a) ((void)(a))
 
 #define XA_GROW_CHARTS_COPLANAR 1
 #define XA_MERGE_CHARTS 1
 #define XA_MERGE_CHARTS_MIN_NORMAL_DEVIATION 0.5f
 #define XA_RECOMPUTE_CHARTS 1
+#define XA_SKIP_PARAMETERIZATION 0 // Use the orthogonal parameterization from segment::Atlas
 #define XA_CLOSE_HOLES_CHECK_EDGE_INTERSECTION 0
 
 #define XA_DEBUG_HEAP 0
@@ -318,11 +325,15 @@ struct ProfileData
 	std::atomic<clock_t> addMeshCreateChartGroupsThread;
 	clock_t computeChartsReal;
 	std::atomic<clock_t> computeChartsThread;
-	std::atomic<clock_t> atlasBuilder;
-	std::atomic<clock_t> atlasBuilderInit;
-	std::atomic<clock_t> atlasBuilderCreateInitialCharts;
-	std::atomic<clock_t> atlasBuilderGrowCharts;
-	std::atomic<clock_t> atlasBuilderMergeCharts;
+	std::atomic<clock_t> buildAtlas;
+	std::atomic<clock_t> buildAtlasInit;
+	std::atomic<clock_t> buildAtlasPlaceSeeds;
+	std::atomic<clock_t> buildAtlasUpdateProxies;
+	std::atomic<clock_t> buildAtlasRelocateSeeds;
+	std::atomic<clock_t> buildAtlasResetCharts;
+	std::atomic<clock_t> buildAtlasGrowCharts;
+	std::atomic<clock_t> buildAtlasMergeCharts;
+	std::atomic<clock_t> buildAtlasFillHoles;
 	std::atomic<clock_t> createChartMeshesReal;
 	std::atomic<clock_t> createChartMeshesThread;
 	std::atomic<clock_t> fixChartMeshTJunctions;
@@ -968,7 +979,7 @@ struct ArrayBase
 		XA_FREE(buffer);
 	}
 
-	void clear()
+	XA_INLINE void clear()
 	{
 		size = 0;
 	}
@@ -1085,31 +1096,31 @@ public:
 	Array(const Array&) = delete;
 	const Array &operator=(const Array &) = delete;
 
-	const T &operator[](uint32_t index) const
+	XA_INLINE const T &operator[](uint32_t index) const
 	{
 		XA_DEBUG_ASSERT(index < m_base.size);
 		return ((const T *)m_base.buffer)[index];
 	}
 
-	T &operator[](uint32_t index)
+	XA_INLINE T &operator[](uint32_t index)
 	{
 		XA_DEBUG_ASSERT(index < m_base.size);
 		return ((T *)m_base.buffer)[index];
 	}
 
-	const T &back() const
+	XA_INLINE const T &back() const
 	{
 		XA_DEBUG_ASSERT(!isEmpty());
 		return ((const T *)m_base.buffer)[m_base.size - 1];
 	}
 
-	T *begin() { return (T *)m_base.buffer; }
-	void clear() { m_base.clear(); }
+	XA_INLINE T *begin() { return (T *)m_base.buffer; }
+	XA_INLINE void clear() { m_base.clear(); }
 	void copyTo(Array &other) const { m_base.copyTo(other.m_base); }
-	const T *data() const { return (const T *)m_base.buffer; }
-	T *data() { return (T *)m_base.buffer; }
-	T *end() { return (T *)m_base.buffer + m_base.size; }
-	bool isEmpty() const { return m_base.size == 0; }
+	XA_INLINE const T *data() const { return (const T *)m_base.buffer; }
+	XA_INLINE T *data() { return (T *)m_base.buffer; }
+	XA_INLINE T *end() { return (T *)m_base.buffer + m_base.size; }
+	XA_INLINE bool isEmpty() const { return m_base.size == 0; }
 	void insertAt(uint32_t index, const T &value) { m_base.insertAt(index, (const uint8_t *)&value); }
 	void moveTo(Array &other) { m_base.moveTo(other.m_base); }
 	void push_back(const T &value) { m_base.push_back((const uint8_t *)&value); }
@@ -1125,8 +1136,8 @@ public:
 			buffer[i] = value;
 	}
 
-	uint32_t size() const { return m_base.size; }
-	void zeroOutMemory() { memset(m_base.buffer, 0, m_base.elementSize * m_base.size); }
+	XA_INLINE uint32_t size() const { return m_base.size; }
+	XA_INLINE void zeroOutMemory() { memset(m_base.buffer, 0, m_base.elementSize * m_base.size); }
 
 private:
 	ArrayBase m_base;
@@ -1684,9 +1695,9 @@ public:
 	FullVector(uint32_t dim) { m_array.resize(dim); }
 	FullVector(const FullVector &v) { v.m_array.copyTo(m_array); }
 	const FullVector &operator=(const FullVector &v) = delete;
-	uint32_t dimension() const { return m_array.size(); }
-	const float &operator[](uint32_t index) const { return m_array[index]; }
-	float &operator[](uint32_t index) { return m_array[index]; }
+	XA_INLINE uint32_t dimension() const { return m_array.size(); }
+	XA_INLINE const float &operator[](uint32_t index) const { return m_array[index]; }
+	XA_INLINE float &operator[](uint32_t index) { return m_array[index]; }
 
 	void fill(float f)
 	{
@@ -2724,24 +2735,24 @@ public:
 		return false;
 	}
 
-	float epsilon() const { return m_epsilon; }
-	uint32_t edgeCount() const { return m_indices.size(); }
-	uint32_t oppositeEdge(uint32_t edge) const { return m_oppositeEdges[edge]; }
-	bool isBoundaryEdge(uint32_t edge) const { return m_oppositeEdges[edge] == UINT32_MAX; }
-	bool isBoundaryVertex(uint32_t vertex) const { return m_boundaryVertices[vertex]; }
-	uint32_t colocalVertexCount() const { return m_colocalVertexCount; }
-	uint32_t vertexCount() const { return m_positions.size(); }
-	uint32_t vertexAt(uint32_t i) const { return m_indices[i]; }
-	const Vector3 &position(uint32_t vertex) const { return m_positions[vertex]; }
-	const Vector3 &normal(uint32_t vertex) const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasNormals); return m_normals[vertex]; }
-	const Vector2 &texcoord(uint32_t vertex) const { return m_texcoords[vertex]; }
-	Vector2 &texcoord(uint32_t vertex) { return m_texcoords[vertex]; }
-	Vector2 *texcoords() { return m_texcoords.data(); }
-	uint32_t faceCount() const { return m_indices.size() / 3; }
-	uint32_t faceGroupCount() const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasFaceGroups); return m_faceGroups.size(); }
-	uint32_t faceGroupAt(uint32_t face) const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasFaceGroups); return m_faceGroups[face]; }
-	const uint32_t *indices() const { return m_indices.data(); }
-	uint32_t indexCount() const { return m_indices.size(); }
+	XA_INLINE float epsilon() const { return m_epsilon; }
+	XA_INLINE uint32_t edgeCount() const { return m_indices.size(); }
+	XA_INLINE uint32_t oppositeEdge(uint32_t edge) const { return m_oppositeEdges[edge]; }
+	XA_INLINE bool isBoundaryEdge(uint32_t edge) const { return m_oppositeEdges[edge] == UINT32_MAX; }
+	XA_INLINE bool isBoundaryVertex(uint32_t vertex) const { return m_boundaryVertices[vertex]; }
+	XA_INLINE uint32_t colocalVertexCount() const { return m_colocalVertexCount; }
+	XA_INLINE uint32_t vertexCount() const { return m_positions.size(); }
+	XA_INLINE uint32_t vertexAt(uint32_t i) const { return m_indices[i]; }
+	XA_INLINE const Vector3 &position(uint32_t vertex) const { return m_positions[vertex]; }
+	XA_INLINE const Vector3 &normal(uint32_t vertex) const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasNormals); return m_normals[vertex]; }
+	XA_INLINE const Vector2 &texcoord(uint32_t vertex) const { return m_texcoords[vertex]; }
+	XA_INLINE Vector2 &texcoord(uint32_t vertex) { return m_texcoords[vertex]; }
+	XA_INLINE Vector2 *texcoords() { return m_texcoords.data(); }
+	XA_INLINE uint32_t faceCount() const { return m_indices.size() / 3; }
+	XA_INLINE uint32_t faceGroupCount() const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasFaceGroups); return m_faceGroups.size(); }
+	XA_INLINE uint32_t faceGroupAt(uint32_t face) const { XA_DEBUG_ASSERT(m_flags & MeshFlags::HasFaceGroups); return m_faceGroups[face]; }
+	XA_INLINE const uint32_t *indices() const { return m_indices.data(); }
+	XA_INLINE uint32_t indexCount() const { return m_indices.size(); }
 
 private:
 	bool isFaceIgnored(uint32_t face) const { return (m_flags & MeshFlags::HasIgnoredFaces) && m_faceIgnore[face]; }
@@ -4205,6 +4216,838 @@ static void mult(const Matrix &A, const Matrix &B, Matrix &C)
 
 } // namespace sparse
 
+namespace segment {
+
+// Dummy implementation of a priority queue using sort at insertion.
+// - Insertion is o(n)
+// - Smallest element goes at the end, so that popping it is o(1).
+// - Resorting is n*log(n)
+// @@ Number of elements in the queue is usually small, and we'd have to rebalance often. I'm not sure it's worth implementing a heap.
+// @@ Searcing at removal would remove the need for sorting when priorities change.
+struct PriorityQueue
+{
+	PriorityQueue(uint32_t size = UINT32_MAX) : maxSize(size) {}
+
+	void push(float priority, uint32_t face)
+	{
+		uint32_t i = 0;
+		const uint32_t count = pairs.size();
+		for (; i < count; i++) {
+			if (pairs[i].priority > priority) break;
+		}
+		Pair p = { priority, face };
+		pairs.insertAt(i, p);
+		if (pairs.size() > maxSize)
+			pairs.removeAt(0);
+	}
+
+	// push face out of order, to be sorted later.
+	void push(uint32_t face)
+	{
+		Pair p = { 0.0f, face };
+		pairs.push_back(p);
+	}
+
+	uint32_t pop()
+	{
+		XA_DEBUG_ASSERT(!pairs.isEmpty());
+		uint32_t f = pairs.back().face;
+		pairs.pop_back();
+		return f;
+	}
+
+	void sort()
+	{
+		//sort(pairs); // @@ My intro sort appears to be much slower than it should!
+		std::sort(pairs.begin(), pairs.end());
+	}
+
+	XA_INLINE void clear()
+	{
+		pairs.clear();
+	}
+
+	XA_INLINE uint32_t count() const
+	{
+		return pairs.size();
+	}
+
+	float firstPriority() const
+	{
+		return pairs.back().priority;
+	}
+
+	const uint32_t maxSize;
+
+	struct Pair
+	{
+		bool operator<(const Pair &p) const
+		{
+			return priority > p.priority;    // !! Sort in inverse priority order!
+		}
+
+		float priority;
+		uint32_t face;
+	};
+
+	Array<Pair> pairs;
+};
+
+struct Chart
+{
+	int id = -1;
+	Vector3 averageNormal = Vector3(0.0f);
+	float area = 0.0f;
+	float boundaryLength = 0.0f;
+	Vector3 normalSum = Vector3(0.0f);
+	Vector3 centroidSum = Vector3(0.0f); // Sum of chart face centroids.
+	Vector3 centroid = Vector3(0.0f); // Average centroid of chart faces.
+	Array<uint32_t> seeds;
+	Array<uint32_t> faces;
+	PriorityQueue candidates;
+	Basis basis; // Of first face.
+};
+
+struct Atlas
+{
+	// @@ Hardcoded to 10?
+	Atlas(const Mesh *mesh, Array<uint32_t> *meshFaces, const ChartOptions &options) : m_mesh(mesh), m_meshFaces(meshFaces), m_facesLeft(mesh->faceCount()), m_bestTriangles(10), m_options(options)
+	{
+		XA_PROFILE_START(buildAtlasInit)
+		const uint32_t faceCount = m_mesh->faceCount();
+		if (meshFaces) {
+			m_ignoreFaces.resize(faceCount);
+			m_ignoreFaces.setAll(true);
+			for (uint32_t f = 0; f < meshFaces->size(); f++)
+				m_ignoreFaces[(*meshFaces)[f]] = false;
+			m_facesLeft = meshFaces->size();
+		} else {
+			m_ignoreFaces.resize(faceCount);
+			m_ignoreFaces.setAll(false);
+		}
+		m_faceChartArray.resize(faceCount);
+		m_faceChartArray.setAll(-1);
+		m_faceCandidateCharts.resize(faceCount);
+		m_faceCandidateCosts.resize(faceCount);
+		m_texcoords.resize(faceCount * 3);
+		// @@ Floyd for the whole mesh is too slow. We could compute floyd progressively per patch as the patch grows. We need a better solution to compute most central faces.
+		//computeShortestPaths();
+		// Precompute edge lengths and face areas.
+		const uint32_t edgeCount = m_mesh->edgeCount();
+		m_edgeLengths.resize(edgeCount);
+		m_edgeLengths.zeroOutMemory();
+		m_faceAreas.resize(m_mesh->faceCount());
+		m_faceAreas.zeroOutMemory();
+		m_faceNormals.resize(m_mesh->faceCount());
+		for (uint32_t f = 0; f < faceCount; f++) {
+			if (m_ignoreFaces[f])
+				continue;
+			for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+				m_edgeLengths[it.edge()] = internal::length(it.position1() - it.position0());
+				XA_DEBUG_ASSERT(m_edgeLengths[it.edge()] > 0.0f);
+			}
+			m_faceAreas[f] = mesh->faceArea(f);
+			XA_DEBUG_ASSERT(m_faceAreas[f] > 0.0f);
+			m_faceNormals[f] = m_mesh->triangleNormal(f);
+		}
+		XA_PROFILE_END(buildAtlasInit)
+	}
+
+	~Atlas()
+	{
+		const uint32_t chartCount = m_chartArray.size();
+		for (uint32_t i = 0; i < chartCount; i++) {
+			m_chartArray[i]->~Chart();
+			XA_FREE(m_chartArray[i]);
+		}
+	}
+
+	uint32_t facesLeft() const { return m_facesLeft; }
+	uint32_t chartCount() const { return m_chartArray.size(); }
+	const Array<uint32_t> &chartFaces(uint32_t i) const { return m_chartArray[i]->faces; }
+	const Basis &chartBasis(uint32_t chartIndex) const { return m_chartArray[chartIndex]->basis; }
+	const Vector2 *faceTexcoords(uint32_t face) const { return &m_texcoords[face * 3]; }
+
+	void placeSeeds(float threshold)
+	{
+		XA_PROFILE_START(buildAtlasPlaceSeeds)
+		// Instead of using a predefiened number of seeds:
+		// - Add seeds one by one, growing chart until a certain treshold.
+		// - Undo charts and restart growing process.
+		// @@ How can we give preference to faces far from sharp features as in the LSCM paper?
+		//   - those points can be found using a simple flood filling algorithm.
+		//   - how do we weight the probabilities?
+		while (m_facesLeft > 0)
+			createRandomChart(threshold);
+		XA_PROFILE_END(buildAtlasPlaceSeeds)
+	}
+
+	// Returns true if any of the charts can grow more.
+	bool growCharts(float threshold)
+	{
+		XA_PROFILE_START(buildAtlasGrowCharts)
+		// Build global candidate list.
+		m_faceCandidateCharts.zeroOutMemory();
+		for (uint32_t i = 0; i < m_chartArray.size(); i++)
+			addChartCandidateToGlobalCandidates(m_chartArray[i]);
+		// Add one candidate face per chart (threshold permitting).
+		const uint32_t faceCount = m_mesh->faceCount();
+		bool canAddAny = false;
+		for (uint32_t f = 0; f < faceCount; f++) {
+			Chart *chart = m_faceCandidateCharts[f];
+			if (!chart || m_faceCandidateCosts[f] > threshold)
+				continue;
+			createFaceTexcoords(chart, f);
+			if (!canAddFaceToChart(chart, f))
+				continue;
+			addFaceToChart(chart, f);
+			canAddAny = true;
+		}
+		XA_PROFILE_END(buildAtlasGrowCharts)
+		return canAddAny && m_facesLeft != 0; // Can continue growing.
+	}
+
+	void resetCharts()
+	{
+		XA_PROFILE_START(buildAtlasResetCharts)
+		const uint32_t faceCount = m_mesh->faceCount();
+		for (uint32_t i = 0; i < faceCount; i++)
+			m_faceChartArray[i] = -1;
+		m_facesLeft = m_meshFaces ? m_meshFaces->size() : faceCount;
+		const uint32_t chartCount = m_chartArray.size();
+		for (uint32_t i = 0; i < chartCount; i++) {
+			Chart *chart = m_chartArray[i];
+			const uint32_t seed = chart->seeds.back();
+			chart->area = 0.0f;
+			chart->boundaryLength = 0.0f;
+			chart->normalSum = Vector3(0.0f);
+			chart->centroidSum = Vector3(0.0f);
+			chart->centroid = Vector3(0.0f);
+			chart->faces.clear();
+			chart->candidates.clear();
+			addFaceToChart(chart, seed);
+		}
+#if XA_GROW_CHARTS_COPLANAR
+		for (uint32_t i = 0; i < chartCount; i++) {
+			Chart *chart = m_chartArray[i];
+			growChartCoplanar(chart);
+		}
+#endif
+		XA_PROFILE_END(buildAtlasResetCharts)
+	}
+
+	void updateChartCandidates(Chart *chart, uint32_t f)
+	{
+		// Traverse neighboring faces, add the ones that do not belong to any chart yet.
+		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+			if (!it.isBoundary() && !m_ignoreFaces[it.oppositeFace()] && m_faceChartArray[it.oppositeFace()] == -1)
+				chart->candidates.push(it.oppositeFace());
+		}
+		// Re-evaluate all candidate priorities.
+		uint32_t candidateCount = chart->candidates.count();
+		for (uint32_t i = 0; i < candidateCount; i++) {
+			PriorityQueue::Pair &pair = chart->candidates.pairs[i];
+			pair.priority = evaluateCost(chart, pair.face);
+		}
+		chart->candidates.sort();
+	}
+
+	void updateProxies()
+	{
+		XA_PROFILE_START(buildAtlasUpdateProxies)
+		const uint32_t chartCount = m_chartArray.size();
+		for (uint32_t i = 0; i < chartCount; i++)
+			updateProxy(m_chartArray[i]);
+		XA_PROFILE_END(buildAtlasUpdateProxies)
+	}
+
+	bool relocateSeeds()
+	{
+		XA_PROFILE_START(buildAtlasRelocateSeeds)
+		bool anySeedChanged = false;
+		const uint32_t chartCount = m_chartArray.size();
+		for (uint32_t i = 0; i < chartCount; i++) {
+			if (relocateSeed(m_chartArray[i])) {
+				anySeedChanged = true;
+			}
+		}
+		XA_PROFILE_END(buildAtlasRelocateSeeds)
+		return anySeedChanged;
+	}
+
+	void fillHoles(float threshold)
+	{
+		XA_PROFILE_START(buildAtlasFillHoles)
+		while (m_facesLeft > 0)
+			createRandomChart(threshold);
+		XA_PROFILE_END(buildAtlasFillHoles)
+	}
+
+#if XA_MERGE_CHARTS
+	void mergeCharts()
+	{
+		XA_PROFILE_START(buildAtlasMergeCharts)
+		Array<float> sharedBoundaryLengths;
+		Array<float> sharedBoundaryLengthsNoSeams;
+		Array<uint32_t> sharedBoundaryEdgeCountNoSeams;
+		Array<Vector2> tempTexcoords;
+		const uint32_t chartCount = m_chartArray.size();
+		// Merge charts progressively until there's none left to merge.
+		for (;;) {
+			bool merged = false;
+			for (int c = chartCount - 1; c >= 0; c--) {
+				Chart *chart = m_chartArray[c];
+				if (chart == nullptr)
+					continue;
+				float externalBoundaryLength = 0.0f;
+				sharedBoundaryLengths.clear();
+				sharedBoundaryLengths.resize(chartCount);
+				sharedBoundaryLengths.zeroOutMemory();
+				sharedBoundaryLengthsNoSeams.clear();
+				sharedBoundaryLengthsNoSeams.resize(chartCount);
+				sharedBoundaryLengthsNoSeams.zeroOutMemory();
+				sharedBoundaryEdgeCountNoSeams.clear();
+				sharedBoundaryEdgeCountNoSeams.resize(chartCount);
+				sharedBoundaryEdgeCountNoSeams.zeroOutMemory();
+				const uint32_t faceCount = chart->faces.size();
+				for (uint32_t i = 0; i < faceCount; i++) {
+					const uint32_t f = chart->faces[i];
+					for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+						const float l = m_edgeLengths[it.edge()];
+						if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
+							externalBoundaryLength += l;
+						} else {
+							const int neighborChart = m_faceChartArray[it.oppositeFace()];
+							if (m_chartArray[neighborChart] != chart) {
+								if ((it.isSeam() && (isNormalSeam(it.edge()) || it.isTextureSeam()))) {
+									externalBoundaryLength += l;
+								} else {
+									sharedBoundaryLengths[neighborChart] += l;
+								}
+								sharedBoundaryLengthsNoSeams[neighborChart] += l;
+								sharedBoundaryEdgeCountNoSeams[neighborChart]++;
+							}
+						}
+					}
+				}
+				for (int cc = chartCount - 1; cc >= 0; cc--) {
+					if (cc == c)
+						continue;
+					Chart *chart2 = m_chartArray[cc];
+					if (chart2 == nullptr)
+						continue;
+					// Compare proxies.
+					if (dot(chart2->averageNormal, chart->averageNormal) < XA_MERGE_CHARTS_MIN_NORMAL_DEVIATION)
+						continue;
+					// Obey max chart area and boundary length.
+					if (m_options.maxChartArea > 0.0f && chart->area + chart2->area > m_options.maxChartArea)
+						continue;
+					if (m_options.maxBoundaryLength > 0.0f && chart->boundaryLength + chart2->boundaryLength - sharedBoundaryLengthsNoSeams[cc] > m_options.maxBoundaryLength)
+						continue;
+					// Merge if chart2 has a single face.
+					// chart1 must have more than 1 face.
+					// chart2 area must be <= 10% of chart1 area.
+					if (sharedBoundaryLengthsNoSeams[cc] > 0.0f && chart->faces.size() > 1 && chart2->faces.size() == 1 && chart2->area <= chart->area * 0.1f) 
+						goto merge;
+					// Merge if chart2 has two faces (probably a quad), and chart1 bounds at least 2 of its edges.
+					if (chart2->faces.size() == 2 && sharedBoundaryEdgeCountNoSeams[cc] >= 2)
+						goto merge;
+					// Merge if chart2 is wholely inside chart1, ignoring seams.
+					if (sharedBoundaryLengthsNoSeams[cc] > 0.0f && equal(sharedBoundaryLengthsNoSeams[cc], chart2->boundaryLength, kEpsilon))
+						goto merge;
+					if (sharedBoundaryLengths[cc] > 0.2f * max(0.0f, chart->boundaryLength - externalBoundaryLength) || 
+						sharedBoundaryLengths[cc] > 0.75f * chart2->boundaryLength)
+						goto merge;
+					continue;
+				merge:
+					// Create texcoords for chart 2 using chart 1 basis. Backup chart 2 texcoords for restoration if charts cannot be merged.
+					tempTexcoords.resize(chart2->faces.size() * 3);
+					for (uint32_t i = 0; i < chart2->faces.size(); i++) {
+						const uint32_t face = chart2->faces[i];
+						for (uint32_t j = 0; j < 3; j++)
+							tempTexcoords[i * 3 + j] = m_texcoords[face * 3 + j];
+						createFaceTexcoords(chart, face);
+					}
+					if (!canMergeCharts(chart, chart2)) {
+						// Restore chart 2 texcoords.
+						for (uint32_t i = 0; i < chart2->faces.size(); i++) {
+							for (uint32_t j = 0; j < 3; j++)
+								m_texcoords[chart2->faces[i] * 3 + j] = tempTexcoords[i * 3 + j];
+						}
+						continue;
+					}
+					mergeChart(chart, chart2, sharedBoundaryLengthsNoSeams[cc]);
+					merged = true;
+					break;
+				}
+				if (merged)
+					break;
+			}
+			if (!merged)
+				break;
+		}
+		// Remove deleted charts.
+		for (int c = 0; c < int32_t(m_chartArray.size()); /*do not increment if removed*/) {
+			if (m_chartArray[c] == nullptr) {
+				m_chartArray.removeAt(c);
+				// Update m_faceChartArray.
+				const uint32_t faceCount = m_faceChartArray.size();
+				for (uint32_t i = 0; i < faceCount; i++) {
+					XA_DEBUG_ASSERT(m_faceChartArray[i] != c);
+					XA_DEBUG_ASSERT(m_faceChartArray[i] <= int32_t(m_chartArray.size()));
+					if (m_faceChartArray[i] > c) {
+						m_faceChartArray[i]--;
+					}
+				}
+			} else {
+				m_chartArray[c]->id = c;
+				c++;
+			}
+		}
+		XA_PROFILE_END(buildAtlasMergeCharts)
+	}
+#endif
+
+private:
+	void createRandomChart(float threshold)
+	{
+		Chart *chart = XA_NEW(MemTag::Default, Chart);
+		chart->id = (int)m_chartArray.size();
+		m_chartArray.push_back(chart);
+		// Pick random face that is not used by any chart yet.
+		uint32_t face = m_rand.getRange(m_mesh->faceCount() - 1);
+		while (m_ignoreFaces[face] || m_faceChartArray[face] != -1) {
+			if (++face >= m_mesh->faceCount())
+				face = 0;
+		}
+		chart->seeds.push_back(face);
+		addFaceToChart(chart, face, true);
+#if XA_GROW_CHARTS_COPLANAR
+		growChartCoplanar(chart);
+#endif
+		// Grow the chart as much as possible within the given threshold.
+		for (uint32_t i = 0; i < m_facesLeft; ) {
+			if (chart->candidates.count() == 0 || chart->candidates.firstPriority() > threshold)
+				break;
+			const uint32_t f = chart->candidates.pop();
+			if (m_faceChartArray[f] != -1)
+				continue;
+			createFaceTexcoords(chart, f);
+			if (!canAddFaceToChart(chart, f))
+				continue;
+			addFaceToChart(chart, f);
+			i++;
+		}
+	}
+
+	void addChartCandidateToGlobalCandidates(Chart *chart)
+	{
+		if (chart->candidates.count() == 0)
+			return;
+		const float cost = chart->candidates.firstPriority();
+		const uint32_t face = chart->candidates.pop();
+		if (m_faceChartArray[face] != -1) {
+			addChartCandidateToGlobalCandidates(chart);
+		} else if (!m_faceCandidateCharts[face]) {
+			// No candidate assigned to this face yet.
+			m_faceCandidateCharts[face] = chart;
+			m_faceCandidateCosts[face] = cost;
+		} else {
+			if (cost < m_faceCandidateCosts[face]) {
+				// This is a better candidate for this face (lower cost). The other chart can choose another candidate.
+				Chart *otherChart = m_faceCandidateCharts[face];
+				m_faceCandidateCharts[face] = chart;
+				m_faceCandidateCosts[face] = cost;
+				addChartCandidateToGlobalCandidates(otherChart);
+			} else {
+				// Existing candidate is better. This chart can choose another candidate.
+				addChartCandidateToGlobalCandidates(chart);
+			}
+		}
+	}
+
+	void createFaceTexcoords(Chart *chart, uint32_t face)
+	{
+		for (uint32_t i = 0; i < 3; i++) {
+			const Vector3 &pos = m_mesh->position(m_mesh->vertexAt(face * 3 + i));
+			m_texcoords[face * 3 + i] = Vector2(dot(chart->basis.tangent, pos), dot(chart->basis.bitangent, pos));
+		}
+	}
+
+	bool isChartBoundaryEdge(Chart *chart, uint32_t edge) const
+	{
+		const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
+		const uint32_t oppositeFace = meshEdgeFace(oppositeEdge);
+		return oppositeEdge == UINT32_MAX || m_ignoreFaces[oppositeFace] || m_faceChartArray[oppositeFace] != chart->id;
+	}
+
+	bool canAddFaceToChart(Chart *chart, uint32_t face)
+	{
+		// Find face edges that are on a mesh boundary or form a boundary with another chart.
+		uint32_t edgesToCompare[3];
+		for (uint32_t i = 0; i < 3; i++) {
+			const uint32_t edge = face * 3 + i;
+			const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
+			const uint32_t oppositeFace = meshEdgeFace(oppositeEdge);
+			if (oppositeEdge == UINT32_MAX || m_ignoreFaces[oppositeFace] || m_faceChartArray[oppositeFace] != chart->id)
+				edgesToCompare[i] = edge;
+			else
+				edgesToCompare[i] = UINT32_MAX;
+		}
+		// All edges on boundary? This can happen if the face is surrounded by the chart.
+		if (edgesToCompare[0] == UINT32_MAX && edgesToCompare[1] == UINT32_MAX && edgesToCompare[2] == UINT32_MAX)
+			return true;
+		// Check if any valid face edge intersects the chart boundary.
+		for (uint32_t i = 0; i < chart->faces.size(); i++) {
+			const uint32_t chartFace = chart->faces[i];
+			for (uint32_t j = 0; j < 3; j++) {
+				const uint32_t chartEdge = chartFace * 3 + j;
+				if (!isChartBoundaryEdge(chart, chartEdge))
+					continue;
+				// Don't check chart boundary edges that border the face.
+				const uint32_t oppositeChartEdge = m_mesh->oppositeEdge(chartEdge);
+				if (meshEdgeFace(oppositeChartEdge) == face)
+					continue;
+				for (uint32_t k = 0; k < 3; k++) {
+					if (edgesToCompare[k] == UINT32_MAX)
+						continue;
+					const uint32_t e1 = chartEdge;
+					const uint32_t e2 = edgesToCompare[k];
+					if (linesIntersect(m_texcoords[meshEdgeIndex0(e1)], m_texcoords[meshEdgeIndex1(e1)], m_texcoords[meshEdgeIndex0(e2)], m_texcoords[meshEdgeIndex1(e2)], m_mesh->epsilon()))
+						return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	bool canMergeCharts(Chart *chart1, Chart *chart2)
+	{
+		for (uint32_t f1 = 0; f1 < chart1->faces.size(); f1++) {
+			const uint32_t face1 = chart1->faces[f1];
+			for (uint32_t i = 0; i < 3; i++) {
+				const uint32_t edge1 = face1 * 3 + i;
+				if (!isChartBoundaryEdge(chart1, edge1))
+					continue;
+				for (uint32_t f2 = 0; f2 < chart2->faces.size(); f2++) {
+					const uint32_t face2 = chart2->faces[f2];
+					for (uint32_t j = 0; j < 3; j++) {
+						const uint32_t edge2 = face2 * 3 + j;
+						if (!isChartBoundaryEdge(chart2, edge2))
+							continue;
+						if (linesIntersect(m_texcoords[meshEdgeIndex0(edge1)], m_texcoords[meshEdgeIndex1(edge1)], m_texcoords[meshEdgeIndex0(edge2)], m_texcoords[meshEdgeIndex1(edge2)], m_mesh->epsilon()))
+							return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	void addFaceToChart(Chart *chart, uint32_t f, bool recomputeProxy = false)
+	{
+		// Use the first face normal as the chart basis.
+		if (chart->faces.isEmpty()) {
+			chart->basis.buildFrameForDirection(m_faceNormals[f]);
+			createFaceTexcoords(chart, f);
+		}
+		// Add face to chart.
+		chart->faces.push_back(f);
+		XA_DEBUG_ASSERT(m_faceChartArray[f] == -1);
+		m_faceChartArray[f] = chart->id;
+		m_facesLeft--;
+		// Update area and boundary length.
+		chart->area = chart->area + m_faceAreas[f];
+		chart->boundaryLength = computeBoundaryLength(chart, f);
+		chart->normalSum += m_mesh->triangleNormalAreaScaled(f);
+		chart->centroidSum += m_mesh->triangleCenter(f);
+		if (recomputeProxy) {
+			// Update proxy and candidate's priorities.
+			updateProxy(chart);
+		}
+		// Update candidates.
+		updateChartCandidates(chart, f);
+	}
+
+#if XA_GROW_CHARTS_COPLANAR
+	void growChartCoplanar(Chart *chart)
+	{
+		XA_DEBUG_ASSERT(!chart->faces.isEmpty());
+		const Vector3 chartNormal = m_faceNormals[chart->faces[0]];
+		m_growFaces.clear();
+		for (uint32_t f = 0; f < chart->faces.size(); f++)
+			m_growFaces.push_back(chart->faces[f]);
+		for (;;) {
+			if (m_growFaces.isEmpty())
+				break;
+			const uint32_t face = m_growFaces.back();
+			m_growFaces.pop_back();
+			for (Mesh::FaceEdgeIterator it(m_mesh, face); !it.isDone(); it.advance()) {
+				if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()] || m_faceChartArray[it.oppositeFace()] != -1)
+					continue;
+				if (equal(dot(chartNormal, m_faceNormals[it.oppositeFace()]), 1.0f, kEpsilon)) {
+					createFaceTexcoords(chart, it.oppositeFace());
+					addFaceToChart(chart, it.oppositeFace());
+					m_growFaces.push_back(it.oppositeFace());
+				}
+			}
+		}
+	}
+#endif
+
+	void updateProxy(Chart *chart) const
+	{
+		//#pragma message(NV_FILE_LINE "TODO: Use best fit plane instead of average normal.")
+		chart->averageNormal = normalizeSafe(chart->normalSum, Vector3(0), 0.0f);
+		chart->centroid = chart->centroidSum / float(chart->faces.size());
+	}
+
+	bool relocateSeed(Chart *chart)
+	{
+		// Find the first N triangles that fit the proxy best.
+		const uint32_t faceCount = chart->faces.size();
+		m_bestTriangles.clear();
+		for (uint32_t i = 0; i < faceCount; i++) {
+			float priority = evaluateProxyFitMetric(chart, chart->faces[i]);
+			m_bestTriangles.push(priority, chart->faces[i]);
+		}
+		// Of those, choose the least central triangle.
+		uint32_t leastCentral = 0;
+		float maxDistance = -1;
+		const uint32_t bestCount = m_bestTriangles.count();
+		for (uint32_t i = 0; i < bestCount; i++) {
+			Vector3 faceCentroid = m_mesh->triangleCenter(m_bestTriangles.pairs[i].face);
+			float distance = length(chart->centroid - faceCentroid);
+			if (distance > maxDistance) {
+				maxDistance = distance;
+				leastCentral = m_bestTriangles.pairs[i].face;
+			}
+		}
+		XA_DEBUG_ASSERT(maxDistance >= 0);
+		// In order to prevent k-means cyles we record all the previously chosen seeds.
+		for (uint32_t i = 0; i < chart->seeds.size(); i++) {
+			if (chart->seeds[i] == leastCentral) {
+				// Move new seed to the end of the seed array.
+				uint32_t last = chart->seeds.size() - 1;
+				swap(chart->seeds[i], chart->seeds[last]);
+				return false;
+			}
+		}
+		// Append new seed.
+		chart->seeds.push_back(leastCentral);
+		return true;
+	}
+
+	// Evaluate combined metric.
+	float evaluateCost(Chart *chart, uint32_t face) const
+	{
+		// Estimate boundary length and area:
+		const float newChartArea = chart->area + m_faceAreas[face];
+		const float newBoundaryLength = computeBoundaryLength(chart, face);
+		// Enforce limits strictly:
+		if (m_options.maxChartArea > 0.0f && newChartArea > m_options.maxChartArea)
+			return FLT_MAX;
+		if (m_options.maxBoundaryLength > 0.0f && newBoundaryLength > m_options.maxBoundaryLength)
+			return FLT_MAX;
+		if (dot(m_faceNormals[face], chart->averageNormal) < 0.5f)
+			return FLT_MAX;
+		// Penalize faces that cross seams, reward faces that close seams or reach boundaries.
+		// Make sure normal seams are fully respected:
+		const float N = evaluateNormalSeamMetric(chart, face);
+		if (m_options.normalSeamMetricWeight >= 1000.0f && N > 0.0f)
+			return FLT_MAX;
+		float cost = m_options.normalSeamMetricWeight * N;
+		if (m_options.proxyFitMetricWeight > 0.0f)
+			cost += m_options.proxyFitMetricWeight * evaluateProxyFitMetric(chart, face);
+		if (m_options.roundnessMetricWeight > 0.0f)
+			cost += m_options.roundnessMetricWeight * evaluateRoundnessMetric(chart, face, newBoundaryLength, newChartArea);
+		if (m_options.straightnessMetricWeight > 0.0f)
+			cost += m_options.straightnessMetricWeight * evaluateStraightnessMetric(chart, face);
+		if (m_options.textureSeamMetricWeight > 0.0f)
+			cost += m_options.textureSeamMetricWeight * evaluateTextureSeamMetric(chart, face);
+		//float R = evaluateCompletenessMetric(chart, face);
+		//float D = evaluateDihedralAngleMetric(chart, face);
+		// @@ Add a metric based on local dihedral angle.
+		// @@ Tweaking the normal and texture seam metrics.
+		// - Cause more impedance. Never cross 90 degree edges.
+		XA_DEBUG_ASSERT(isFinite(cost));
+		return cost;
+	}
+
+	// Returns a value in [0-1].
+	float evaluateProxyFitMetric(Chart *chart, uint32_t f) const
+	{
+		const Vector3 faceNormal = m_faceNormals[f];
+		// Use plane fitting metric for now:
+		return 1 - dot(faceNormal, chart->averageNormal); // @@ normal deviations should be weighted by face area
+	}
+
+	float evaluateRoundnessMetric(Chart *chart, uint32_t /*face*/, float newBoundaryLength, float newChartArea) const
+	{
+		float roundness = square(chart->boundaryLength) / chart->area;
+		float newRoundness = square(newBoundaryLength) / newChartArea;
+		if (newRoundness > roundness) {
+			return square(newBoundaryLength) / (newChartArea * 4.0f * kPi);
+		} else {
+			// Offer no impedance to faces that improve roundness.
+			return 0;
+		}
+	}
+
+	float evaluateStraightnessMetric(Chart *chart, uint32_t f) const
+	{
+		float l_out = 0.0f;
+		float l_in = 0.0f;
+		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+			float l = m_edgeLengths[it.edge()];
+			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
+				l_out += l;
+			} else {
+				if (m_faceChartArray[it.oppositeFace()] != chart->id) {
+					l_out += l;
+				} else {
+					l_in += l;
+				}
+			}
+		}
+		XA_DEBUG_ASSERT(l_in != 0.0f); // Candidate face must be adjacent to chart. @@ This is not true if the input mesh has zero-length edges.
+		float ratio = (l_out - l_in) / (l_out + l_in);
+		return min(ratio, 0.0f); // Only use the straightness metric to close gaps.
+	}
+
+	bool isNormalSeam(uint32_t edge) const
+	{
+		const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
+		if (oppositeEdge == UINT32_MAX)
+			return false; // boundary edge
+		if (m_mesh->flags() & MeshFlags::HasNormals) {
+			const uint32_t v0 = m_mesh->vertexAt(meshEdgeIndex0(edge));
+			const uint32_t v1 = m_mesh->vertexAt(meshEdgeIndex1(edge));
+			const uint32_t ov0 = m_mesh->vertexAt(meshEdgeIndex0(oppositeEdge));
+			const uint32_t ov1 = m_mesh->vertexAt(meshEdgeIndex1(oppositeEdge));
+			return m_mesh->normal(v0) != m_mesh->normal(ov1) || m_mesh->normal(v1) != m_mesh->normal(ov0);
+		}
+		return m_faceNormals[meshEdgeFace(edge)] != m_faceNormals[meshEdgeFace(oppositeEdge)];
+	}
+
+	float evaluateNormalSeamMetric(Chart *chart, uint32_t f) const
+	{
+		float seamFactor = 0.0f;
+		float totalLength = 0.0f;
+		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()])
+				continue;
+			if (m_faceChartArray[it.oppositeFace()] != chart->id)
+				continue;
+			float l = m_edgeLengths[it.edge()];
+			totalLength += l;
+			if (!it.isSeam())
+				continue;
+			// Make sure it's a normal seam.
+			if (isNormalSeam(it.edge())) {
+				float d;
+				if (m_mesh->flags() & MeshFlags::HasNormals) {
+					const Vector3 &n0 = m_mesh->normal(it.vertex0());
+					const Vector3 &n1 = m_mesh->normal(it.vertex1());
+					const Vector3 &on0 = m_mesh->normal(m_mesh->vertexAt(meshEdgeIndex0(it.oppositeEdge())));
+					const Vector3 &on1 = m_mesh->normal(m_mesh->vertexAt(meshEdgeIndex1(it.oppositeEdge())));
+					const float d0 = clamp(dot(n0, on1), 0.0f, 1.0f);
+					const float d1 = clamp(dot(n1, on0), 0.0f, 1.0f);
+					d = (d0 + d1) * 0.5f;
+				} else {
+					d = clamp(dot(m_faceNormals[f], m_faceNormals[meshEdgeFace(it.oppositeEdge())]), 0.0f, 1.0f);
+				}
+				l *= 1 - d;
+				seamFactor += l;
+			}
+		}
+		if (seamFactor <= 0.0f)
+			return 0.0f;
+		return seamFactor / totalLength;
+	}
+
+	float evaluateTextureSeamMetric(Chart *chart, uint32_t f) const
+	{
+		float seamLength = 0.0f;
+		float totalLength = 0.0f;
+		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()])
+				continue;
+			if (m_faceChartArray[it.oppositeFace()] != chart->id)
+				continue;
+			float l = m_edgeLengths[it.edge()];
+			totalLength += l;
+			if (!it.isSeam())
+				continue;
+			// Make sure it's a texture seam.
+			if (it.isTextureSeam())
+				seamLength += l;
+		}
+		if (seamLength == 0.0f)
+			return 0.0f; // Avoid division by zero.
+		return seamLength / totalLength;
+	}
+
+	float computeBoundaryLength(Chart *chart, uint32_t f) const
+	{
+		float boundaryLength = chart->boundaryLength;
+		// Add new edges, subtract edges shared with the chart.
+		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
+			const float edgeLength = m_edgeLengths[it.edge()];
+			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
+				boundaryLength += edgeLength;
+			} else {
+				if (m_faceChartArray[it.oppositeFace()] != chart->id)
+					boundaryLength += edgeLength;
+				else
+					boundaryLength -= edgeLength;
+			}
+		}
+		return max(0.0f, boundaryLength);  // @@ Hack!
+	}
+
+	void mergeChart(Chart *owner, Chart *chart, float sharedBoundaryLength)
+	{
+		const uint32_t faceCount = chart->faces.size();
+		for (uint32_t i = 0; i < faceCount; i++) {
+			uint32_t f = chart->faces[i];
+			XA_DEBUG_ASSERT(m_faceChartArray[f] == chart->id);
+			m_faceChartArray[f] = owner->id;
+			owner->faces.push_back(f);
+		}
+		// Update adjacencies?
+		owner->area += chart->area;
+		owner->boundaryLength += chart->boundaryLength - sharedBoundaryLength;
+		owner->normalSum += chart->normalSum;
+		updateProxy(owner);
+		// Delete chart.
+		m_chartArray[chart->id] = nullptr;
+		chart->~Chart();
+		XA_FREE(chart);
+	}
+
+	const Mesh *m_mesh;
+	const Array<uint32_t> *m_meshFaces;
+	Array<bool> m_ignoreFaces;
+	Array<float> m_edgeLengths;
+	Array<float> m_faceAreas;
+	Array<Vector3> m_faceNormals;
+	Array<Vector2> m_texcoords;
+	Array<uint32_t> m_growFaces;
+	uint32_t m_facesLeft;
+	Array<int> m_faceChartArray;
+	Array<Chart *> m_chartArray;
+	PriorityQueue m_bestTriangles;
+	KISSRng m_rand;
+	ChartOptions m_options;
+	Array<Chart *> m_faceCandidateCharts;
+	Array<float> m_faceCandidateCosts;
+};
+
+} // namespace segment
+
+namespace param {
+
 class JacobiPreconditioner
 {
 public:
@@ -4391,7 +5234,7 @@ private:
 			// x = alfa·p + x
 			sparse::saxpy(alpha, p, x);
 			if ((i & 31) == 0) { // recompute r after 32 steps
-				// r = b - A·x
+									// r = b - A·x
 				sparse::copy(b, r);
 				sparse::sgemv(-1, A, x, 1, r);
 			} else {
@@ -4419,8 +5262,6 @@ private:
 		return ConjugateGradientSolver(jacobi, A, b, x, epsilon);
 	}
 };
-
-namespace param {
 
 // Fast sweep in 3 directions
 static bool findApproximateDiameterVertices(Mesh *mesh, uint32_t *a, uint32_t *b)
@@ -4628,882 +5469,6 @@ static bool computeOrthogonalProjectionMap(Mesh *mesh)
 	return true;
 }
 
-// Dummy implementation of a priority queue using sort at insertion.
-// - Insertion is o(n)
-// - Smallest element goes at the end, so that popping it is o(1).
-// - Resorting is n*log(n)
-// @@ Number of elements in the queue is usually small, and we'd have to rebalance often. I'm not sure it's worth implementing a heap.
-// @@ Searcing at removal would remove the need for sorting when priorities change.
-struct PriorityQueue
-{
-	PriorityQueue(uint32_t size = UINT32_MAX) : maxSize(size) {}
-
-	void push(float priority, uint32_t face)
-	{
-		uint32_t i = 0;
-		const uint32_t count = pairs.size();
-		for (; i < count; i++) {
-			if (pairs[i].priority > priority) break;
-		}
-		Pair p = { priority, face };
-		pairs.insertAt(i, p);
-		if (pairs.size() > maxSize)
-			pairs.removeAt(0);
-	}
-
-	// push face out of order, to be sorted later.
-	void push(uint32_t face)
-	{
-		Pair p = { 0.0f, face };
-		pairs.push_back(p);
-	}
-
-	uint32_t pop()
-	{
-		XA_DEBUG_ASSERT(!pairs.isEmpty());
-		uint32_t f = pairs.back().face;
-		pairs.pop_back();
-		return f;
-	}
-
-	void sort()
-	{
-		//sort(pairs); // @@ My intro sort appears to be much slower than it should!
-		std::sort(pairs.begin(), pairs.end());
-	}
-
-	void clear()
-	{
-		pairs.clear();
-	}
-
-	uint32_t count() const
-	{
-		return pairs.size();
-	}
-
-	float firstPriority() const
-	{
-		return pairs.back().priority;
-	}
-
-	const uint32_t maxSize;
-
-	struct Pair
-	{
-		bool operator<(const Pair &p) const
-		{
-			return priority > p.priority;    // !! Sort in inverse priority order!
-		}
-
-		float priority;
-		uint32_t face;
-	};
-
-	Array<Pair> pairs;
-};
-
-struct ChartBuildData
-{
-	int id = -1;
-	Vector3 averageNormal = Vector3(0.0f);
-	float area = 0.0f;
-	float boundaryLength = 0.0f;
-	Vector3 normalSum = Vector3(0.0f);
-	Vector3 centroidSum = Vector3(0.0f); // Sum of chart face centroids.
-	Vector3 centroid = Vector3(0.0f); // Average centroid of chart faces.
-	Array<uint32_t> seeds;
-	Array<uint32_t> faces;
-	PriorityQueue candidates;
-	Basis basis; // Of first face.
-};
-
-struct AtlasBuilder
-{
-	// @@ Hardcoded to 10?
-	AtlasBuilder(const Mesh *mesh, Array<uint32_t> *meshFaces, const ChartOptions &options) : m_mesh(mesh), m_meshFaces(meshFaces), m_facesLeft(mesh->faceCount()), m_bestTriangles(10), m_options(options)
-	{
-		XA_PROFILE_START(atlasBuilderInit)
-		const uint32_t faceCount = m_mesh->faceCount();
-		if (meshFaces) {
-			m_ignoreFaces.resize(faceCount);
-			m_ignoreFaces.setAll(true);
-			for (uint32_t f = 0; f < meshFaces->size(); f++)
-				m_ignoreFaces[(*meshFaces)[f]] = false;
-			m_facesLeft = meshFaces->size();
-		} else {
-			m_ignoreFaces.resize(faceCount);
-			m_ignoreFaces.setAll(false);
-		}
-		m_faceChartArray.resize(faceCount);
-		m_faceChartArray.setAll(-1);
-		m_faceCandidateArray.resize(faceCount);
-		m_faceCandidateArray.setAll((uint32_t)-1);
-		m_texcoords.resize(faceCount * 3);
-		// @@ Floyd for the whole mesh is too slow. We could compute floyd progressively per patch as the patch grows. We need a better solution to compute most central faces.
-		//computeShortestPaths();
-		// Precompute edge lengths and face areas.
-		const uint32_t edgeCount = m_mesh->edgeCount();
-		m_edgeLengths.resize(edgeCount);
-		m_edgeLengths.zeroOutMemory();
-		m_faceAreas.resize(m_mesh->faceCount());
-		m_faceAreas.zeroOutMemory();
-		m_faceNormals.resize(m_mesh->faceCount());
-		for (uint32_t f = 0; f < faceCount; f++) {
-			if (m_ignoreFaces[f])
-				continue;
-			for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-				m_edgeLengths[it.edge()] = internal::length(it.position1() - it.position0());
-				XA_DEBUG_ASSERT(m_edgeLengths[it.edge()] > 0.0f);
-			}
-			m_faceAreas[f] = mesh->faceArea(f);
-			XA_DEBUG_ASSERT(m_faceAreas[f] > 0.0f);
-			m_faceNormals[f] = m_mesh->triangleNormal(f);
-		}
-		XA_PROFILE_END(atlasBuilderInit)
-	}
-
-	~AtlasBuilder()
-	{
-		const uint32_t chartCount = m_chartArray.size();
-		for (uint32_t i = 0; i < chartCount; i++) {
-			m_chartArray[i]->~ChartBuildData();
-			XA_FREE(m_chartArray[i]);
-		}
-	}
-
-	uint32_t facesLeft() const { return m_facesLeft; }
-	uint32_t chartCount() const { return m_chartArray.size(); }
-	const Array<uint32_t> &chartFaces(uint32_t i) const { return m_chartArray[i]->faces; }
-	const Basis &chartBasis(uint32_t chartIndex) const { return m_chartArray[chartIndex]->basis; }
-
-	void placeSeeds(float threshold)
-	{
-		// Instead of using a predefiened number of seeds:
-		// - Add seeds one by one, growing chart until a certain treshold.
-		// - Undo charts and restart growing process.
-		// @@ How can we give preference to faces far from sharp features as in the LSCM paper?
-		//   - those points can be found using a simple flood filling algorithm.
-		//   - how do we weight the probabilities?
-		while (m_facesLeft > 0)
-			createRandomChart(threshold);
-	}
-
-	// Returns true if any of the charts can grow more.
-	bool growCharts(float threshold, uint32_t faceCount)
-	{
-		XA_PROFILE_START(atlasBuilderGrowCharts)
-		// Using one global list.
-		faceCount = min(faceCount, m_facesLeft);
-		bool canAddAny = false;
-		for (uint32_t i = 0; i < faceCount; i++) {
-			const Candidate &candidate = getBestCandidate();
-			if (candidate.metric > threshold) {
-				XA_PROFILE_END(atlasBuilderGrowCharts)
-				return false; // Can't grow more.
-			}
-			createFaceTexcoords(candidate.chart, candidate.face);
-			if (!canAddFaceToChart(candidate.chart, candidate.face))
-				continue;
-			addFaceToChart(candidate.chart, candidate.face);
-			canAddAny = true;
-		}
-		XA_PROFILE_END(atlasBuilderGrowCharts)
-		return canAddAny && m_facesLeft != 0; // Can continue growing.
-	}
-
-	void resetCharts()
-	{
-		const uint32_t faceCount = m_mesh->faceCount();
-		for (uint32_t i = 0; i < faceCount; i++) {
-			m_faceChartArray[i] = -1;
-			m_faceCandidateArray[i] = (uint32_t)-1;
-		}
-		m_facesLeft = m_meshFaces ? m_meshFaces->size() : faceCount;
-		m_candidateArray.clear();
-		const uint32_t chartCount = m_chartArray.size();
-		for (uint32_t i = 0; i < chartCount; i++) {
-			ChartBuildData *chart = m_chartArray[i];
-			const uint32_t seed = chart->seeds.back();
-			chart->area = 0.0f;
-			chart->boundaryLength = 0.0f;
-			chart->normalSum = Vector3(0.0f);
-			chart->centroidSum = Vector3(0.0f);
-			chart->centroid = Vector3(0.0f);
-			chart->faces.clear();
-			chart->candidates.clear();
-			addFaceToChart(chart, seed);
-		}
-#if XA_GROW_CHARTS_COPLANAR
-		for (uint32_t i = 0; i < chartCount; i++) {
-			ChartBuildData *chart = m_chartArray[i];
-			growChartCoplanar(chart);
-		}
-#endif
-	}
-
-	void updateCandidates(ChartBuildData *chart, uint32_t f)
-	{
-		// Traverse neighboring faces, add the ones that do not belong to any chart yet.
-		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-			if (!it.isBoundary() && !m_ignoreFaces[it.oppositeFace()] && m_faceChartArray[it.oppositeFace()] == -1)
-				chart->candidates.push(it.oppositeFace());
-		}
-	}
-
-	void updateProxies()
-	{
-		const uint32_t chartCount = m_chartArray.size();
-		for (uint32_t i = 0; i < chartCount; i++)
-			updateProxy(m_chartArray[i]);
-	}
-
-	bool relocateSeeds()
-	{
-		bool anySeedChanged = false;
-		const uint32_t chartCount = m_chartArray.size();
-		for (uint32_t i = 0; i < chartCount; i++) {
-			if (relocateSeed(m_chartArray[i])) {
-				anySeedChanged = true;
-			}
-		}
-		return anySeedChanged;
-	}
-
-	void fillHoles(float threshold)
-	{
-		while (m_facesLeft > 0)
-			createRandomChart(threshold);
-	}
-
-#if XA_MERGE_CHARTS
-	void mergeCharts()
-	{
-		XA_PROFILE_START(atlasBuilderMergeCharts)
-		Array<float> sharedBoundaryLengths;
-		Array<float> sharedBoundaryLengthsNoSeams;
-		Array<uint32_t> sharedBoundaryEdgeCountNoSeams;
-		Array<Vector2> tempTexcoords;
-		const uint32_t chartCount = m_chartArray.size();
-		// Merge charts progressively until there's none left to merge.
-		for (;;) {
-			bool merged = false;
-			for (int c = chartCount - 1; c >= 0; c--) {
-				ChartBuildData *chart = m_chartArray[c];
-				if (chart == nullptr)
-					continue;
-				float externalBoundaryLength = 0.0f;
-				sharedBoundaryLengths.clear();
-				sharedBoundaryLengths.resize(chartCount);
-				sharedBoundaryLengths.zeroOutMemory();
-				sharedBoundaryLengthsNoSeams.clear();
-				sharedBoundaryLengthsNoSeams.resize(chartCount);
-				sharedBoundaryLengthsNoSeams.zeroOutMemory();
-				sharedBoundaryEdgeCountNoSeams.clear();
-				sharedBoundaryEdgeCountNoSeams.resize(chartCount);
-				sharedBoundaryEdgeCountNoSeams.zeroOutMemory();
-				const uint32_t faceCount = chart->faces.size();
-				for (uint32_t i = 0; i < faceCount; i++) {
-					const uint32_t f = chart->faces[i];
-					for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-						const float l = m_edgeLengths[it.edge()];
-						if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
-							externalBoundaryLength += l;
-						} else {
-							const int neighborChart = m_faceChartArray[it.oppositeFace()];
-							if (m_chartArray[neighborChart] != chart) {
-								if ((it.isSeam() && (isNormalSeam(it.edge()) || it.isTextureSeam()))) {
-									externalBoundaryLength += l;
-								} else {
-									sharedBoundaryLengths[neighborChart] += l;
-								}
-								sharedBoundaryLengthsNoSeams[neighborChart] += l;
-								sharedBoundaryEdgeCountNoSeams[neighborChart]++;
-							}
-						}
-					}
-				}
-				for (int cc = chartCount - 1; cc >= 0; cc--) {
-					if (cc == c)
-						continue;
-					ChartBuildData *chart2 = m_chartArray[cc];
-					if (chart2 == nullptr)
-						continue;
-					// Compare proxies.
-					if (dot(chart2->averageNormal, chart->averageNormal) < XA_MERGE_CHARTS_MIN_NORMAL_DEVIATION)
-						continue;
-					// Obey max chart area and boundary length.
-					if (m_options.maxChartArea > 0.0f && chart->area + chart2->area > m_options.maxChartArea)
-						continue;
-					if (m_options.maxBoundaryLength > 0.0f && chart->boundaryLength + chart2->boundaryLength - sharedBoundaryLengthsNoSeams[cc] > m_options.maxBoundaryLength)
-						continue;
-					// Merge if chart2 has a single face.
-					// chart1 must have more than 1 face.
-					// chart2 area must be <= 10% of chart1 area.
-					if (sharedBoundaryLengthsNoSeams[cc] > 0.0f && chart->faces.size() > 1 && chart2->faces.size() == 1 && chart2->area <= chart->area * 0.1f) 
-						goto merge;
-					// Merge if chart2 has two faces (probably a quad), and chart1 bounds at least 2 of its edges.
-					if (chart2->faces.size() == 2 && sharedBoundaryEdgeCountNoSeams[cc] >= 2)
-						goto merge;
-					// Merge if chart2 is wholely inside chart1, ignoring seams.
-					if (sharedBoundaryLengthsNoSeams[cc] > 0.0f && equal(sharedBoundaryLengthsNoSeams[cc], chart2->boundaryLength, kEpsilon))
-						goto merge;
-					if (sharedBoundaryLengths[cc] > 0.2f * max(0.0f, chart->boundaryLength - externalBoundaryLength) || 
-						sharedBoundaryLengths[cc] > 0.75f * chart2->boundaryLength)
-						goto merge;
-					continue;
-				merge:
-					// Create texcoords for chart 2 using chart 1 basis. Backup chart 2 texcoords for restoration if charts cannot be merged.
-					tempTexcoords.resize(chart2->faces.size());
-					for (uint32_t i = 0; i < chart2->faces.size(); i++) {
-						const uint32_t face = chart2->faces[i];
-						tempTexcoords[i] = m_texcoords[face];
-						createFaceTexcoords(chart, face);
-					}
-					if (!canMergeCharts(chart, chart2)) {
-						// Restore chart 2 texcoords.
-						for (uint32_t i = 0; i < chart2->faces.size(); i++)
-							m_texcoords[chart2->faces[i]] = tempTexcoords[i];
-						continue;
-					}
-					mergeChart(chart, chart2, sharedBoundaryLengthsNoSeams[cc]);
-					merged = true;
-					break;
-				}
-				if (merged)
-					break;
-			}
-			if (!merged)
-				break;
-		}
-		// Remove deleted charts.
-		for (int c = 0; c < int32_t(m_chartArray.size()); /*do not increment if removed*/) {
-			if (m_chartArray[c] == nullptr) {
-				m_chartArray.removeAt(c);
-				// Update m_faceChartArray.
-				const uint32_t faceCount = m_faceChartArray.size();
-				for (uint32_t i = 0; i < faceCount; i++) {
-					XA_DEBUG_ASSERT(m_faceChartArray[i] != c);
-					XA_DEBUG_ASSERT(m_faceChartArray[i] <= int32_t(m_chartArray.size()));
-					if (m_faceChartArray[i] > c) {
-						m_faceChartArray[i]--;
-					}
-				}
-			} else {
-				m_chartArray[c]->id = c;
-				c++;
-			}
-		}
-		XA_PROFILE_END(atlasBuilderMergeCharts)
-	}
-#endif
-
-private:
-	void createRandomChart(float threshold)
-	{
-		ChartBuildData *chart = XA_NEW(MemTag::Default, ChartBuildData);
-		chart->id = (int)m_chartArray.size();
-		m_chartArray.push_back(chart);
-		// Pick random face that is not used by any chart yet.
-		uint32_t face = m_rand.getRange(m_mesh->faceCount() - 1);
-		while (m_ignoreFaces[face] || m_faceChartArray[face] != -1) {
-			if (++face >= m_mesh->faceCount())
-				face = 0;
-		}
-		chart->seeds.push_back(face);
-		addFaceToChart(chart, face, true);
-#if XA_GROW_CHARTS_COPLANAR
-		growChartCoplanar(chart);
-#endif
-		// Grow the chart as much as possible within the given threshold.
-		growChart(chart, threshold, m_facesLeft);
-	}
-
-	void createFaceTexcoords(ChartBuildData *chart, uint32_t face)
-	{
-		for (uint32_t i = 0; i < 3; i++) {
-			const Vector3 &pos = m_mesh->position(m_mesh->vertexAt(face * 3 + i));
-			m_texcoords[face * 3 + i] = Vector2(dot(chart->basis.tangent, pos), dot(chart->basis.bitangent, pos));
-		}
-	}
-
-	bool isChartBoundaryEdge(ChartBuildData *chart, uint32_t edge) const
-	{
-		const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
-		const uint32_t oppositeFace = meshEdgeFace(oppositeEdge);
-		return oppositeEdge == UINT32_MAX || m_ignoreFaces[oppositeFace] || m_faceChartArray[oppositeFace] != chart->id;
-	}
-
-	bool canAddFaceToChart(ChartBuildData *chart, uint32_t face)
-	{
-		// Find face edges that are on a mesh boundary or form a boundary with another chart.
-		uint32_t edgesToCompare[3];
-		for (uint32_t i = 0; i < 3; i++) {
-			const uint32_t edge = face * 3 + i;
-			const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
-			const uint32_t oppositeFace = meshEdgeFace(oppositeEdge);
-			if (oppositeEdge == UINT32_MAX || m_ignoreFaces[oppositeFace] || m_faceChartArray[oppositeFace] != chart->id)
-				edgesToCompare[i] = edge;
-			else
-				edgesToCompare[i] = UINT32_MAX;
-		}
-		// All edges on boundary? This can happen if the face is surrounded by the chart.
-		if (edgesToCompare[0] == UINT32_MAX && edgesToCompare[1] == UINT32_MAX && edgesToCompare[2] == UINT32_MAX)
-			return true;
-		// Check if any valid face edge intersects the chart boundary.
-		for (uint32_t i = 0; i < chart->faces.size(); i++) {
-			const uint32_t chartFace = chart->faces[i];
-			for (uint32_t j = 0; j < 3; j++) {
-				const uint32_t chartEdge = chartFace * 3 + j;
-				if (!isChartBoundaryEdge(chart, chartEdge))
-					continue;
-				// Don't check chart boundary edges that border the face.
-				const uint32_t oppositeChartEdge = m_mesh->oppositeEdge(chartEdge);
-				if (meshEdgeFace(oppositeChartEdge) == face)
-					continue;
-				for (uint32_t k = 0; k < 3; k++) {
-					if (edgesToCompare[k] == UINT32_MAX)
-						continue;
-					const uint32_t e1 = chartEdge;
-					const uint32_t e2 = edgesToCompare[k];
-					if (linesIntersect(m_texcoords[meshEdgeIndex0(e1)], m_texcoords[meshEdgeIndex1(e1)], m_texcoords[meshEdgeIndex0(e2)], m_texcoords[meshEdgeIndex1(e2)], m_mesh->epsilon()))
-						return false;
-				}
-			}
-		}
-		return true;
-	}
-
-	bool canMergeCharts(ChartBuildData *chart1, ChartBuildData *chart2)
-	{
-		for (uint32_t f1 = 0; f1 < chart1->faces.size(); f1++) {
-			const uint32_t face1 = chart1->faces[f1];
-			for (uint32_t i = 0; i < 3; i++) {
-				const uint32_t edge1 = face1 * 3 + i;
-				if (!isChartBoundaryEdge(chart1, edge1))
-					continue;
-				for (uint32_t f2 = 0; f2 < chart2->faces.size(); f2++) {
-					const uint32_t face2 = chart2->faces[f2];
-					for (uint32_t j = 0; j < 3; j++) {
-						const uint32_t edge2 = face2 * 3 + j;
-						if (!isChartBoundaryEdge(chart2, edge2))
-							continue;
-						if (linesIntersect(m_texcoords[meshEdgeIndex0(edge1)], m_texcoords[meshEdgeIndex1(edge1)], m_texcoords[meshEdgeIndex0(edge2)], m_texcoords[meshEdgeIndex1(edge2)], m_mesh->epsilon()))
-							return false;
-					}
-				}
-			}
-		}
-		return true;
-	}
-
-	void addFaceToChart(ChartBuildData *chart, uint32_t f, bool recomputeProxy = false)
-	{
-		// Use the first face normal as the chart basis.
-		if (chart->faces.isEmpty()) {
-			chart->basis.buildFrameForDirection(m_faceNormals[f]);
-			createFaceTexcoords(chart, f);
-		}
-		// Add face to chart.
-		chart->faces.push_back(f);
-		XA_DEBUG_ASSERT(m_faceChartArray[f] == -1);
-		m_faceChartArray[f] = chart->id;
-		m_facesLeft--;
-		// Update area and boundary length.
-		chart->area = evaluateChartArea(chart, f);
-		chart->boundaryLength = evaluateBoundaryLength(chart, f);
-		chart->normalSum = evaluateChartNormalSum(chart, f);
-		chart->centroidSum += m_mesh->triangleCenter(f);
-		if (recomputeProxy) {
-			// Update proxy and candidate's priorities.
-			updateProxy(chart);
-		}
-		// Update candidates.
-		removeCandidate(f);
-		updateCandidates(chart, f);
-		updatePriorities(chart);
-	}
-
-	bool growChart(ChartBuildData *chart, float threshold, uint32_t faceCount)
-	{
-		// Try to add faceCount faces within threshold to chart.
-		for (uint32_t i = 0; i < faceCount; ) {
-			if (chart->candidates.count() == 0 || chart->candidates.firstPriority() > threshold)
-				return false;
-			const uint32_t f = chart->candidates.pop();
-			if (m_faceChartArray[f] != -1)
-				continue;
-			createFaceTexcoords(chart, f);
-			if (!canAddFaceToChart(chart, f))
-				continue;
-			addFaceToChart(chart, f);
-			i++;
-		}
-		if (chart->candidates.count() == 0 || chart->candidates.firstPriority() > threshold)
-			return false;
-		return true;
-	}
-
-#if XA_GROW_CHARTS_COPLANAR
-	void growChartCoplanar(ChartBuildData *chart)
-	{
-		XA_DEBUG_ASSERT(!chart->faces.isEmpty());
-		const Vector3 chartNormal = m_faceNormals[chart->faces[0]];
-		m_growFaces.clear();
-		for (uint32_t f = 0; f < chart->faces.size(); f++)
-			m_growFaces.push_back(chart->faces[f]);
-		for (;;) {
-			if (m_growFaces.isEmpty())
-				break;
-			const uint32_t face = m_growFaces.back();
-			m_growFaces.pop_back();
-			for (Mesh::FaceEdgeIterator it(m_mesh, face); !it.isDone(); it.advance()) {
-				if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()] || m_faceChartArray[it.oppositeFace()] != -1)
-					continue;
-				if (equal(dot(chartNormal, m_faceNormals[it.oppositeFace()]), 1.0f, kEpsilon)) {
-					createFaceTexcoords(chart, it.oppositeFace());
-					addFaceToChart(chart, it.oppositeFace());
-					m_growFaces.push_back(it.oppositeFace());
-				}
-			}
-		}
-	}
-#endif
-
-	void updateProxy(ChartBuildData *chart) const
-	{
-		//#pragma message(NV_FILE_LINE "TODO: Use best fit plane instead of average normal.")
-		chart->averageNormal = normalizeSafe(chart->normalSum, Vector3(0), 0.0f);
-		chart->centroid = chart->centroidSum / float(chart->faces.size());
-	}
-
-	bool relocateSeed(ChartBuildData *chart)
-	{
-		// Find the first N triangles that fit the proxy best.
-		const uint32_t faceCount = chart->faces.size();
-		m_bestTriangles.clear();
-		for (uint32_t i = 0; i < faceCount; i++) {
-			float priority = evaluateProxyFitMetric(chart, chart->faces[i]);
-			m_bestTriangles.push(priority, chart->faces[i]);
-		}
-		// Of those, choose the least central triangle.
-		uint32_t leastCentral = 0;
-		float maxDistance = -1;
-		const uint32_t bestCount = m_bestTriangles.count();
-		for (uint32_t i = 0; i < bestCount; i++) {
-			Vector3 faceCentroid = m_mesh->triangleCenter(m_bestTriangles.pairs[i].face);
-			float distance = length(chart->centroid - faceCentroid);
-			if (distance > maxDistance) {
-				maxDistance = distance;
-				leastCentral = m_bestTriangles.pairs[i].face;
-			}
-		}
-		XA_DEBUG_ASSERT(maxDistance >= 0);
-		// In order to prevent k-means cyles we record all the previously chosen seeds.
-		for (uint32_t i = 0; i < chart->seeds.size(); i++) {
-			if (chart->seeds[i] == leastCentral) {
-				// Move new seed to the end of the seed array.
-				uint32_t last = chart->seeds.size() - 1;
-				swap(chart->seeds[i], chart->seeds[last]);
-				return false;
-			}
-		}
-		// Append new seed.
-		chart->seeds.push_back(leastCentral);
-		return true;
-	}
-
-	void updatePriorities(ChartBuildData *chart)
-	{
-		// Re-evaluate candidate priorities.
-		uint32_t candidateCount = chart->candidates.count();
-		for (uint32_t i = 0; i < candidateCount; i++) {
-			PriorityQueue::Pair &pair = chart->candidates.pairs[i];
-			pair.priority = evaluatePriority(chart, pair.face);
-			if (m_faceChartArray[pair.face] == -1)
-				updateCandidate(chart, pair.face, pair.priority);
-		}
-		// Sort candidates.
-		chart->candidates.sort();
-	}
-
-	// Evaluate combined metric.
-	float evaluatePriority(ChartBuildData *chart, uint32_t face) const
-	{
-		// Estimate boundary length and area:
-		const float newChartArea = evaluateChartArea(chart, face);
-		const float newBoundaryLength = evaluateBoundaryLength(chart, face);
-		// Enforce limits strictly:
-		if (m_options.maxChartArea > 0.0f && newChartArea > m_options.maxChartArea)
-			return FLT_MAX;
-		if (m_options.maxBoundaryLength > 0.0f && newBoundaryLength > m_options.maxBoundaryLength)
-			return FLT_MAX;
-		if (dot(m_faceNormals[face], chart->averageNormal) < 0.5f)
-			return FLT_MAX;
-		// Penalize faces that cross seams, reward faces that close seams or reach boundaries.
-		// Make sure normal seams are fully respected:
-		const float N = evaluateNormalSeamMetric(chart, face);
-		if (m_options.normalSeamMetricWeight >= 1000.0f && N > 0.0f)
-			return FLT_MAX;
-		float cost = m_options.normalSeamMetricWeight * N;
-		if (m_options.proxyFitMetricWeight > 0.0f)
-			cost += m_options.proxyFitMetricWeight * evaluateProxyFitMetric(chart, face);
-		if (m_options.roundnessMetricWeight > 0.0f)
-			cost += m_options.roundnessMetricWeight * evaluateRoundnessMetric(chart, face, newBoundaryLength, newChartArea);
-		if (m_options.straightnessMetricWeight > 0.0f)
-			cost += m_options.straightnessMetricWeight * evaluateStraightnessMetric(chart, face);
-		if (m_options.textureSeamMetricWeight > 0.0f)
-			cost += m_options.textureSeamMetricWeight * evaluateTextureSeamMetric(chart, face);
-		//float R = evaluateCompletenessMetric(chart, face);
-		//float D = evaluateDihedralAngleMetric(chart, face);
-		// @@ Add a metric based on local dihedral angle.
-		// @@ Tweaking the normal and texture seam metrics.
-		// - Cause more impedance. Never cross 90 degree edges.
-		XA_DEBUG_ASSERT(isFinite(cost));
-		return cost;
-	}
-
-	// Returns a value in [0-1].
-	float evaluateProxyFitMetric(ChartBuildData *chart, uint32_t f) const
-	{
-		const Vector3 faceNormal = m_faceNormals[f];
-		// Use plane fitting metric for now:
-		return 1 - dot(faceNormal, chart->averageNormal); // @@ normal deviations should be weighted by face area
-	}
-
-	float evaluateRoundnessMetric(ChartBuildData *chart, uint32_t /*face*/, float newBoundaryLength, float newChartArea) const
-	{
-		float roundness = square(chart->boundaryLength) / chart->area;
-		float newRoundness = square(newBoundaryLength) / newChartArea;
-		if (newRoundness > roundness) {
-			return square(newBoundaryLength) / (newChartArea * 4.0f * kPi);
-		} else {
-			// Offer no impedance to faces that improve roundness.
-			return 0;
-		}
-	}
-
-	float evaluateStraightnessMetric(ChartBuildData *chart, uint32_t f) const
-	{
-		float l_out = 0.0f;
-		float l_in = 0.0f;
-		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-			float l = m_edgeLengths[it.edge()];
-			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
-				l_out += l;
-			} else {
-				if (m_faceChartArray[it.oppositeFace()] != chart->id) {
-					l_out += l;
-				} else {
-					l_in += l;
-				}
-			}
-		}
-		XA_DEBUG_ASSERT(l_in != 0.0f); // Candidate face must be adjacent to chart. @@ This is not true if the input mesh has zero-length edges.
-		float ratio = (l_out - l_in) / (l_out + l_in);
-		return min(ratio, 0.0f); // Only use the straightness metric to close gaps.
-	}
-
-	bool isNormalSeam(uint32_t edge) const
-	{
-		const uint32_t oppositeEdge = m_mesh->oppositeEdge(edge);
-		if (oppositeEdge == UINT32_MAX)
-			return false; // boundary edge
-		if (m_mesh->flags() & MeshFlags::HasNormals) {
-			const uint32_t v0 = m_mesh->vertexAt(meshEdgeIndex0(edge));
-			const uint32_t v1 = m_mesh->vertexAt(meshEdgeIndex1(edge));
-			const uint32_t ov0 = m_mesh->vertexAt(meshEdgeIndex0(oppositeEdge));
-			const uint32_t ov1 = m_mesh->vertexAt(meshEdgeIndex1(oppositeEdge));
-			return m_mesh->normal(v0) != m_mesh->normal(ov1) || m_mesh->normal(v1) != m_mesh->normal(ov0);
-		}
-		return m_faceNormals[meshEdgeFace(edge)] != m_faceNormals[meshEdgeFace(oppositeEdge)];
-	}
-
-	float evaluateNormalSeamMetric(ChartBuildData *chart, uint32_t f) const
-	{
-		float seamFactor = 0.0f;
-		float totalLength = 0.0f;
-		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()])
-				continue;
-			if (m_faceChartArray[it.oppositeFace()] != chart->id)
-				continue;
-			float l = m_edgeLengths[it.edge()];
-			totalLength += l;
-			if (!it.isSeam())
-				continue;
-			// Make sure it's a normal seam.
-			if (isNormalSeam(it.edge())) {
-				float d;
-				if (m_mesh->flags() & MeshFlags::HasNormals) {
-					const Vector3 &n0 = m_mesh->normal(it.vertex0());
-					const Vector3 &n1 = m_mesh->normal(it.vertex1());
-					const Vector3 &on0 = m_mesh->normal(m_mesh->vertexAt(meshEdgeIndex0(it.oppositeEdge())));
-					const Vector3 &on1 = m_mesh->normal(m_mesh->vertexAt(meshEdgeIndex1(it.oppositeEdge())));
-					const float d0 = clamp(dot(n0, on1), 0.0f, 1.0f);
-					const float d1 = clamp(dot(n1, on0), 0.0f, 1.0f);
-					d = (d0 + d1) * 0.5f;
-				} else {
-					d = clamp(dot(m_faceNormals[f], m_faceNormals[meshEdgeFace(it.oppositeEdge())]), 0.0f, 1.0f);
-				}
-				l *= 1 - d;
-				seamFactor += l;
-			}
-		}
-		if (seamFactor <= 0.0f)
-			return 0.0f;
-		return seamFactor / totalLength;
-	}
-
-	float evaluateTextureSeamMetric(ChartBuildData *chart, uint32_t f) const
-	{
-		float seamLength = 0.0f;
-		float totalLength = 0.0f;
-		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()])
-				continue;
-			if (m_faceChartArray[it.oppositeFace()] != chart->id)
-				continue;
-			float l = m_edgeLengths[it.edge()];
-			totalLength += l;
-			if (!it.isSeam())
-				continue;
-			// Make sure it's a texture seam.
-			if (it.isTextureSeam())
-				seamLength += l;
-		}
-		if (seamLength == 0.0f)
-			return 0.0f; // Avoid division by zero.
-		return seamLength / totalLength;
-	}
-
-	float evaluateChartArea(ChartBuildData *chart, uint32_t f) const
-	{
-		return chart->area + m_faceAreas[f];
-	}
-
-	float evaluateBoundaryLength(ChartBuildData *chart, uint32_t f) const
-	{
-		float boundaryLength = chart->boundaryLength;
-		// Add new edges, subtract edges shared with the chart.
-		for (Mesh::FaceEdgeIterator it(m_mesh, f); !it.isDone(); it.advance()) {
-			const float edgeLength = m_edgeLengths[it.edge()];
-			if (it.isBoundary() || m_ignoreFaces[it.oppositeFace()]) {
-				boundaryLength += edgeLength;
-			} else {
-				if (m_faceChartArray[it.oppositeFace()] != chart->id)
-					boundaryLength += edgeLength;
-				else
-					boundaryLength -= edgeLength;
-			}
-		}
-		return max(0.0f, boundaryLength);  // @@ Hack!
-	}
-
-	Vector3 evaluateChartNormalSum(ChartBuildData *chart, uint32_t f) const
-	{
-		return chart->normalSum + m_mesh->triangleNormalAreaScaled(f);
-	}
-
-	// @@ Cleanup.
-	struct Candidate {
-		ChartBuildData *chart;
-		uint32_t face;
-		float metric;
-	};
-
-	// @@ Get N best candidates in one pass.
-	const Candidate &getBestCandidate() const
-	{
-		uint32_t best = 0;
-		float bestCandidateMetric = FLT_MAX;
-		const uint32_t candidateCount = m_candidateArray.size();
-		XA_ASSERT(candidateCount > 0);
-		for (uint32_t i = 0; i < candidateCount; i++) {
-			const Candidate &candidate = m_candidateArray[i];
-			if (candidate.metric < bestCandidateMetric) {
-				bestCandidateMetric = candidate.metric;
-				best = i;
-			}
-		}
-		return m_candidateArray[best];
-	}
-
-	void removeCandidate(uint32_t f)
-	{
-		int c = m_faceCandidateArray[f];
-		if (c != -1) {
-			m_faceCandidateArray[f] = (uint32_t)-1;
-			if (c == int(m_candidateArray.size() - 1)) {
-				m_candidateArray.pop_back();
-			} else {
-				// Replace with last.
-				m_candidateArray[c] = m_candidateArray[m_candidateArray.size() - 1];
-				m_candidateArray.pop_back();
-				m_faceCandidateArray[m_candidateArray[c].face] = c;
-			}
-		}
-	}
-
-	void updateCandidate(ChartBuildData *chart, uint32_t f, float metric)
-	{
-		if (m_faceCandidateArray[f] == (uint32_t)-1) {
-			const uint32_t index = m_candidateArray.size();
-			m_faceCandidateArray[f] = index;
-			m_candidateArray.resize(index + 1);
-			m_candidateArray[index].face = f;
-			m_candidateArray[index].chart = chart;
-			m_candidateArray[index].metric = metric;
-		} else {
-			const uint32_t c = m_faceCandidateArray[f];
-			XA_DEBUG_ASSERT(c != (uint32_t)-1);
-			Candidate &candidate = m_candidateArray[c];
-			XA_DEBUG_ASSERT(candidate.face == f);
-			if (metric < candidate.metric || chart == candidate.chart) {
-				candidate.metric = metric;
-				candidate.chart = chart;
-			}
-		}
-	}
-
-	void mergeChart(ChartBuildData *owner, ChartBuildData *chart, float sharedBoundaryLength)
-	{
-		const uint32_t faceCount = chart->faces.size();
-		for (uint32_t i = 0; i < faceCount; i++) {
-			uint32_t f = chart->faces[i];
-			XA_DEBUG_ASSERT(m_faceChartArray[f] == chart->id);
-			m_faceChartArray[f] = owner->id;
-			owner->faces.push_back(f);
-		}
-		// Update adjacencies?
-		owner->area += chart->area;
-		owner->boundaryLength += chart->boundaryLength - sharedBoundaryLength;
-		owner->normalSum += chart->normalSum;
-		updateProxy(owner);
-		// Delete chart.
-		m_chartArray[chart->id] = nullptr;
-		chart->~ChartBuildData();
-		XA_FREE(chart);
-	}
-
-	const Mesh *m_mesh;
-	const Array<uint32_t> *m_meshFaces;
-	Array<bool> m_ignoreFaces;
-	Array<float> m_edgeLengths;
-	Array<float> m_faceAreas;
-	Array<Vector3> m_faceNormals;
-	Array<Vector2> m_texcoords;
-	Array<uint32_t> m_growFaces;
-	uint32_t m_facesLeft;
-	Array<int> m_faceChartArray;
-	Array<ChartBuildData *> m_chartArray;
-	Array<Candidate> m_candidateArray;
-	Array<uint32_t> m_faceCandidateArray; // Map face index to candidate index.
-	PriorityQueue m_bestTriangles;
-	KISSRng m_rand;
-	ChartOptions m_options;
-};
-
 // Estimate quality of existing parameterization.
 struct ParameterizationQuality
 {
@@ -5673,15 +5638,16 @@ struct ChartWarningFlags
 class Chart
 {
 public:
-	Chart(const Mesh *originalMesh, const Array<uint32_t> &faceArray, const Basis &basis, uint32_t meshId, uint32_t chartGroupId, uint32_t chartId) : m_basis(basis), m_mesh(nullptr), m_unifiedMesh(nullptr), m_isDisk(false), m_isOrtho(false), m_isPlanar(false), m_warningFlags(0), m_closedHolesCount(0), m_fixedTJunctionsCount(0)
+	Chart(const segment::Atlas *atlas, const Mesh *originalMesh, uint32_t chartIndex, uint32_t meshId, uint32_t chartGroupId, uint32_t chartId) : m_mesh(nullptr), m_unifiedMesh(nullptr), m_isDisk(false), m_isOrtho(false), m_isPlanar(false), m_warningFlags(0), m_closedHolesCount(0), m_fixedTJunctionsCount(0)
 	{
 		XA_UNUSED(meshId);
 		XA_UNUSED(chartGroupId);
 		XA_UNUSED(chartId);
-		faceArray.copyTo(m_faceArray);
+		m_basis = atlas->chartBasis(chartIndex);
+		atlas->chartFaces(chartIndex).copyTo(m_faceArray);
 		// Copy face indices.
-		m_mesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, originalMesh->epsilon(), faceArray.size() * 3, faceArray.size());
-		m_unifiedMesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, originalMesh->epsilon(), faceArray.size() * 3, faceArray.size());
+		m_mesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, originalMesh->epsilon(), m_faceArray.size() * 3, m_faceArray.size());
+		m_unifiedMesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, originalMesh->epsilon(), m_faceArray.size() * 3, m_faceArray.size());
 		Array<uint32_t> chartMeshIndices;
 		chartMeshIndices.resize(originalMesh->vertexCount());
 		chartMeshIndices.setAll(UINT32_MAX);
@@ -5689,15 +5655,19 @@ public:
 		unifiedMeshIndices.resize(originalMesh->vertexCount());
 		unifiedMeshIndices.setAll(UINT32_MAX);
 		// Add vertices.
-		const uint32_t faceCount = m_initialFaceCount = faceArray.size();
+		const uint32_t faceCount = m_initialFaceCount = m_faceArray.size();
 		for (uint32_t f = 0; f < faceCount; f++) {
 			for (uint32_t i = 0; i < 3; i++) {
-				const uint32_t vertex = originalMesh->vertexAt(faceArray[f] * 3 + i);
+				const uint32_t vertex = originalMesh->vertexAt(m_faceArray[f] * 3 + i);
 				const uint32_t unifiedVertex = originalMesh->firstColocal(vertex);
 				if (unifiedMeshIndices[unifiedVertex] == (uint32_t)~0) {
 					unifiedMeshIndices[unifiedVertex] = m_unifiedMesh->vertexCount();
 					XA_DEBUG_ASSERT(equal(originalMesh->position(vertex), originalMesh->position(unifiedVertex), originalMesh->epsilon()));
+#if XA_SKIP_PARAMETERIZATION
+					m_unifiedMesh->addVertex(originalMesh->position(vertex), Vector3(0.0f), atlas->faceTexcoords(m_faceArray[f])[i]);
+#else
 					m_unifiedMesh->addVertex(originalMesh->position(vertex));
+#endif
 				}
 				if (chartMeshIndices[vertex] == (uint32_t)~0) {
 					chartMeshIndices[vertex] = m_mesh->vertexCount();
@@ -5711,7 +5681,7 @@ public:
 		for (uint32_t f = 0; f < faceCount; f++) {
 			uint32_t indices[3], unifiedIndices[3];
 			for (uint32_t i = 0; i < 3; i++) {
-				const uint32_t vertex = originalMesh->vertexAt(faceArray[f] * 3 + i);
+				const uint32_t vertex = originalMesh->vertexAt(m_faceArray[f] * 3 + i);
 				indices[i] = chartMeshIndices[vertex];
 				unifiedIndices[i] = unifiedMeshIndices[originalMesh->firstColocal(vertex)];
 			}
@@ -5770,7 +5740,7 @@ public:
 				// - Use minimal spanning trees or seamster.
 				Array<uint32_t> holeFaceCounts;
 				XA_PROFILE_START(closeChartMeshHoles)
-				failed = !meshCloseHoles(m_unifiedMesh, boundaryLoops, basis.normal, holeFaceCounts);
+				failed = !meshCloseHoles(m_unifiedMesh, boundaryLoops, m_basis.normal, holeFaceCounts);
 				XA_PROFILE_END(closeChartMeshHoles)
 				m_unifiedMesh->createBoundaries();
 				m_unifiedMesh->linkBoundaries();
@@ -5925,9 +5895,9 @@ private:
 
 struct CreateChartTaskArgs
 {
+	const segment::Atlas *atlas;
 	const Mesh *mesh;
-	const Array<uint32_t> *faceArray;
-	const Basis *basis;
+	uint32_t chartIndex; // In the atlas.
 	uint32_t meshId;
 	uint32_t chartGroupId;
 	uint32_t chartId;
@@ -5938,7 +5908,7 @@ static void runCreateChartTask(void *userData)
 {
 	XA_PROFILE_START(createChartMeshesThread)
 	auto args = (CreateChartTaskArgs *)userData;
-	*(args->chart) = XA_NEW_ARGS(MemTag::Default, Chart, args->mesh, *(args->faceArray), *(args->basis), args->meshId, args->chartGroupId, args->chartId);
+	*(args->chart) = XA_NEW_ARGS(MemTag::Default, Chart, args->atlas, args->mesh, args->chartIndex, args->meshId, args->chartGroupId, args->chartId);
 	XA_PROFILE_END(createChartMeshesThread)
 }
 
@@ -6133,19 +6103,19 @@ public:
 		Chart *chart = XA_NEW_ARGS(MemTag::Default, Chart, m_mesh, chartFaces, m_sourceId, m_id, 0);
 		m_chartArray.push_back(chart);
 #else
-		XA_PROFILE_START(atlasBuilder)
-		AtlasBuilder builder(m_mesh, nullptr, options);
-		runAtlasBuilder(builder, options);
-		XA_PROFILE_END(atlasBuilder)
-		const uint32_t chartCount = builder.chartCount();
+		XA_PROFILE_START(buildAtlas)
+		segment::Atlas atlas(m_mesh, nullptr, options);
+		buildAtlas(atlas, options);
+		XA_PROFILE_END(buildAtlas)
+		const uint32_t chartCount = atlas.chartCount();
 		m_chartArray.resize(chartCount);
 		Array<CreateChartTaskArgs> taskArgs;
 		taskArgs.resize(chartCount);
 		for (uint32_t i = 0; i < chartCount; i++) {
 			CreateChartTaskArgs &args = taskArgs[i];
+			args.atlas = &atlas;
 			args.mesh = m_mesh;
-			args.faceArray = &builder.chartFaces(i);
-			args.basis = &builder.chartBasis(i);
+			args.chartIndex = i;
 			args.meshId = m_sourceId;
 			args.chartGroupId = m_id;
 			args.chartId = i;
@@ -6186,6 +6156,16 @@ public:
 	void parameterizeCharts(TaskScheduler *taskScheduler, ParameterizeFunc func)
 	{
 		const uint32_t chartCount = m_chartArray.size();
+#if XA_SKIP_PARAMETERIZATION
+		XA_UNUSED(taskScheduler);
+		XA_UNUSED(func);
+		for (uint32_t i = 0; i < chartCount; i++) {
+			Chart *chart = m_chartArray[i];
+			chart->evaluateOrthoParameterizationQuality();
+			chart->evaluateParameterizationQuality();
+			chart->transferParameterization();
+		}
+#else
 		Array<ParameterizeChartTaskArgs> taskArgs;
 		taskArgs.resize(chartCount);
 		TaskGroupHandle taskGroup = taskScheduler->createTaskGroup(chartCount);
@@ -6226,10 +6206,10 @@ public:
 			options.maxChartArea = invalidChartArea * 0.2f;
 			options.maxThreshold = 0.25f;
 			options.maxIterations = 3;
-			AtlasBuilder builder(m_mesh, &meshFaces, options);
-			runAtlasBuilder(builder, options);
-			for (uint32_t j = 0; j < builder.chartCount(); j++) {
-				Chart *chart = XA_NEW_ARGS(MemTag::Default, Chart, m_mesh, builder.chartFaces(j), builder.chartBasis(j), m_sourceId, m_id, m_chartArray.size());
+			segment::Atlas atlas(m_mesh, &meshFaces, options);
+			buildAtlas(atlas, options);
+			for (uint32_t j = 0; j < atlas.chartCount(); j++) {
+				Chart *chart = XA_NEW_ARGS(MemTag::Default, Chart, &atlas, m_mesh, j, m_sourceId, m_id, m_chartArray.size());
 				m_chartArray.push_back(chart);
 				m_paramAddedChartsCount++;
 			}
@@ -6272,46 +6252,43 @@ public:
 			XA_FREE(chart);
 			m_paramDeletedChartsCount++;
 		}
-#endif
+#endif // XA_RECOMPUTE_CHARTS
+#endif // XA_SKIP_PARAMETERIZATION
 	}
 
 private:
-	void runAtlasBuilder(AtlasBuilder &builder, const ChartOptions &options)
+	void buildAtlas(segment::Atlas &atlas, const ChartOptions &options)
 	{
-		if (builder.facesLeft() == 0)
+		if (atlas.facesLeft() == 0)
 			return;
-		// This seems a reasonable estimate.
-		XA_PROFILE_START(atlasBuilderCreateInitialCharts)
 		// Create initial charts greedely.
-		builder.placeSeeds(options.maxThreshold * 0.5f);
+		atlas.placeSeeds(options.maxThreshold * 0.5f);
 		if (options.maxIterations == 0) {
-			XA_DEBUG_ASSERT(builder.facesLeft() == 0);
-			XA_PROFILE_END(atlasBuilderCreateInitialCharts)
+			XA_DEBUG_ASSERT(atlas.facesLeft() == 0);
 			return;
 		}
-		builder.updateProxies();
-		builder.relocateSeeds();
-		builder.resetCharts();
-		XA_PROFILE_END(atlasBuilderCreateInitialCharts)
+		atlas.updateProxies();
+		atlas.relocateSeeds();
+		atlas.resetCharts();
 		// Restart process growing charts in parallel.
 		uint32_t iteration = 0;
 		while (true) {
-			if (!builder.growCharts(options.maxThreshold, options.growFaceCount)) {
+			if (!atlas.growCharts(options.maxThreshold)) {
 				// If charts cannot grow more: fill holes, merge charts, relocate seeds and start new iteration.
-				builder.fillHoles(options.maxThreshold * 0.5f);
-				builder.updateProxies();
+				atlas.fillHoles(options.maxThreshold * 0.5f);
+				atlas.updateProxies();
 #if XA_MERGE_CHARTS
-				builder.mergeCharts();
+				atlas.mergeCharts();
 #endif
 				if (++iteration == options.maxIterations)
 					break;
-				if (!builder.relocateSeeds())
+				if (!atlas.relocateSeeds())
 					break;
-				builder.resetCharts();
+				atlas.resetCharts();
 			}
 		}
 		// Make sure no holes are left!
-		XA_DEBUG_ASSERT(builder.facesLeft() == 0);
+		XA_DEBUG_ASSERT(atlas.facesLeft() == 0);
 	}
 
 	void removeChart(const Chart *chart)
@@ -7121,6 +7098,8 @@ struct Atlas
 						Vector2 &texcoord = chart->uniqueVertexAt(i);
 						texcoord *= scale;
 						extents = max(extents, texcoord);
+						extents.x = roundevenf32(extents.x);
+						extents.y = roundevenf32(extents.y);
 					}
 					XA_DEBUG_ASSERT(extents.x <= realMaxChartSize && extents.y <= realMaxChartSize);
 				}
@@ -8180,11 +8159,15 @@ void ComputeCharts(Atlas *atlas, ChartOptions chartOptions)
 	XA_PRINT("   %u charts\n", chartCount);
 	XA_PROFILE_PRINT_AND_RESET("   Total (real): ", computeChartsReal)
 	XA_PROFILE_PRINT_AND_RESET("   Total (thread): ", computeChartsThread)
-	XA_PROFILE_PRINT_AND_RESET("      Atlas builder: ", atlasBuilder)
-	XA_PROFILE_PRINT_AND_RESET("         Init: ", atlasBuilderInit)
-	XA_PROFILE_PRINT_AND_RESET("         Create initial charts: ", atlasBuilderCreateInitialCharts)
-	XA_PROFILE_PRINT_AND_RESET("         Grow charts: ", atlasBuilderGrowCharts)
-	XA_PROFILE_PRINT_AND_RESET("         Merge charts: ", atlasBuilderMergeCharts)
+	XA_PROFILE_PRINT_AND_RESET("      Build atlas: ", buildAtlas)
+	XA_PROFILE_PRINT_AND_RESET("         Init: ", buildAtlasInit)
+	XA_PROFILE_PRINT_AND_RESET("         Place seeds: ", buildAtlasPlaceSeeds)
+	XA_PROFILE_PRINT_AND_RESET("         Update proxies: ", buildAtlasUpdateProxies)
+	XA_PROFILE_PRINT_AND_RESET("         Relocate seeds: ", buildAtlasRelocateSeeds)
+	XA_PROFILE_PRINT_AND_RESET("         Reset charts: ", buildAtlasResetCharts)
+	XA_PROFILE_PRINT_AND_RESET("         Grow charts: ", buildAtlasGrowCharts)
+	XA_PROFILE_PRINT_AND_RESET("         Merge charts: ", buildAtlasMergeCharts)
+	XA_PROFILE_PRINT_AND_RESET("         Fill holes: ", buildAtlasFillHoles)
 	XA_PROFILE_PRINT_AND_RESET("      Create chart meshes (real): ", createChartMeshesReal)
 	XA_PROFILE_PRINT_AND_RESET("      Create chart meshes (thread): ", createChartMeshesThread)
 	XA_PROFILE_PRINT_AND_RESET("         Fix t-junctions: ", fixChartMeshTJunctions)

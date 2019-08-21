@@ -106,7 +106,7 @@ bool xatlas_mesh_lightmap_unwrap_callback(float p_texel_size, const float *p_ver
 
 	*r_index_count = output.indexCount;
 
-	//xatlas::Destroy(atlas);
+	xatlas::Destroy(atlas);
 	printf("Done\n");
 	return true;
 }
