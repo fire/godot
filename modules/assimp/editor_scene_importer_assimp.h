@@ -181,7 +181,7 @@ private:
 
 	Ref<Texture> _load_texture(ImportState &state, String p_path);
 	Ref<Material> _generate_material_from_index(ImportState &state, int p_index, bool p_double_sided);
-	Ref<Mesh> _generate_mesh_from_surface_indices(ImportState &state, Transform *parent_node, const Vector<int> &p_surface_indices, Skeleton *p_skeleton = NULL, bool p_double_sided_material = false);
+	Ref<Mesh> _generate_mesh_from_surface_indices(ImportState &state, const Vector<int> &p_surface_indices, Skeleton *p_skeleton = NULL, bool p_double_sided_material = false);
 
 	// utility for node creation
 	void attach_new_node(ImportState &state, Spatial *new_node, const aiNode *node, Node *parent_node, String Name, Transform &transform);
@@ -189,12 +189,13 @@ private:
 	void create_light(ImportState &state, RecursiveState &recursive_state);
 	void create_camera(ImportState &state, RecursiveState &recursive_state);
 	void create_bone(ImportState &state, RecursiveState &recursive_state);
-	void create_mesh(ImportState &state, RecursiveState &recursive_state);
+	// non recursive - linear so must not use recursive arguments
+	void create_mesh(ImportState &state, const aiNode * assimp_node, const String& node_name, Node* current_node, Node* parent_node, Transform node_transform );
 
 	// recursive node generator
 	void _generate_node(ImportState &state, Skeleton *skeleton, const aiNode *assimp_node, Node *parent_node);
 	// runs after _generate_node as it must then use pre-created godot skeleton.
-	void generate_mesh_phase_from_skeletal_mesh(ImportState &state, const aiNode *assimp_node, Node *parent_node);
+	void generate_mesh_phase_from_skeletal_mesh(ImportState &state);
 	void _insert_animation_track(ImportState &scene, const aiAnimation *assimp_anim, int p_track, int p_bake_fps, Ref<Animation> animation, float ticks_per_second, Skeleton *p_skeleton, const NodePath &p_path, const String &p_name);
 
 	void _import_animation(ImportState &state, int p_animation_index, int p_bake_fps);
