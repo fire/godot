@@ -130,20 +130,20 @@ Node *EditorSceneImporterAssimp::import_scene(const String &p_path, uint32_t p_f
 								 //aiProcess_FlipWindingOrder |
 								 //aiProcess_DropNormals |
 								 //aiProcess_GenSmoothNormals |
-								 aiProcess_JoinIdenticalVertices |
+								 //aiProcess_JoinIdenticalVertices |
 								 aiProcess_ImproveCacheLocality |
 								 //aiProcess_RemoveRedundantMaterials | // Causes a crash
 								 //aiProcess_SplitLargeMeshes |
 								 aiProcess_Triangulate |
 								 aiProcess_GenUVCoords |
 								 //aiProcess_FindDegenerates |
-								 aiProcess_SortByPType |
+								 //aiProcess_SortByPType |
 								// aiProcess_FindInvalidData |
 								 aiProcess_TransformUVCoords |
 								 aiProcess_FindInstances |
 								 //aiProcess_FixInfacingNormals |
 								 //aiProcess_ValidateDataStructure |
-								 aiProcess_OptimizeMeshes |
+								 //aiProcess_OptimizeMeshes |
 								 //aiProcess_OptimizeGraph |
 								 //aiProcess_Debone |
 								 aiProcess_EmbedTextures |
