@@ -1347,7 +1347,7 @@ void EditorSceneImporterAssimp::create_mesh(ImportState &state, const aiNode * a
 		print_verbose("Applying mesh and skeleton to armature");
 		// required for blender, maya etc
 		Map<Skeleton*, const Spatial*>::Element *match = state.armature_skeletons.find(skeleton);
-		//transform = match->value()->get_transform();
+		node_transform = match->value()->get_transform();
 	}
 
 	MeshInstance *mesh_node = memnew(MeshInstance);
@@ -1355,11 +1355,11 @@ void EditorSceneImporterAssimp::create_mesh(ImportState &state, const aiNode * a
 	mesh_node->set_mesh(mesh);
 
 	attach_new_node(state,
-			mesh_node,
-			assimp_node,
-			parent_node,
-			node_name,
-			node_transform);
+		mesh_node,
+		assimp_node,
+		parent_node,
+		node_name,
+		node_transform);
 
 	// set this once and for all
 	if (skeleton != NULL) {
@@ -1369,11 +1369,11 @@ void EditorSceneImporterAssimp::create_mesh(ImportState &state, const aiNode * a
 		// owner must be set after adding to tree
 		skeleton->set_owner(state.root);
 
-		//skeleton->set_transform(node_transform);
+		skeleton->set_transform(node_transform);
 
 		// must be done after added to tree
 		mesh_node->set_skeleton_path(mesh_node->get_path_to(skeleton));
-	}
+	}	
 }
 
 /** generate_mesh_phase_from_skeletal_mesh
