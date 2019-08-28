@@ -67,7 +67,7 @@ void SceneOptimize::optimize(const String p_file, Node *p_root_node) {
 	Ref<MeshMergeMaterialRepack> repack;
 	repack.instance();
 	root = repack->merge(root, p_root_node);
-	simplify(root);
+	//simplify(root);
 	scene->pack(root);
 	ResourceSaver::save(p_file, scene);
 }
