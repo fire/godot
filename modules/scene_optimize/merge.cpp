@@ -418,7 +418,6 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 			args.sourceTexture->lock();
 			args.atlasData->lock();
 			args.atlas_lookup = atlas_lookup;
-			args.scale = scale;
 			args.material_index = (uint16_t)chart.material;
 			for (uint32_t k = 0; k < chart.faceCount; k++) {
 				Vector2 v[3];

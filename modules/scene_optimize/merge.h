@@ -367,7 +367,6 @@ bool drawAA(SamplingCallback cb, void *param) {
 		Ref<Image> atlasData;
 		Ref<Image> sourceTexture;
 		Vector<AtlasLookupTexel> atlas_lookup;
-		float scale = 0.0f;
 		uint16_t material_index = 0;
 		Vector2 source_uvs[3];
 		uint32_t atlas_width = 0;
