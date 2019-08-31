@@ -439,6 +439,13 @@ Files extracted from upstream source:
 - COPYING
 
 
+## or-tools
+
+- Upstream: https://github.com/google/or-tools/tree/v7.3
+- Version: v7.3
+- License:  Apache-2.0
+
+
 ## pcre2
 
 - Upstream: http://www.pcre.org/

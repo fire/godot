@@ -1,0 +1,12 @@
+# SCsub
+
+Import('env')
+
+module_env = env.Clone()
+module_env.add_source_files(env.modules_sources, "*.cpp")
+module_env.Append(CPPPATH=["#thirdparty/or-tools"])
+module_env.Append(CPPPATH=["#thirdparty/or-tools/or-tools"])
+module_env.Append(CPPPATH=["#thirdparty/or-tools/include"])
+module_env.Append(CPPPATH=["#thirdparty/glog/include"])
+module_env.Append(CPPPATH=["#thirdparty/abseil-cpp"])
+module_env.Append(CPPPATH=["#thirdparty/gflags/include/gflags"])
