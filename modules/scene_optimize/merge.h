@@ -154,7 +154,7 @@ private:
 			n3 = n3 * (1.0f / sqrtf(n3.x * n3.x + n3.y * n3.y));
 		}
 
-bool drawAA(SamplingCallback cb, void *param) {
+		bool drawAA(SamplingCallback cb, void *param) {
 			const float PX_INSIDE = 1.0f / sqrtf(2.0f);
 			const float PX_OUTSIDE = -1.0f / sqrtf(2.0f);
 			const float BK_SIZE = 8;

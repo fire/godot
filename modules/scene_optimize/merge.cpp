@@ -442,6 +442,7 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 		Ref<Image> temp_atlas_img_albedo;
 		temp_atlas_img_albedo.instance();
 		temp_atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8, atlas_img_albedo->get_data());
+		temp_atlas_img_albedo->fill(Color(0.0f, 0.0f, 0.0f, 1.0f));
 		PoolVector<AtlasLookupTexel> temp_atlas_lookup;
 		temp_atlas_lookup.resize(atlas_lookup.size());
 		const int sampleXOffsets[] = { -1, 0, 1, -1, 1, -1, 0, 1 };
