@@ -80,6 +80,57 @@ Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 
 class MeshMergeMaterialRepack : public Reference {
 private:
+	typedef Vector<Vector<int32_t> > ManhattanImage;
+	// https://blog.ostermiller.org/dilate-and-erode
+	// O(n^2) solution to find the Manhattan distance to "on" pixels in a two dimension array
+	ManhattanImage manhattan(Ref<Image> p_image) {
+		ManhattanImage manhatten_image;
+		for (int32_t i = 0 < 0; i < p_image->get_size().y; i++) {
+			Vector<int32_t> width;
+			width.resize(p_image->get_size().x);
+			manhatten_image.push_back(width);
+		}
+		p_image->lock();
+		// traverse from top left to bottom right
+		for (int i = 0; i < p_image->get_size().y; i++) {
+			for (int j = 0; j < p_image->get_size().x; j++) {
+				if (p_image->get_pixel(j, i) != Color()) {
+					// first pass and pixel was on, it gets a zero
+					manhatten_image.write[i].write[j] = 0;
+				} else {
+					// pixel was off
+					// It is at most the sum of the lengths of the array
+					// away from a pixel that is on
+					manhatten_image.write[i].write[j] = p_image->get_size().y + manhatten_image[i].size() - 1;
+					// or one more than the pixel to the north
+					if (i > 0) {
+						manhatten_image.write[i].write[j] = MIN(manhatten_image[i][j], manhatten_image[i - 1][j] + 1);
+					}
+					// or one more than the pixel to the west
+					if (j > 0) {
+						manhatten_image.write[i].write[j] = MIN(manhatten_image[i][j], manhatten_image[i][j - 1] + 1);
+					}
+				}
+			}
+		}
+		// traverse from bottom right to top left
+		for (int i = p_image->get_size().y - 1; i >= 0; i--) {
+			for (int j = p_image->get_size().x - 1; j >= 0; j--) {
+				// either what we had on the first pass
+				// or one more than the pixel to the south
+				if (i + 1 < p_image->get_size().y) {
+					manhatten_image.write[i].write[j] = MIN(manhatten_image[i][j], manhatten_image[i + 1][j] + 1);
+				}
+				// or one more than the pixel to the east
+				if (j + 1 < p_image->get_size().x) {
+					manhatten_image.write[i].write[j] = MIN(manhatten_image[i][j], manhatten_image[i][j + 1] + 1);
+				}
+			}
+		}
+		p_image->unlock();
+		return manhatten_image;
+	}
+
 	struct TextureData {
 		uint16_t width;
 		uint16_t height;
