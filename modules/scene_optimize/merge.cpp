@@ -497,7 +497,7 @@ Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image) {
 	target_image.instance();
 	target_image->create(source_image->get_width(), source_image->get_height(), false, Image::FORMAT_RGBA8);
 
-	for (int32_t i = 0; i < 2; i++) {
+	for (int32_t i = 0; i < 3; i++) {
 		target_image->fill(Color(0.0f, 0.0f, 0.0f, 0.0f));
 		source_image->lock();
 		target_image->lock();
