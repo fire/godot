@@ -436,78 +436,9 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 		}
 	}
 
-	// if (pack_options.padding > 0) {
-	// 	int k = pack_options.padding;
-	// 	Ref<Image> orig_image = atlas_img_albedo->duplicate(true);
-	// 	ManhattanImage manhattan_image = manhattan(orig_image);
-	// 	atlas_img_albedo->lock();
-	// 	PoolVector<AtlasLookupTexel> temp_atlas_lookup;
-	// 	temp_atlas_lookup.resize(atlas_lookup.size());
-	// 	memcpy(temp_atlas_lookup.write().ptr(), atlas_lookup.ptr(), atlas_lookup.size() * sizeof(AtlasLookupTexel));
-	// 	const int sampleXOffsets[] = { -1, 0, 1, -1, 1, -1, 0, 1 };
-	// 	const int sampleYOffsets[] = { -1, -1, -1, 0, 0, 1, 1, 1 };
-	// 	for (int i = 0; i < atlas_img_albedo->get_size().y; i++) {
-	// 		for (int j = 0; j < atlas_img_albedo->get_size().x; j++) {
-	// 			if (manhattan_image[i][j] > k ) {
-	// 				continue;
-	// 			}
-	// 			// Sample up to 8 surrounding texels in the source texture, average their color and assign it to this texel.
-	// 			float rgb_sum[4] = { 0.0f, 0.0f, 0.0f, 0.0f }, n = 0;
-	// 			for (uint32_t si = 0; si < 8; si++) {
-	// 				const int sx = (int)j + manhattan_image[i][j] * sampleXOffsets[si];
-	// 				const int sy = (int)i + manhattan_image[i][j] * sampleYOffsets[si];
-	// 				const AtlasLookupTexel &lookup = temp_atlas_lookup[sx + sy * (int)atlas->width];
-	// 				if (sx < 0) {
-	// 					continue;
-	// 				}
-	// 				if (sx >= atlas->width) {
-	// 					continue;
-	// 				}
-	// 				if (sy < 0) {
-	// 					continue;
-	// 				}
-	// 				if (sy >= atlas->height) {
-	// 					continue;
-	// 				}
-	// 				if (lookup.material_index >= material_cache.size()){
-	// 					continue;
-	// 				}
-	// 				Ref<SpatialMaterial> mat = material_cache.get(lookup.material_index);
-	// 				if (mat.is_null()) {
-	// 					continue;
-	// 				}
-	// 				Ref<Image> img = mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO)->get_data();
-	// 				if (img.is_null()) {
-	// 					continue;
-	// 				}
-	// 				if (img->is_compressed()) {
-	// 					img->decompress();
-	// 				}
-
-	// 				img->lock();
-	// 				Color color = img->get_pixel(lookup.x, lookup.y);
-	// 				img->unlock();
-	// 				rgb_sum[0] += color.r;
-	// 				rgb_sum[1] += color.g;
-	// 				rgb_sum[2] += color.b;
-	// 				rgb_sum[3] += color.a;
-	// 				n++;
-	// 			}
-	// 			if (n != 0) {
-	// 				const float invn = 1.0f / (float)n;
-	// 				Color color;
-	// 				color.r = rgb_sum[0] * invn;
-	// 				color.g = rgb_sum[1] * invn;
-	// 				color.b = rgb_sum[2] * invn;
-	// 				color.a = rgb_sum[3] * invn;
-	// 				atlas_img_albedo->lock();
-	// 				atlas_img_albedo->set_pixel(j, i, color);
-	// 				atlas_img_albedo->unlock();
-	// 			}
-	// 		}
-	// 	}
-	// 	atlas_img_albedo->unlock();
-	// }
+	// https://blog.ostermiller.org/dilate-and-erode
+	// TODO O(n^2) solution to find the Manhattan distance to "on" pixels in a two dimension array
+	Ref<Image> target_image = dilate(atlas_img_albedo);
 
 	for (int32_t i = 0; i < r_mesh_items.size(); i++) {
 		if (r_mesh_items[i]->get_parent()) {
@@ -542,12 +473,10 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 	if (atlas->width != 0 || atlas->height != 0) {
 		Ref<ImageTexture> texture;
 		texture.instance();
-		atlas_img_albedo->generate_mipmaps();
-		atlas_img_albedo->compress();
-		texture->create_from_image(atlas_img_albedo);
+		texture->create_from_image(target_image);
 		mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-
-		if (atlas_img_albedo->detect_alpha()) {
+		mat->set_name("Atlas");
+		if (target_image->detect_alpha()) {
 			mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
 			mat->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
 		}
@@ -560,4 +489,72 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 	p_root->add_child(mi);
 	mi->set_owner(p_root);
 	return p_root;
+}
+
+Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image) {
+
+	Ref<Image> target_image;
+	target_image.instance();
+	target_image->create(source_image->get_width(), source_image->get_height(), false, Image::FORMAT_RGBA8);
+
+	for (int32_t i = 0; i < 3; i++) {
+		target_image->fill(Color(0.0f, 0.0f, 0.0f, 0.0f));
+		source_image->lock();
+		target_image->lock();
+		for (int32_t y = 0; y < source_image->get_size().y; y++) {
+			for (int32_t x = 0; x < source_image->get_size().x; x++) {
+				if (source_image->get_pixel(x, y).a == 0.0f) {
+					int32_t num = 0;
+					Color color_accum;
+					if (x - 1 >= 0 && x + 1 < source_image->get_size().x) {
+						if (source_image->get_pixel(x - 1, y).a != 0.0f) {
+							color_accum += source_image->get_pixel(x - 1, y);
+							num++;
+						}
+						if (source_image->get_pixel(x + 1, y).a != 0.0f) {
+							color_accum += source_image->get_pixel(x + 1, y);
+							num++;
+						}
+						if (num > 0) {
+							target_image->set_pixel(x, y, color_accum / num);
+						}
+					}
+				} else {
+					Color pixel = source_image->get_pixel(x, y);
+					target_image->set_pixel(x, y, pixel);
+				}
+			}
+		}
+		for (int32_t y = 0; y < source_image->get_size().y; y++) {
+			for (int32_t x = 0; x < source_image->get_size().x; x++) {
+				if (source_image->get_pixel(x, y).a == 0.0f) {
+					int32_t num = 0;
+					Color color_accum;
+					if (y - 1 >= 0 && y + 1 < source_image->get_size().y) {
+						if (source_image->get_pixel(x, y - 1).a != 0.0f) {
+							color_accum += source_image->get_pixel(x, y - 1);
+							num++;
+						}
+						if (source_image->get_pixel(x, y + 1).a != 0.0f) {
+							color_accum += source_image->get_pixel(x, y + 1);
+							num++;
+						}
+						if (num > 0) {
+							target_image->set_pixel(x, y, color_accum / num);
+						}
+					}
+				} else {
+					Color pixel = source_image->get_pixel(x, y);
+					target_image->set_pixel(x, y, pixel);
+				}
+			}
+		}
+		source_image->unlock();
+		target_image->unlock();
+		source_image = target_image->duplicate(true);
+	}
+	// TODO Custom mipmap to fix gaps
+	target_image->generate_mipmaps();
+	target_image->compress();
+	return target_image;
 }
