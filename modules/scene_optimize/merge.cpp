@@ -554,7 +554,7 @@ Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image) {
 		source_image = target_image->duplicate(true);
 	}
 	// TODO Custom mipmap to fix gaps
-	target_image->generate_mipmaps();
+	//target_image->generate_mipmaps();
 	target_image->compress();
 	return target_image;
 }
