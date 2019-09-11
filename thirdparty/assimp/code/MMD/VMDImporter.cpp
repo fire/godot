@@ -132,10 +132,10 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	std::map<std::string, BoneAnim> bones;
 	int32_t bone_count = 0;
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
-		const std::string nodeName = vmd.m_motions[i].m_boneName.ToString();
-		if (bones.find(nodeName) == bones.end()) {
+		std::string name = vmd.m_motions[i].m_boneName.ToUtf8String();
+		if (bones.find(name) == bones.end()) {
 			pScene->mMeshes[0]->mBones[bone_count] = new aiBone();
-			pScene->mMeshes[0]->mBones[bone_count]->mName = nodeName; 
+			pScene->mMeshes[0]->mBones[bone_count]->mName = name; 
 			BoneAnim bone;			
 			glm::vec3 source_position = vmd.m_motions[i].m_translate;
 			aiVectorKey position;
@@ -151,14 +151,14 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 			rotation.mValue = aiQuaternion(source_quat.w, source_quat.x, source_quat.y, source_quat.z);
 			bone.rotation.push_back(rotation);
 			bone.index = bone_count;
-			bones.insert({nodeName, bone});
+			bones.insert(std::pair<std::string, BoneAnim>(name, bone));
 			bone_count++;
 		} else {
 			// BoneAnim &bone_anim = bones.find(nodeName)->second;
 		}
 	}
 	pScene->mMeshes[0]->mNumBones = bones.size();
-	pScene->mMeshes[0]->mBones = new aiBone*[pScene->mMeshes[0]->mNumBones];
+	pScene->mMeshes[0]->mBones = new aiBone*[pScene->mMeshes[0]->mNumBones]() ;
 	for (auto bone : bones) {
 		pScene->mMeshes[0]->mBones[bone.second.index] = new aiBone();
 		pScene->mMeshes[0]->mBones[bone.second.index]->mName = bone.first; 
@@ -170,17 +170,27 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	pScene->mAnimations[0]->mNumChannels = bones.size();
 	pScene->mAnimations[0]->mChannels = new aiNodeAnim *[bones.size()];
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
-		if( bones.find(vmd.m_motions[i].m_boneName.ToString()) != bones.end()) {
-			BoneAnim bone_anim = bones.find(vmd.m_motions[i].m_boneName.ToString())->second;
+		std::string name = vmd.m_motions[i].m_boneName.ToUtf8String();
+		if(bones.find(name) != bones.end()) {
+			BoneAnim bone_anim = bones.find(name)->second;
 			int32_t channelIndex = bone_anim.index;
 			aiNodeAnim *node = new aiNodeAnim;
 			pScene->mAnimations[0]->mChannels[i] = node;
 			node->mNumPositionKeys = bone_anim.position.size();
-			node->mPositionKeys = bone_anim.position.data();
+			node->mPositionKeys = new aiVectorKey[node->mNumPositionKeys]();
+			for(size_t j = 0; j  <bone_anim.position.size(); j++) {
+				node->mPositionKeys[j] = bone_anim.position[j];
+			}
 			node->mNumRotationKeys = bone_anim.rotation.size();
-			node->mRotationKeys = bone_anim.rotation.data();
-			node->mNumScalingKeys = bone_anim.rotation.size();
-			node->mScalingKeys = bone_anim.scale.data();
+			node->mRotationKeys = new aiQuatKey[node->mNumRotationKeys]();
+			for(size_t j = 0; j < bone_anim.position.size(); j++) {
+				node->mRotationKeys[j] = bone_anim.rotation[j];
+			}
+			node->mNumScalingKeys = bone_anim.scale.size();
+			node->mScalingKeys = new aiVectorKey[node->mNumRotationKeys]();
+			for(size_t j = 0; j < bone_anim.scale.size(); j++) {
+				node->mScalingKeys[j] = bone_anim.scale[j];
+			}
 		}
 	}
 	// IK Controllers
