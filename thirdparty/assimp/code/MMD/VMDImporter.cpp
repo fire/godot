@@ -126,9 +126,6 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	pScene->mRootNode->mChildren = new aiNode*[1];
 	pScene->mRootNode->mChildren[0] = new aiNode();
 	aiNode *aiChild = pScene->mRootNode->mChildren[0];
-	aiChild->mNumMeshes = 1;
-	aiChild->mMeshes = new uint32_t[1];
-	aiChild->mMeshes[0] = 0;
 	SkeletonMeshBuilder meshBuilder(pScene);
 	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToCString();
 	struct BoneAnim {
