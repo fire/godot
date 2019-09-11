@@ -58,6 +58,12 @@ public:
 			bool checkSig) const;
 
 protected:
+	struct BoneAnim {
+		int32_t index = 0;
+		std::vector<uint32_t> frame;
+		std::vector<aiVector3D> position;
+		std::vector<aiQuaternion> rotation;
+	};
 	const aiImporterDesc *GetInfo() const;
 	void GetExtensionList(std::set<std::string> &extensions);
 	void InternReadFile(const std::string &pFile,

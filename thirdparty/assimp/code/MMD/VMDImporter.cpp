@@ -127,17 +127,12 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	pScene->mRootNode->mChildren[0] = new aiNode();
 	aiNode *aiChild = pScene->mRootNode->mChildren[0];
 	SkeletonMeshBuilder meshBuilder(pScene);
-	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToCString();
-	struct BoneAnim {
-		int32_t index;
-		std::vector<uint32_t> frame;
-		std::vector<aiVector3D> position;
-		std::vector<aiQuaternion> rotation;
-	};
+	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToString();
+
 	std::map<std::string, BoneAnim> bones;
 	int32_t bone_count = 0;
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
-		const std::string nodeName = vmd.m_motions[i].m_boneName.ToUtf8String();
+		const std::string nodeName = vmd.m_motions[i].m_boneName.ToString();
 		if (bones.find(nodeName) == bones.end()) {
 			pScene->mMeshes[0]->mBones[bone_count] = new aiBone();
 			pScene->mMeshes[0]->mBones[bone_count]->mName = nodeName; 
@@ -172,10 +167,10 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	pScene->mAnimations[0]->mNumChannels = bones.size();
 	pScene->mAnimations[0]->mChannels = new aiNodeAnim *[bones.size()];
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
-		if( bones.find(vmd.m_motions[i].m_boneName.ToUtf8String()) != bones.end()) {
-			BoneAnim bone_anim = bones.find(vmd.m_motions[i].m_boneName.ToCString())->second;
+		if( bones.find(vmd.m_motions[i].m_boneName.ToString()) != bones.end()) {
+			BoneAnim bone_anim = bones.find(vmd.m_motions[i].m_boneName.ToString())->second;
 			int32_t channelIndex = bone_anim.index;
-			aiNodeAnim *node = new aiNodeAnim();
+			// aiNodeAnim *node = new aiNodeAnim();
 			// pScene->mAnimations[0]->mChannels[channelIndex] = node;
 			// node->mNodeName = vmd.m_motions[i].m_boneName.ToUtf8String();
 			// node->mNumPositionKeys = bone_anim.position.size();
