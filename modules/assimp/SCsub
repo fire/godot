@@ -5,6 +5,10 @@ Import('env_modules')
 
 env_assimp = env_modules.Clone()
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp'])
+env_assimp.Prepend(CPPPATH=['#thirdparty/bullet'])
+env_assimp.Prepend(CPPPATH=['#thirdparty/saba-mmd/spdlog/include'])
+env_assimp.Prepend(CPPPATH=['#thirdparty/saba-mmd/glm/include'])
+env_assimp.Prepend(CPPPATH=['#thirdparty/saba-mmd'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/include'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/assimp/code/Importer/IFC'])
 env_assimp.Prepend(CPPPATH=['#thirdparty/misc'])
@@ -86,8 +90,12 @@ elif(env['platform'] == 'osx'):
     env_assimp.Append(CPPDEFINES=['PLATFORM_DARWIN'])
     env_assimp.Append(CPPDEFINES=[('PLATFORM', 'DARWIN')])
     
+if not env.msvc:
+	env_assimp.Append(CXXFLAGS="-std=c++14")
+
 env_thirdparty = env_assimp.Clone()
 env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/saba-mmd/Saba/Model/MMD/*.cpp'))
 env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Common/*.cpp'))
 env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/PostProcessing/*.cpp'))
 env_thirdparty.add_source_files(env.modules_sources, Glob('#thirdparty/assimp/code/Material/*.cpp'))
