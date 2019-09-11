@@ -167,7 +167,7 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	}
 	pScene->mNumAnimations = 1;
 	pScene->mAnimations = new aiAnimation*[1];
-	pScene->mAnimations[0] = new aiAnimation;
+	pScene->mAnimations[0] = new aiAnimation();
 	pScene->mAnimations[0]->mTicksPerSecond = 30;
 	pScene->mAnimations[0]->mNumChannels = bones.size();
 	pScene->mAnimations[0]->mChannels = new aiNodeAnim *[bones.size()];
@@ -175,7 +175,7 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 		if( bones.find(vmd.m_motions[i].m_boneName.ToUtf8String()) != bones.end()) {
 			BoneAnim bone_anim = bones.find(vmd.m_motions[i].m_boneName.ToCString())->second;
 			int32_t channelIndex = bone_anim.index;
-			aiNodeAnim *node = new aiNodeAnim;
+			aiNodeAnim *node = new aiNodeAnim();
 			// pScene->mAnimations[0]->mChannels[channelIndex] = node;
 			// node->mNodeName = vmd.m_motions[i].m_boneName.ToUtf8String();
 			// node->mNumPositionKeys = bone_anim.position.size();
