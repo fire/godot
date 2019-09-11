@@ -76,6 +76,18 @@ void EditorSceneImporterAssimp::get_extensions(List<String> *r_extensions) const
 		ImportFormat import = { exts, true };
 		import_format.insert("fbx", import);
 	}
+	{
+		Vector<String> exts;
+		exts.push_back("pmx");
+		ImportFormat import = { exts, true };
+		import_format.insert("mmd", import);
+	}
+	{
+		Vector<String> exts;
+		exts.push_back("vmd");
+		ImportFormat import = { exts, true };
+		import_format.insert("vmd", import);
+	}
 	for (Map<String, ImportFormat>::Element *E = import_format.front(); E; E = E->next()) {
 		_register_project_setting_import(E->key(), import_setting_string, E->get().extensions, r_extensions,
 				E->get().is_default);

@@ -88,9 +88,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/matrix4x4.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
+#include <assimp/SkeletonMeshBuilder.h>
 
 #include <iterator>
 #include <set>
+
+#include "Saba/Model/MMD/VMDFile.h"
+#include <Saba/Base/File.h>
 
 using namespace Assimp;
 
@@ -112,7 +116,8 @@ static const aiImporterDesc desc = {
 bool VMDImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler,
 		bool checkSig) const {
 	const std::string extension = GetExtension(pFile);
-	if (extension == "abc") {
+	saba::VMDFile vmd;
+	if (saba::ReadVMDFile(&vmd, pFile.c_str())) {
 		return true;
 	}
 	if (!extension.length() || checkSig) {
@@ -138,7 +143,7 @@ bool VMDImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler,
 // -------------------------------------------------------------------------------
 // Get list of file extensions handled by this loader
 void VMDImporter::GetExtensionList(std::set<std::string> &extensions) {
-	extensions.insert("abc");
+	extensions.insert("vmd");
 }
 
 // -------------------------------------------------------------------------------
@@ -149,6 +154,11 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	if (file.get() == NULL) {
 		throw DeadlyImportError("Failed to open vmd file " + pFile + ".");
 	}
+	saba::VMDFile vmd;
+	saba::ReadVMDFile(&vmd, pFile.c_str());
+	pScene->mRootNode = new aiNode();
+	pScene->mRootNode->mName = vmd.m_header.m_modelName.ToCString();
+	SkeletonMeshBuilder meshBuilder(pScene);
 }
 
 const aiImporterDesc *VMDImporter::GetInfo() const {
