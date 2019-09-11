@@ -61,8 +61,9 @@ protected:
 	struct BoneAnim {
 		int32_t index = 0;
 		std::vector<uint32_t> frame;
-		std::vector<aiVector3D> position;
-		std::vector<aiQuaternion> rotation;
+		std::vector<aiVectorKey> position;
+		std::vector<aiQuatKey> rotation;
+		std::vector<aiVectorKey> scale;
 	};
 	const aiImporterDesc *GetInfo() const;
 	void GetExtensionList(std::set<std::string> &extensions);
