@@ -82,13 +82,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <assimp/CreateAnimMesh.h>
 #include <assimp/MemoryIOWrapper.h>
+#include <assimp/SkeletonMeshBuilder.h>
 #include <assimp/StreamReader.h>
 #include <assimp/StringComparison.h>
 #include <assimp/importerdesc.h>
 #include <assimp/matrix4x4.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
-#include <assimp/SkeletonMeshBuilder.h>
 
 #include <iterator>
 #include <set>
@@ -156,9 +156,82 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	}
 	saba::VMDFile vmd;
 	saba::ReadVMDFile(&vmd, pFile.c_str());
+
 	pScene->mRootNode = new aiNode();
-	pScene->mRootNode->mName = vmd.m_header.m_modelName.ToCString();
+	pScene->mRootNode->mNumChildren = 1;
+	pScene->mRootNode->mChildren = new aiNode*[1];
+	pScene->mRootNode->mChildren[0] = new aiNode();
+	aiNode *aiChild = pScene->mRootNode->mChildren[0];
+	aiChild->mNumMeshes = 1;
+	aiChild->mMeshes = new uint32_t[1];
+	aiChild->mMeshes[0] = 0;
 	SkeletonMeshBuilder meshBuilder(pScene);
+	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToCString();
+	struct BoneAnim {
+		int32_t index;
+		std::vector<uint32_t> frame;
+		std::vector<aiVector3D> position;
+		std::vector<aiQuaternion> rotation;
+	};
+	std::map<std::string, BoneAnim> bones;
+	int32_t bone_count = 0;
+	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
+		const std::string nodeName = vmd.m_motions[i].m_boneName.ToUtf8String();
+		if (bones.find(nodeName) == bones.end()) {
+			pScene->mMeshes[0]->mBones[bone_count] = new aiBone();
+			pScene->mMeshes[0]->mBones[bone_count]->mName = nodeName; 
+			BoneAnim bone;
+			bone.frame.push_back(vmd.m_motions[i].m_frame);
+			glm::vec3 vector3 = vmd.m_motions[i].m_translate;
+			bone.position.push_back(aiVector3D(vector3.x, vector3.y, vector3.z));
+			glm::quat quat = vmd.m_motions[i].m_quaternion;
+			bone.rotation.push_back(aiQuaternion(quat.w, quat.x, quat.y, quat.z));
+			bone.index = bone_count;
+			bones.insert({nodeName, bone});
+			bone_count++;
+		} else {
+			BoneAnim &bone_anim = bones.find(nodeName)->second;
+			bone_anim.frame.push_back(vmd.m_motions[i].m_frame);
+			glm::vec3 vector3 = vmd.m_motions[i].m_translate;
+			bone_anim.position.push_back(aiVector3D(vector3.x, vector3.y, vector3.z));
+			glm::quat old_quat = vmd.m_motions[i].m_quaternion;
+			bone_anim.rotation.push_back(aiQuaternion(old_quat.w, old_quat.x, old_quat.y, old_quat.z));
+		}
+	}
+	pScene->mMeshes[0]->mNumBones = bones.size();
+	pScene->mMeshes[0]->mBones = new aiBone*[pScene->mMeshes[0]->mNumBones];
+	for (auto bone : bones) {
+		pScene->mMeshes[0]->mBones[bone.second.index] = new aiBone();
+		pScene->mMeshes[0]->mBones[bone.second.index]->mName = bone.first; 
+	}
+	pScene->mNumAnimations = 1;
+	pScene->mAnimations = new aiAnimation*[1];
+	pScene->mAnimations[0] = new aiAnimation;
+	pScene->mAnimations[0]->mTicksPerSecond = 30;
+	pScene->mAnimations[0]->mNumChannels = bones.size();
+	pScene->mAnimations[0]->mChannels = new aiNodeAnim *[bones.size()];
+	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
+		if( bones.find(vmd.m_motions[i].m_boneName.ToUtf8String()) != bones.end()) {
+			BoneAnim bone_anim = bones.find(vmd.m_motions[i].m_boneName.ToCString())->second;
+			int32_t channelIndex = bone_anim.index;
+			aiNodeAnim *node = new aiNodeAnim;
+			// pScene->mAnimations[0]->mChannels[channelIndex] = node;
+			// node->mNodeName = vmd.m_motions[i].m_boneName.ToUtf8String();
+			// node->mNumPositionKeys = bone_anim.position.size();
+			// node->mPositionKeys = bone_anim.position.data;
+			// node->mNumRotationKeys = bone_anim.rotation.size();
+			// node->mRotationKeys = bone_anim.rotation.data;
+			// node->mNumScalingKeys = bone_anim.rotation.size();
+			// std::vector<aiVector3D> scale; 
+			// for(int32_t i =0; i<  bone_anim.rotation.size(); i++) {
+			// 	aiVector3D ai_scale = aiVector3D(1.0f, 1.0f, 1.0f);
+			// 	scale.push_back(ai_scale);
+			// }
+			// node->mScalingKeys = scale.data;
+		}
+	}
+	// IK Controllers
+	// Morph Controllers
 }
 
 const aiImporterDesc *VMDImporter::GetInfo() const {
