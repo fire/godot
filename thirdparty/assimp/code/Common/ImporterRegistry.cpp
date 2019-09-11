@@ -200,6 +200,9 @@ corresponding preprocessor flag to selectively disable formats.
 #ifndef ASSIMP_BUILD_NO_M3D_IMPORTER
 #   include "M3D/M3DImporter.h"
 #endif
+#ifndef ASSIMP_BUILD_NO_VMD_IMPORTER
+#   include "MMD/VMDImporter.h"
+#endif
 #ifndef ASSIMP_BUILD_NO_STEP_IMPORTER
 #   include "Importer/StepFile/StepFileImporter.h"
 #endif
