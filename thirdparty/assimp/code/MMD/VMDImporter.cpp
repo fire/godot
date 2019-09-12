@@ -57,8 +57,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iterator>
 #include <set>
 
-#include <Saba/Model/MMD/VMDFile.h>
 #include <Saba/Base/File.h>
+#include <Saba/Model/MMD/VMDAnimation.h>
+#include <Saba/Model/MMD/VMDFile.h>
 
 using namespace Assimp;
 
@@ -120,6 +121,7 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	}
 	saba::VMDFile vmd;
 	saba::ReadVMDFile(&vmd, pFile.c_str());
+	const ai_real ticksPerSecond = 30.f;
 	pScene->mRootNode = new aiNode();
 	pScene->mRootNode->mNumChildren = 1;
 	pScene->mRootNode->mChildren = new aiNode *[1];
@@ -128,44 +130,99 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	aiChild->mParent = pScene->mRootNode;
 	SkeletonMeshBuilder meshBuilder(pScene);
 	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToString();
-	std::map<std::string, BoneAnim> bone_anim;
-	int32_t bone_count = 0;
+
+	// For each node add the key frames that reference it
+	std::map<std::string, saba::VMDNodeController> nodeCtrlMap;
+
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
 		std::string name = vmd.m_motions[i].m_boneName.ToUtf8String();
-		if (bone_anim.find(name) == bone_anim.end()) {
-			BoneAnim bone;
-			glm::vec3 source_position = vmd.m_motions[i].m_translate;
-			aiVectorKey position;
-			position.mTime = vmd.m_motions[i].m_frame;
-			position.mValue = aiVector3D(source_position.x, -source_position.z, source_position.y);
-			bone.position.push_back(position);
-			aiVectorKey scale;
-			scale.mTime = vmd.m_motions[i].m_frame;
-			scale.mValue = aiVector3D(1.0f, 1.0f, 1.0f);
-			bone.scale.push_back(scale);
-			aiQuatKey rotation;
-			rotation.mTime = vmd.m_motions[i].m_frame;
-			glm::quat source_quat = vmd.m_motions[i].m_quaternion;
-			rotation.mValue = aiQuaternion(source_quat.w, source_quat.x, source_quat.y, source_quat.z);
-			bone.rotation.push_back(rotation);
-			bone.index = bone_count;
-			bone_anim.insert(std::pair<std::string, BoneAnim>(name, bone));
-			bone_count++;
+		if (nodeCtrlMap.find(name) == nodeCtrlMap.end()) {
+			saba::VMDNodeController controller;
+			saba::VMDNodeAnimationKey key;
+			key.Set(vmd.m_motions[i]);
+			controller.AddKey(key);
+			nodeCtrlMap.insert({ name, controller });
 		} else {
-			BoneAnim &bone = bone_anim.find(name)->second;
-			glm::vec3 source_position = vmd.m_motions[i].m_translate;
+			saba::VMDNodeController &controller = nodeCtrlMap.find(name)->second;
+			saba::VMDNodeAnimationKey key;
+			key.Set(vmd.m_motions[i]);
+			controller.AddKey(key);
+		}
+	}
+	std::map<std::string, BoneAnim> bone_anim;
+	const ai_real frameCount = vmd.m_motions.size();
+	int32_t bone_count = 0;
+	for (auto &pair : nodeCtrlMap) {
+		pair.second.SortKeys();
+		if (!pair.second.GetKeys().size()) {
+			continue;
+		}
+		const auto &keys = pair.second.GetKeys();
+		for (std::vector<int32_t>::size_type i = 0; i < keys.size(); i++) {
+			saba::VMDNodeController::KeyType key0;
+			if (i == 0) {
+				key0 = keys[i];
+				BoneAnim bone;
+				aiVectorKey position;
+				position.mTime = key0.m_time;
+				glm::vec3 vt = key0.m_translate;
+				position.mValue = aiVector3D(vt.x, -vt.z, vt.y);
+				bone.position.push_back(position);
+				aiVectorKey scale;
+				scale.mTime = key0.m_time;
+				scale.mValue = aiVector3D(1.0f, 1.0f, 1.0f);
+				bone.scale.push_back(scale);
+				aiQuatKey rotation;
+				rotation.mTime = key0.m_time;
+				glm::quat q = key0.m_rotate;
+				rotation.mValue = aiQuaternion(q.w, q.x, q.y, q.z);
+				bone.rotation.push_back(rotation);
+				bone.index = bone_count;
+				bone_anim.insert(std::pair<std::string, BoneAnim>(pair.first, bone));
+				bone_count++;
+				continue;
+			} else {
+				key0 = keys[i - 1];
+			}
+			const saba::VMDNodeController::KeyType &key1 = keys[i];
+
+			float timeRange = float(key1.m_time - key0.m_time);
+			float time = (0.0f - float(key0.m_time)) / timeRange;
+			glm::vec3 vt;
+			glm::quat q;
+			if (!time) {
+				float tx_x = key0.m_txBezier.FindBezierX(time);
+				float ty_x = key0.m_txBezier.FindBezierX(time);
+				float tz_x = key0.m_txBezier.FindBezierX(time);
+				float rot_x = key0.m_rotBezier.FindBezierX(time);
+				float tx_y = key0.m_txBezier.EvalY(tx_x);
+				float ty_y = key0.m_txBezier.EvalY(ty_x);
+				float tz_y = key0.m_txBezier.EvalY(tz_x);
+				float rot_y = key0.m_rotBezier.EvalY(rot_x);
+
+				glm::vec3 dt = key1.m_translate - key0.m_translate;
+
+				vt = dt * glm::vec3(tx_y, ty_y, tz_y) + key0.m_translate;
+				q = glm::slerp(key0.m_rotate, key1.m_rotate, rot_y);
+			} else {
+				vt = key1.m_translate;
+				q  = key1.m_rotate;
+			}
+
+			BoneAnim &bone = bone_anim.find(pair.first)->second;
 			aiVectorKey position;
-			position.mTime = vmd.m_motions[i].m_frame;
-			position.mValue = aiVector3D(source_position.x, -source_position.y, source_position.z);
+			position.mTime = time;
+			position.mValue = aiVector3D(vt.x, -vt.y, vt.z);
 			bone.position.push_back(position);
+
 			aiVectorKey scale;
-			scale.mTime = vmd.m_motions[i].m_frame;
+			scale.mTime = time;
 			scale.mValue = aiVector3D(1.0f, 1.0f, 1.0f);
 			bone.scale.push_back(scale);
+
 			aiQuatKey rotation;
-			rotation.mTime = vmd.m_motions[i].m_frame;
-			glm::quat source_quat = vmd.m_motions[i].m_quaternion;
-			rotation.mValue = aiQuaternion(source_quat.w, source_quat.x, source_quat.y, source_quat.z).Conjugate;
+			rotation.mTime = time;
+			rotation.mValue = aiQuaternion(q.w, q.x, q.y, q.z);
 			bone.rotation.push_back(rotation);
 		}
 	}
@@ -173,8 +230,8 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	pScene->mAnimations = new aiAnimation *[1];
 	aiAnimation *anim = new aiAnimation();
 	pScene->mAnimations[0] = anim;
-	pScene->mAnimations[0]->mDuration = vmd.m_motions.size();
-	anim->mTicksPerSecond = 30;
+	pScene->mAnimations[0]->mDuration = frameCount;
+	anim->mTicksPerSecond = ticksPerSecond;
 	anim->mNumChannels = bone_anim.size();
 	anim->mChannels = new aiNodeAnim *[bone_anim.size()]();
 	for (std::vector<int32_t>::size_type i = 0; i != bone_anim.size(); i++) {
