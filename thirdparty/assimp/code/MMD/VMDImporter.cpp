@@ -57,7 +57,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iterator>
 #include <set>
 
-#include "Saba/Model/MMD/VMDFile.h"
+#include <Saba/Model/MMD/VMDFile.h>
 #include <Saba/Base/File.h>
 
 using namespace Assimp;
@@ -120,27 +120,25 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 	}
 	saba::VMDFile vmd;
 	saba::ReadVMDFile(&vmd, pFile.c_str());
-
 	pScene->mRootNode = new aiNode();
 	pScene->mRootNode->mNumChildren = 1;
-	pScene->mRootNode->mChildren = new aiNode*[1];
+	pScene->mRootNode->mChildren = new aiNode *[1];
 	pScene->mRootNode->mChildren[0] = new aiNode();
 	aiNode *aiChild = pScene->mRootNode->mChildren[0];
+	aiChild->mParent = pScene->mRootNode;
 	SkeletonMeshBuilder meshBuilder(pScene);
 	pScene->mMeshes[0]->mName = vmd.m_header.m_modelName.ToString();
-
-	std::map<std::string, BoneAnim> bones;
+	std::map<std::string, BoneAnim> bone_anim;
 	int32_t bone_count = 0;
 	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
 		std::string name = vmd.m_motions[i].m_boneName.ToUtf8String();
-		if (bones.find(name) == bones.end()) {
-			pScene->mMeshes[0]->mBones[bone_count] = new aiBone();
-			pScene->mMeshes[0]->mBones[bone_count]->mName = name; 
-			BoneAnim bone;			
+		if (bone_anim.find(name) == bone_anim.end()) {
+			BoneAnim bone;
 			glm::vec3 source_position = vmd.m_motions[i].m_translate;
 			aiVectorKey position;
 			position.mTime = vmd.m_motions[i].m_frame;
-			position.mValue = aiVector3D(source_position.x, source_position.y, source_position.z);
+			position.mValue = aiVector3D(source_position.x, -source_position.z, source_position.y);
+			bone.position.push_back(position);
 			aiVectorKey scale;
 			scale.mTime = vmd.m_motions[i].m_frame;
 			scale.mValue = aiVector3D(1.0f, 1.0f, 1.0f);
@@ -151,45 +149,56 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 			rotation.mValue = aiQuaternion(source_quat.w, source_quat.x, source_quat.y, source_quat.z);
 			bone.rotation.push_back(rotation);
 			bone.index = bone_count;
-			bones.insert(std::pair<std::string, BoneAnim>(name, bone));
+			bone_anim.insert(std::pair<std::string, BoneAnim>(name, bone));
 			bone_count++;
 		} else {
-			// BoneAnim &bone_anim = bones.find(nodeName)->second;
+			BoneAnim &bone = bone_anim.find(name)->second;
+			glm::vec3 source_position = vmd.m_motions[i].m_translate;
+			aiVectorKey position;
+			position.mTime = vmd.m_motions[i].m_frame;
+			position.mValue = aiVector3D(source_position.x, -source_position.y, source_position.z);
+			bone.position.push_back(position);
+			aiVectorKey scale;
+			scale.mTime = vmd.m_motions[i].m_frame;
+			scale.mValue = aiVector3D(1.0f, 1.0f, 1.0f);
+			bone.scale.push_back(scale);
+			aiQuatKey rotation;
+			rotation.mTime = vmd.m_motions[i].m_frame;
+			glm::quat source_quat = vmd.m_motions[i].m_quaternion;
+			rotation.mValue = aiQuaternion(source_quat.w, source_quat.x, source_quat.y, source_quat.z).Conjugate;
+			bone.rotation.push_back(rotation);
 		}
 	}
-	pScene->mMeshes[0]->mNumBones = bones.size();
-	pScene->mMeshes[0]->mBones = new aiBone*[pScene->mMeshes[0]->mNumBones]() ;
-	for (auto bone : bones) {
-		pScene->mMeshes[0]->mBones[bone.second.index] = new aiBone();
-		pScene->mMeshes[0]->mBones[bone.second.index]->mName = bone.first; 
-	}
 	pScene->mNumAnimations = 1;
-	pScene->mAnimations = new aiAnimation*[1];
-	pScene->mAnimations[0] = new aiAnimation();
-	pScene->mAnimations[0]->mTicksPerSecond = 30;
-	pScene->mAnimations[0]->mNumChannels = bones.size();
-	pScene->mAnimations[0]->mChannels = new aiNodeAnim *[bones.size()];
-	for (std::vector<int32_t>::size_type i = 0; i != vmd.m_motions.size(); i++) {
+	pScene->mAnimations = new aiAnimation *[1];
+	aiAnimation *anim = new aiAnimation();
+	pScene->mAnimations[0] = anim;
+	pScene->mAnimations[0]->mDuration = vmd.m_motions.size();
+	anim->mTicksPerSecond = 30;
+	anim->mNumChannels = bone_anim.size();
+	anim->mChannels = new aiNodeAnim *[bone_anim.size()]();
+	for (std::vector<int32_t>::size_type i = 0; i != bone_anim.size(); i++) {
+		aiNodeAnim *node = new aiNodeAnim;
+		anim->mChannels[i] = node;
 		std::string name = vmd.m_motions[i].m_boneName.ToUtf8String();
-		if(bones.find(name) != bones.end()) {
-			BoneAnim bone_anim = bones.find(name)->second;
-			int32_t channelIndex = bone_anim.index;
-			aiNodeAnim *node = new aiNodeAnim;
-			pScene->mAnimations[0]->mChannels[i] = node;
-			node->mNumPositionKeys = bone_anim.position.size();
+		node->mNodeName = name;
+		if (bone_anim.find(name) != bone_anim.end()) {
+			BoneAnim bone = bone_anim.find(name)->second;
+			int32_t channelIndex = bone.index;
+			node->mNumPositionKeys = bone.position.size();
 			node->mPositionKeys = new aiVectorKey[node->mNumPositionKeys]();
-			for(size_t j = 0; j  <bone_anim.position.size(); j++) {
-				node->mPositionKeys[j] = bone_anim.position[j];
+			for (size_t j = 0; j < bone.position.size(); j++) {
+				node->mPositionKeys[j] = bone.position[j];
 			}
-			node->mNumRotationKeys = bone_anim.rotation.size();
+			node->mNumRotationKeys = bone.rotation.size();
 			node->mRotationKeys = new aiQuatKey[node->mNumRotationKeys]();
-			for(size_t j = 0; j < bone_anim.position.size(); j++) {
-				node->mRotationKeys[j] = bone_anim.rotation[j];
+			for (size_t j = 0; j < bone.position.size(); j++) {
+				node->mRotationKeys[j] = bone.rotation[j];
 			}
-			node->mNumScalingKeys = bone_anim.scale.size();
+			node->mNumScalingKeys = bone.scale.size();
 			node->mScalingKeys = new aiVectorKey[node->mNumRotationKeys]();
-			for(size_t j = 0; j < bone_anim.scale.size(); j++) {
-				node->mScalingKeys[j] = bone_anim.scale[j];
+			for (size_t j = 0; j < bone.scale.size(); j++) {
+				node->mScalingKeys[j] = bone.scale[j];
 			}
 		}
 	}
