@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----------------------------------------------------------------------
 */
 
+// Based on Godot's interpolation code
+
 #ifndef INCLUDED_AI_VMD_IMPORTER_H
 #define INCLUDED_AI_VMD_IMPORTER_H
 
@@ -58,12 +60,58 @@ public:
 			bool checkSig) const;
 
 protected:
+	aiQuaternion _interpolate_track_quat(const std::vector<float> &p_times, const std::vector<aiQuaternion> &p_values, float p_time) {
+		//could use binary search, worth it?
+		int idx = -1;
+		for (int i = 0; i < p_times.size(); i++) {
+			if (p_times[i] > p_time)
+				break;
+			idx++;
+		}
+		if (idx == -1) {
+			return p_values[0];
+		} else if (idx >= p_times.size() - 1) {
+			return p_values[p_times.size() - 1];
+		}
+
+		float c = (p_time - p_times[idx]) / (p_times[idx + 1] - p_times[idx]);
+
+		aiQuaternion out;
+		aiQuaternion::Interpolate(out, p_values[idx], p_values[idx + 1], c);
+		return out.Normalize();
+	}
+
+	aiVector3D _interpolate_track_vec3(const std::vector<float> &p_times, const std::vector<aiVector3D> &p_values, float p_time) {
+		//could use binary search, worth it?
+		int idx = -1;
+		for (int i = 0; i < p_times.size(); i++) {
+			if (p_times[i] > p_time)
+				break;
+			idx++;
+		}
+
+		if (idx == -1) {
+			return p_values[0];
+		} else if (idx >= p_times.size() - 1) {
+			return p_values[p_times.size() - 1];
+		}
+
+		float c = (p_time - p_times[idx]) / (p_times[idx + 1] - p_times[idx]);
+
+		return p_values[idx] + (p_values[idx + 1] - p_values[idx]) * c;
+	}
+
 	struct BoneAnim {
-		int32_t index = 0;
-		std::vector<aiVectorKey> position;
-		std::vector<aiQuatKey> rotation;
-		std::vector<aiVectorKey> scale;
-        BoneAnim() {}
+		uint32_t frame;
+		aiVectorKey position;
+		aiQuatKey rotation;
+		BoneAnim(uint32_t first, aiVectorKey second, aiQuatKey third) :
+				frame(first),
+				position(second),
+				rotation(third){};
+		bool operator<(const BoneAnim &rhs) const {
+			return (frame < rhs.frame);
+		}
 	};
 	const aiImporterDesc *GetInfo() const;
 	void GetExtensionList(std::set<std::string> &extensions);
