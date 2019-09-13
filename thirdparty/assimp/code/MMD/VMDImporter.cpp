@@ -53,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/matrix4x4.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
+#include "PostProcessing/ConvertToLHProcess.h"
 
 #include <iterator>
 #include <set>
@@ -140,12 +141,12 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 		glm::vec3 pos = vmd.m_motions[i].m_translate;
 		aiVectorKey pos_key;
 		pos_key.mTime = vmd.m_motions[i].m_frame;
-		pos_key.mValue = aiVector3D(pos.x, -pos.y, pos.z);
+		pos_key.mValue = aiVector3D(pos.x, pos.y, pos.z);
 
 		glm::quat quat = vmd.m_motions[i].m_quaternion;
 		aiQuatKey rot_key;
 		rot_key.mTime = vmd.m_motions[i].m_frame;
-		rot_key.mValue = aiQuaternion(quat.w, quat.x, quat.y, quat.z).Conjugate();
+		rot_key.mValue = aiQuaternion(quat.w, quat.x, quat.y, quat.z);
 		BoneAnim bone = {
 			vmd.m_motions[i].m_frame,
 			pos_key,
@@ -248,6 +249,16 @@ void VMDImporter::InternReadFile(const std::string &pFile,
 
 	// IK Controllers
 	// Morph Controllers
+
+	// Convert everything to OpenGL space
+	MakeLeftHandedProcess convertProcess;
+	convertProcess.Execute(pScene);
+
+	FlipUVsProcess uvFlipper;
+	uvFlipper.Execute(pScene);
+
+	FlipWindingOrderProcess windingFlipper;
+	windingFlipper.Execute(pScene);
 }
 
 const aiImporterDesc *VMDImporter::GetInfo() const {
