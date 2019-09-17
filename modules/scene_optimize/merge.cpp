@@ -219,7 +219,7 @@ void MeshMergeMaterialRepack::generate_atlas(const int32_t p_num_meshes, PoolVec
 			mesh_count++;
 		}
 	}
-	pack_options.padding = 4;
+	pack_options.padding = 32;
 	pack_options.texelsPerUnit = 1.0f;
 	pack_options.maxChartSize = 4096;
 	pack_options.blockAlign = true;
@@ -438,7 +438,7 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 
 	// https://blog.ostermiller.org/dilate-and-erode
 	// TODO O(n^2) solution to find the Manhattan distance to "on" pixels in a two dimension array
-	Ref<Image> target_image = dilate(atlas_img_albedo);
+	Ref<Image> target_image = dilate(atlas_img_albedo, pack_options.padding);
 
 	for (int32_t i = 0; i < r_mesh_items.size(); i++) {
 		if (r_mesh_items[i]->get_parent()) {
@@ -491,13 +491,13 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 	return p_root;
 }
 
-Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image) {
+Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image, const int32_t dialations) {
 
 	Ref<Image> target_image;
 	target_image.instance();
 	target_image->create(source_image->get_width(), source_image->get_height(), false, Image::FORMAT_RGBA8);
 
-	for (int32_t i = 0; i < 2; i++) {
+	for (int32_t i = 0; i < dialations; i++) {
 		target_image->fill(Color(0.0f, 0.0f, 0.0f, 0.0f));
 		source_image->lock();
 		target_image->lock();
