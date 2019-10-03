@@ -87,6 +87,7 @@ bool MeshMergeMaterialRepack::setAtlasTexel(void *param, int x, int y, const Vec
 	}
 	return false;
 }
+
 void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r_items, Node *p_current_node, const Node *p_owner) {
 	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current_node);
 	if (mi) {
@@ -94,6 +95,7 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 		if (!array_mesh.is_null()) {
 			bool has_blends = false;
 			bool has_bones = false;
+			bool has_transparency = false;
 			for (int32_t i = 0; i < array_mesh->get_surface_count(); i++) {
 				Array array = array_mesh->surface_get_arrays(i);
 				Array bones = array[ArrayMesh::ARRAY_BONES];
@@ -103,8 +105,15 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 				if (array_mesh->get_blend_shape_count()) {
 					has_blends |= true;
 				}
+				Ref<SpatialMaterial> spatial_mat = array_mesh->surface_get_material(i);
+				if (spatial_mat.is_valid()) {
+					Ref<Image> img = spatial_mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+					if (spatial_mat->get_albedo().a != 1.0f || (img.is_valid() && img->detect_alpha() != Image::ALPHA_NONE)) {
+						has_transparency |= true;
+					}
+				}
 			}
-			if (!has_blends && !has_bones) {
+			if (!has_blends && !has_bones && !has_transparency) {
 				r_items.push_back(mi);
 			}
 		}
@@ -113,6 +122,7 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 		_find_all_mesh_instances(r_items, p_current_node->get_child(i), p_owner);
 	}
 }
+
 Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 	Vector<MeshInstance *> mesh_items;
 	_find_all_mesh_instances(mesh_items, p_root, p_root);
