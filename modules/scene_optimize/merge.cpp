@@ -474,6 +474,8 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 		Ref<ImageTexture> texture;
 		texture.instance();
 		texture->create_from_image(target_image);
+		texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
+		texture->set_lossy_storage_quality(0.75);
 		mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 		mat->set_name("Atlas");
 		if (target_image->detect_alpha()) {
@@ -493,67 +495,66 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 
 Ref<Image> MeshMergeMaterialRepack::dilate(Ref<Image> source_image, const int32_t dialations) {
 
-	Ref<Image> target_image;
-	target_image.instance();
-	target_image->create(source_image->get_width(), source_image->get_height(), false, Image::FORMAT_RGBA8);
-	target_image->fill(Color(0.0f, 0.0f, 0.0f, 1.0f));
-	for (int32_t i = 0; i < dialations; i++) {
+	Ref<Image> target_image = source_image->duplicate();
+	int32_t max_dimension = MAX(target_image->get_width(), target_image->get_height());
+	for (int32_t i = 0; i < max_dimension; i++) {
 		source_image->lock();
 		target_image->lock();
+		bool touched = false;
 		for (int32_t y = 0; y < source_image->get_size().y; y++) {
 			for (int32_t x = 0; x < source_image->get_size().x; x++) {
-				if (source_image->get_pixel(x, y).a == 0.0f) {
-					int32_t num = 0;
-					Color color_accum;
-					if (x - 1 >= 0 && x + 1 < source_image->get_size().x) {
-						if (source_image->get_pixel(x - 1, y).a != 0.0f) {
-							color_accum += source_image->get_pixel(x - 1, y);
-							num++;
-						}
-						if (source_image->get_pixel(x + 1, y).a != 0.0f) {
-							color_accum += source_image->get_pixel(x + 1, y);
-							num++;
-						}
-						if (num > 0) {
-							target_image->set_pixel(x, y, color_accum / num);
-						}
+				if (target_image->get_pixel(x, y).a != 0.0f) {
+					continue;
+				}
+				int32_t num = 0;
+				Color color_accum;
+				if (x - 1 >= 0 && x + 1 < source_image->get_size().x) {
+					if (source_image->get_pixel(x - 1, y).a != 0.0f) {
+						color_accum += source_image->get_pixel(x - 1, y);
+						num++;
 					}
-				} else {
-					Color pixel = source_image->get_pixel(x, y);
-					target_image->set_pixel(x, y, pixel);
+					if (source_image->get_pixel(x + 1, y).a != 0.0f) {
+						color_accum += source_image->get_pixel(x + 1, y);
+						num++;
+					}
+					if (num > 0) {
+						target_image->set_pixel(x, y, color_accum / num);
+						touched = true;
+					}
 				}
 			}
 		}
 		for (int32_t y = 0; y < source_image->get_size().y; y++) {
 			for (int32_t x = 0; x < source_image->get_size().x; x++) {
-				if (source_image->get_pixel(x, y).a == 0.0f) {
-					int32_t num = 0;
-					Color color_accum;
-					if (y - 1 >= 0 && y + 1 < source_image->get_size().y) {
-						if (source_image->get_pixel(x, y - 1).a != 0.0f) {
-							color_accum += source_image->get_pixel(x, y - 1);
-							num++;
-						}
-						if (source_image->get_pixel(x, y + 1).a != 0.0f) {
-							color_accum += source_image->get_pixel(x, y + 1);
-							num++;
-						}
-						if (num > 0) {
-							target_image->set_pixel(x, y, color_accum / num);
-						}
+				if (target_image->get_pixel(x, y).a != 0.0f) {
+					continue;
+				}
+				int32_t num = 0;
+				Color color_accum;
+				if (y - 1 >= 0 && y + 1 < source_image->get_size().y) {
+					if (source_image->get_pixel(x, y - 1).a != 0.0f) {
+						color_accum += source_image->get_pixel(x, y - 1);
+						num++;
 					}
-				} else {
-					Color pixel = source_image->get_pixel(x, y);
-					target_image->set_pixel(x, y, pixel);
+					if (source_image->get_pixel(x, y + 1).a != 0.0f) {
+						color_accum += source_image->get_pixel(x, y + 1);
+						num++;
+					}
+					if (num > 0) {
+						target_image->set_pixel(x, y, color_accum / num);
+						touched = true;
+					}
 				}
 			}
 		}
 		source_image->unlock();
 		target_image->unlock();
-		source_image = target_image->duplicate(true);
+		source_image = target_image->duplicate();
+		if (touched == false) {
+			break;
+		}
+		print_line("Image dilation iteration " + itos(i));
 	}
-	// TODO Custom mipmap to fix gaps
-	//target_image->generate_mipmaps();
-	target_image->compress();
+	target_image->generate_mipmaps();
 	return target_image;
 }
