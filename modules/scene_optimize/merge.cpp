@@ -161,101 +161,240 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 	}
 	xatlas::PackOptions pack_options;
 	Vector<AtlasLookupTexel> atlas_lookup;
-	generate_atlas(num_surfaces, uv_groups, atlas, mesh_items, vertex_to_material, material_cache, pack_options);
+	_generate_atlas(num_surfaces, uv_groups, atlas, mesh_items, vertex_to_material, material_cache, pack_options);
 	atlas_lookup.resize(atlas->width * atlas->height);
-	Map<SpatialMaterial::TextureParam, Ref<Image> > texture_atlas;
-	{
-		Ref<Image> atlas_img_albedo;
-		atlas_img_albedo.instance();
-		ERR_FAIL_COND_V(atlas->width <= 0 && atlas->height <= 0, p_root);
-		print_line("Generating albedo texture atlas.");
-		atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8);
-		// Rasterize chart triangles.
-		Map<uint16_t, Ref<Image> > image_cache;
-		for (uint32_t i = 0; i < atlas->meshCount; i++) {
-			const xatlas::Mesh &mesh = atlas->meshes[i];
-			for (uint32_t j = 0; j < mesh.chartCount; j++) {
-				const xatlas::Chart &chart = mesh.chartArray[j];
-				Ref<SpatialMaterial> material;
-				Ref<Image> img;
-				img.instance();
-				Map<uint16_t, Ref<Image> >::Element *E = image_cache.find(chart.material);
-				if (E) {
-					img = E->get();
-				} else {
-					if (chart.material >= material_cache.size()) {
-						continue;
-					}
-					material = material_cache.get(chart.material);
-					if (material.is_null()) {
-						continue;
-					}
-					Ref<Texture> tex = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
-					if (tex.is_null()) {
-						img->create(1, 1, true, Image::FORMAT_RGBA8);
-						img->fill(material->get_albedo());
-					} else {
-						img = tex->get_data();
-						if (img->is_compressed()) {
-							img->decompress();
-						}
-						img->lock();
-						for (int32_t y = 0; y < img->get_height(); y++) {
-							for (int32_t x = 0; x < img->get_width(); x++) {
-								Color c = img->get_pixel(x, y);
-								img->set_pixel(x, y, c * material->get_albedo());
-							}
-						}
-					}
-					img->unlock();
-					image_cache.insert(chart.material, img);
-				}
-				ERR_EXPLAIN("Float textures are not supported yet");
-				ERR_CONTINUE(Image::get_format_pixel_size(img->get_format()) > 4);
-				if (img->is_compressed()) {
-					img->decompress();
-				}
-				Ref<ImageTexture> image_texture;
-				image_texture.instance();
-				image_texture->create_from_image(img);
-				material = material_cache.get(chart.material);
-				material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, image_texture);
-				img->convert(Image::FORMAT_RGBA8);
-				SetAtlasTexelArgs args;
-				args.sourceTexture = img;
-				args.atlasData = atlas_img_albedo;
-				args.sourceTexture->lock();
-				args.atlasData->lock();
-				args.atlas_lookup = atlas_lookup;
-				args.material_index = (uint16_t)chart.material;
-				for (uint32_t k = 0; k < chart.faceCount; k++) {
-					Vector2 v[3];
-					for (uint32_t l = 0; l < 3; l++) {
-						const uint32_t index = mesh.indexArray[chart.faceArray[k] * 3 + l];
-						const xatlas::Vertex &vertex = mesh.vertexArray[index];
-						v[l] = Vector2(vertex.uv[0], vertex.uv[1]);
-						args.source_uvs[l].x = uv_groups[i][vertex.xref].x / img->get_width();
-						args.source_uvs[l].y = uv_groups[i][vertex.xref].y / img->get_height();
-					}
-					Triangle tri(v[0], v[1], v[2], Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-
-					tri.drawAA(setAtlasTexel, &args);
-				}
-				args.atlasData->unlock();
-				args.sourceTexture->unlock();
-			}
-		}
-		atlas_img_albedo->generate_mipmaps();
-		texture_atlas.insert(SpatialMaterial::TEXTURE_ALBEDO, atlas_img_albedo);
-	}
+	Map<String, Ref<Image> > texture_atlas;
 	MergeState state = { p_root, atlas, mesh_items, vertex_to_material, uv_groups, model_vertices, p_root->get_name(), pack_options, atlas_lookup, material_cache, texture_atlas };
-	p_root = output(state);
+
+	print_line("Generating albedo texture atlas.");
+	_generate_texture_atlas(state, "albedo");
+	print_line("Generating emission texture atlas.");
+	_generate_texture_atlas(state, "emission");
+	print_line("Generating normal texture atlas.");
+	_generate_texture_atlas(state, "normal");
+	print_line("Generating orm texture atlas.");
+	_generate_texture_atlas(state, "orm");
+	ERR_FAIL_COND_V(state.atlas->width <= 0 && state.atlas->height <= 0, state.p_root);
+	p_root = _output(state);
 
 	xatlas::Destroy(atlas);
 	return p_root;
 }
 
-void MeshMergeMaterialRepack::generate_atlas(const int32_t p_num_meshes, PoolVector<PoolVector2Array> &r_uvs, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_meshes, Array vertex_to_material, const Vector<Ref<Material> > material_cache,
+void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String texture_type) {
+	Ref<Image> atlas_img;
+	atlas_img.instance();
+	atlas_img->create(state.atlas->width, state.atlas->height, true, Image::FORMAT_RGBA8);
+	// Rasterize chart triangles.
+	Map<uint16_t, Ref<Image> > image_cache;
+	for (uint32_t i = 0; i < state.atlas->meshCount; i++) {
+		const xatlas::Mesh &mesh = state.atlas->meshes[i];
+		print_line("  mesh atlas " + itos(i));
+		for (uint32_t j = 0; j < mesh.chartCount; j++) {
+			const xatlas::Chart &chart = mesh.chartArray[j];
+			Ref<SpatialMaterial> material;
+			Ref<Image> img = _get_source_texture(state, image_cache, chart, material, texture_type);
+			ERR_EXPLAIN("Float textures are not supported yet");
+			ERR_CONTINUE(Image::get_format_pixel_size(img->get_format()) > 4);
+			Ref<ImageTexture> image_texture;
+			image_texture.instance();
+			image_texture->create_from_image(img);
+			img->convert(Image::FORMAT_RGBA8);
+			SetAtlasTexelArgs args;
+			args.sourceTexture = img;
+			args.atlasData = atlas_img;
+			args.sourceTexture->lock();
+			args.atlasData->lock();
+			args.atlas_lookup = state.atlas_lookup;
+			args.material_index = (uint16_t)chart.material;
+			for (uint32_t k = 0; k < chart.faceCount; k++) {
+				Vector2 v[3];
+				for (uint32_t l = 0; l < 3; l++) {
+					const uint32_t index = mesh.indexArray[chart.faceArray[k] * 3 + l];
+					const xatlas::Vertex &vertex = mesh.vertexArray[index];
+					v[l] = Vector2(vertex.uv[0], vertex.uv[1]);
+					args.source_uvs[l].x = state.uvs[i][vertex.xref].x / img->get_width();
+					args.source_uvs[l].y = state.uvs[i][vertex.xref].y / img->get_height();
+				}
+				Triangle tri(v[0], v[1], v[2], Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+
+				tri.drawAA(setAtlasTexel, &args);
+			}
+			args.atlasData->unlock();
+			args.sourceTexture->unlock();
+		}
+	}
+	atlas_img->generate_mipmaps();
+	state.texture_atlas.insert(texture_type, atlas_img);
+}
+
+Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<uint16_t, Ref<Image> > &image_cache, const xatlas::Chart &chart, Ref<SpatialMaterial> &material, String texture_type) {
+	Ref<Image> img;
+	img.instance();
+	img->create(1, 1, false, Image::FORMAT_RGBA8);
+	Map<uint16_t, Ref<Image> >::Element *E = image_cache.find(chart.material);
+	if (E) {
+		img = E->get();
+	} else {
+		if (chart.material >= state.material_cache.size()) {
+			return Ref<Image>();
+		}
+		material = state.material_cache.get(chart.material);
+		if (material.is_null()) {
+			return Ref<Image>();
+		}
+		Ref<Texture> tex;
+		if (texture_type == "orm") {
+			img.instance();
+			float width = state.atlas->width;
+			float height = state.atlas->height;
+			Ref<Image> ao_img = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+			if (ao_img.is_valid() && !ao_img->empty()) {
+				width = ao_img->get_width();
+				height = ao_img->get_height();
+			}
+			Ref<Image> metallic_img = material->get_texture(SpatialMaterial::TEXTURE_METALLIC);
+			if (metallic_img.is_valid() && !metallic_img->empty()) {
+				width = metallic_img->get_width();
+				height = metallic_img->get_height();
+			}
+			Ref<Image> roughness_img = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
+			if (roughness_img.is_valid() && !roughness_img->empty()) {
+				width = roughness_img->get_width();
+				height = roughness_img->get_height();
+			}
+			if (ao_img.is_valid() && !ao_img->empty()) {
+				ao_img->resize(width, height, Image::INTERPOLATE_LANCZOS);
+			}
+			if (metallic_img.is_valid() && !metallic_img->empty()) {
+				metallic_img->resize(width, height, Image::INTERPOLATE_LANCZOS);
+			}
+			if (roughness_img.is_valid() && !roughness_img->empty()) {
+				roughness_img->resize(width, height, Image::INTERPOLATE_LANCZOS);
+			}
+			img->create(width, height, false, Image::FORMAT_RGBA8);
+			img->lock();
+
+			for (int32_t y = 0; y < img->get_height(); y++) {
+				for (int32_t x = 0; x < img->get_width(); x++) {
+					Color c = img->get_pixel(x, y);
+					Color orm;
+					if (ao_img.is_valid() && !ao_img->empty()) {
+						ao_img->lock();
+						if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_RED) {
+							orm.r = ao_img->get_pixel(x, y).r;
+						} else if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GREEN) {
+							orm.r = ao_img->get_pixel(x, y).g;
+						} else if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_BLUE) {
+							orm.r = ao_img->get_pixel(x, y).b;
+						} else if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_ALPHA) {
+							orm.r = ao_img->get_pixel(x, y).a;
+						} else if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE) {
+							orm.r = ao_img->get_pixel(x, y).r;
+						}
+						ao_img->unlock();
+					}
+					if (roughness_img.is_valid() && !roughness_img->empty()) {
+						roughness_img->lock();
+						if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_RED) {
+							orm.g = roughness_img->get_pixel(x, y).r;
+						} else if (material->get_roughness_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GREEN) {
+							orm.g = roughness_img->get_pixel(x, y).g;
+						} else if (material->get_roughness_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_BLUE) {
+							orm.g = roughness_img->get_pixel(x, y).b;
+						} else if (material->get_roughness_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_ALPHA) {
+							orm.g = roughness_img->get_pixel(x, y).a;
+						} else if (material->get_roughness_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE) {
+							orm.g = roughness_img->get_pixel(x, y).r;
+						}
+						roughness_img->unlock();
+						orm.g *= material->get_roughness();
+					} else {
+						orm.g = material->get_roughness();
+					}
+					if (metallic_img.is_valid() && !metallic_img->empty()) {
+						metallic_img->lock();
+						if (material->get_ao_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_RED) {
+							orm.b = metallic_img->get_pixel(x, y).r;
+						} else if (material->get_metallic_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GREEN) {
+							orm.b = metallic_img->get_pixel(x, y).g;
+						} else if (material->get_metallic_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_BLUE) {
+							orm.b = metallic_img->get_pixel(x, y).b;
+						} else if (material->get_metallic_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_ALPHA) {
+							orm.b = metallic_img->get_pixel(x, y).a;
+						} else if (material->get_metallic_texture_channel() == SpatialMaterial::TEXTURE_CHANNEL_GRAYSCALE) {
+							orm.b = metallic_img->get_pixel(x, y).r;
+						}
+						metallic_img->unlock();
+						orm.b *= material->get_metallic();
+					} else {
+						orm.b = material->get_metallic();
+					}
+					img->set_pixel(x, y, orm);
+				}
+			}
+		} else if (texture_type == "albedo") {
+			tex = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+			if (tex.is_valid()) {
+				img = tex->get_data();
+				if (!img->empty()) {
+					if (img->is_compressed()) {
+						img->decompress();
+					}
+				}
+				if (img.is_valid() && !img->empty()) {
+					img->lock();
+					for (int32_t y = 0; y < img->get_height(); y++) {
+						for (int32_t x = 0; x < img->get_width(); x++) {
+							Color c = img->get_pixel(x, y);
+							img->set_pixel(x, y, c * material->get_albedo());
+						}
+					}
+					img->unlock();
+				}
+			} else {
+				img->fill(material->get_albedo());
+			}
+		} else if (texture_type == "emission") {
+			tex = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
+			if (tex.is_valid()) {
+				img = tex->get_data();
+				if (!img->empty()) {
+					if (img->is_compressed()) {
+						img->decompress();
+					}
+				}
+				if (img.is_valid() && !img->empty()) {
+					img->lock();
+					for (int32_t y = 0; y < img->get_height(); y++) {
+						for (int32_t x = 0; x < img->get_width(); x++) {
+							Color c = img->get_pixel(x, y);
+							img->set_pixel(x, y, c + material->get_emission());
+						}
+					}
+					img->unlock();
+				}
+			} else {
+				img->fill(material->get_emission());
+			}
+		} else if (texture_type == "normal") {
+			tex = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
+			if (tex.is_valid()) {
+				img = tex->get_data();
+				if (!img->empty()) {
+					if (img->is_compressed()) {
+						img->decompress();
+					}
+				}
+			}
+		}
+	}
+	img->unlock();
+	image_cache.insert(chart.material, img);
+	return img;
+}
+
+void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVector<PoolVector2Array> &r_uvs, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_meshes, Array vertex_to_material, const Vector<Ref<Material> > material_cache,
 		xatlas::PackOptions &pack_options) {
 
 	int32_t mesh_first_index = 0;
@@ -449,7 +588,7 @@ void MeshMergeMaterialRepack::map_vertex_to_material(Vector<MeshInstance *> mesh
 	}
 }
 
-Node *MeshMergeMaterialRepack::output(MergeState &state) {
+Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 	MeshMergeMaterialRepack::TextureData texture_data;
 	for (int32_t i = 0; i < state.r_mesh_items.size(); i++) {
 		if (state.r_mesh_items[i]->get_parent()) {
@@ -482,19 +621,70 @@ Node *MeshMergeMaterialRepack::output(MergeState &state) {
 	Ref<SpatialMaterial> mat;
 	mat.instance();
 	if (state.atlas->width != 0 || state.atlas->height != 0) {
-		Map<SpatialMaterial::TextureParam, Ref<Image> >::Element *A = state.texture_atlas.find(SpatialMaterial::TEXTURE_ALBEDO);
-		if (A) {
+		Map<String, Ref<Image> >::Element *A = state.texture_atlas.find("albedo");
+		if (A && !A->get()->empty()) {
 			Ref<ImageTexture> texture;
 			texture.instance();
 			texture->create_from_image(A->get());
 			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
 			texture->set_lossy_storage_quality(0.75);
 			mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-			mat->set_name("Atlas");
+			mat->set_name("AtlasAlbedo");
 			if (A->get()->detect_alpha()) {
 				mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
 				mat->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
 			}
+		}
+		Map<String, Ref<Image> >::Element *E = state.texture_atlas.find("emission");
+		if (E && !E->get()->empty()) {
+			Ref<ImageTexture> texture;
+			texture.instance();
+			texture->create_from_image(E->get());
+			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
+			texture->set_lossy_storage_quality(0.75);
+			mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
+			mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
+			mat->set_name("Atlas");
+		}
+		Map<String, Ref<Image> >::Element *N = state.texture_atlas.find("normal");
+		if (N && !N->get()->empty()) {
+			bool has_normals = false;
+			N->get()->lock();
+			for (int32_t y = 0; y < N->get()->get_height(); y++) {
+				for (int32_t x = 0; x < N->get()->get_width(); x++) {
+					Color texel = N->get()->get_pixel(x, y);
+					if (texel != Color(0.0f, 0.0f, 0.0f, 0.0f)) {
+						has_normals = has_normals || true;
+					}
+				}
+			}
+			N->get()->unlock();
+			if (has_normals) {
+				Ref<ImageTexture> texture;
+				texture.instance();
+				texture->create_from_image(N->get());
+				texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
+				texture->set_lossy_storage_quality(0.75);
+				mat->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, true);
+				mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
+				mat->set_name("Atlas");
+			}
+		}
+		Map<String, Ref<Image> >::Element *ORM = state.texture_atlas.find("orm");
+		if (ORM && !ORM->get()->empty()) {
+			Ref<ImageTexture> texture;
+			texture.instance();
+			texture->create_from_image(ORM->get());
+			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
+			texture->set_lossy_storage_quality(0.75);
+			mat->set_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
+			mat->set_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION, true);
+			mat->set_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION, texture);
+			mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
+			mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
+			mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
+			mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
+			mat->set_name("Atlas");
 		}
 	}
 	MeshInstance *mi = memnew(MeshInstance);
