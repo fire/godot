@@ -392,6 +392,5 @@ public:
 	void scale_uvs_by_texture_dimension(Vector<MeshInstance *> &original_mesh_items, Vector<MeshInstance *> &mesh_items, PoolVector<PoolVector2Array> &uv_groups, Array &r_vertex_to_material, PoolVector<PoolVector<ModelVertex> > &r_model_vertices);
 	void map_vertex_to_material(Vector<MeshInstance *> mesh_items, Array &vertex_to_material, Vector<Ref<Material> > &material_cache);
 	Node *output(Node *p_root, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_mesh_items, Array &vertex_to_material, const PoolVector<PoolVector2Array> uvs, const PoolVector<PoolVector<ModelVertex> > &model_vertices, String p_name, const xatlas::PackOptions &pack_options, Vector<AtlasLookupTexel> &atlas_lookup, Vector<Ref<Material> > &material_cache);
-	Ref<Image> dilate(Ref<Image> source_image, const int32_t dilations);
 };
 #endif
