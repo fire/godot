@@ -163,7 +163,93 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 	Vector<AtlasLookupTexel> atlas_lookup;
 	generate_atlas(num_surfaces, uv_groups, atlas, mesh_items, vertex_to_material, material_cache, pack_options);
 	atlas_lookup.resize(atlas->width * atlas->height);
-	p_root = output(p_root, atlas, mesh_items, vertex_to_material, uv_groups, model_vertices, p_root->get_name(), pack_options, atlas_lookup, material_cache);
+	Map<SpatialMaterial::TextureParam, Ref<Image> > texture_atlas;
+	{
+		Ref<Image> atlas_img_albedo;
+		atlas_img_albedo.instance();
+		ERR_FAIL_COND_V(atlas->width <= 0 && atlas->height <= 0, p_root);
+		print_line("Generating albedo texture atlas.");
+		atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8);
+		// Rasterize chart triangles.
+		Map<uint16_t, Ref<Image> > image_cache;
+		for (uint32_t i = 0; i < atlas->meshCount; i++) {
+			const xatlas::Mesh &mesh = atlas->meshes[i];
+			for (uint32_t j = 0; j < mesh.chartCount; j++) {
+				const xatlas::Chart &chart = mesh.chartArray[j];
+				Ref<SpatialMaterial> material;
+				Ref<Image> img;
+				img.instance();
+				Map<uint16_t, Ref<Image> >::Element *E = image_cache.find(chart.material);
+				if (E) {
+					img = E->get();
+				} else {
+					if (chart.material >= material_cache.size()) {
+						continue;
+					}
+					material = material_cache.get(chart.material);
+					if (material.is_null()) {
+						continue;
+					}
+					Ref<Texture> tex = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+					if (tex.is_null()) {
+						img->create(1, 1, true, Image::FORMAT_RGBA8);
+						img->fill(material->get_albedo());
+					} else {
+						img = tex->get_data();
+						if (img->is_compressed()) {
+							img->decompress();
+						}
+						img->lock();
+						for (int32_t y = 0; y < img->get_height(); y++) {
+							for (int32_t x = 0; x < img->get_width(); x++) {
+								Color c = img->get_pixel(x, y);
+								img->set_pixel(x, y, c * material->get_albedo());
+							}
+						}
+					}
+					img->unlock();
+					image_cache.insert(chart.material, img);
+				}
+				ERR_EXPLAIN("Float textures are not supported yet");
+				ERR_CONTINUE(Image::get_format_pixel_size(img->get_format()) > 4);
+				if (img->is_compressed()) {
+					img->decompress();
+				}
+				Ref<ImageTexture> image_texture;
+				image_texture.instance();
+				image_texture->create_from_image(img);
+				material = material_cache.get(chart.material);
+				material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, image_texture);
+				img->convert(Image::FORMAT_RGBA8);
+				SetAtlasTexelArgs args;
+				args.sourceTexture = img;
+				args.atlasData = atlas_img_albedo;
+				args.sourceTexture->lock();
+				args.atlasData->lock();
+				args.atlas_lookup = atlas_lookup;
+				args.material_index = (uint16_t)chart.material;
+				for (uint32_t k = 0; k < chart.faceCount; k++) {
+					Vector2 v[3];
+					for (uint32_t l = 0; l < 3; l++) {
+						const uint32_t index = mesh.indexArray[chart.faceArray[k] * 3 + l];
+						const xatlas::Vertex &vertex = mesh.vertexArray[index];
+						v[l] = Vector2(vertex.uv[0], vertex.uv[1]);
+						args.source_uvs[l].x = uv_groups[i][vertex.xref].x / img->get_width();
+						args.source_uvs[l].y = uv_groups[i][vertex.xref].y / img->get_height();
+					}
+					Triangle tri(v[0], v[1], v[2], Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+
+					tri.drawAA(setAtlasTexel, &args);
+				}
+				args.atlasData->unlock();
+				args.sourceTexture->unlock();
+			}
+		}
+		atlas_img_albedo->generate_mipmaps();
+		texture_atlas.insert(SpatialMaterial::TEXTURE_ALBEDO, atlas_img_albedo);
+	}
+	MergeState state = { p_root, atlas, mesh_items, vertex_to_material, uv_groups, model_vertices, p_root->get_name(), pack_options, atlas_lookup, material_cache, texture_atlas };
+	p_root = output(state);
 
 	xatlas::Destroy(atlas);
 	return p_root;
@@ -363,111 +449,29 @@ void MeshMergeMaterialRepack::map_vertex_to_material(Vector<MeshInstance *> mesh
 	}
 }
 
-Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_mesh_items, Array &vertex_to_material, const PoolVector<PoolVector2Array> uvs, const PoolVector<PoolVector<ModelVertex> > &model_vertices, String p_name, const xatlas::PackOptions &pack_options, Vector<AtlasLookupTexel> &atlas_lookup, Vector<Ref<Material> > &material_cache) {
+Node *MeshMergeMaterialRepack::output(MergeState &state) {
 	MeshMergeMaterialRepack::TextureData texture_data;
-	Ref<Image> atlas_img_albedo;
-	atlas_img_albedo.instance();
-	ERR_FAIL_COND_V(atlas->width <= 0 && atlas->height <= 0, p_root);
-	atlas_img_albedo->create(atlas->width, atlas->height, true, Image::FORMAT_RGBA8);
-	// Rasterize chart triangles.
-	Map<uint16_t, Ref<Image> > image_cache;
-	for (uint32_t i = 0; i < atlas->meshCount; i++) {
-		const xatlas::Mesh &mesh = atlas->meshes[i];
-		for (uint32_t j = 0; j < mesh.chartCount; j++) {
-			const xatlas::Chart &chart = mesh.chartArray[j];
-			Ref<SpatialMaterial> material;
-			Ref<Image> img;
-			img.instance();
-			Map<uint16_t, Ref<Image> >::Element *E = image_cache.find(chart.material);
-			if (E) {
-				img = E->get();
-			} else {
-				if (chart.material >= material_cache.size()) {
-					continue;
-				}
-				material = material_cache.get(chart.material);
-				if (material.is_null()) {
-					continue;
-				}
-				Ref<Texture> tex = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
-				if (tex.is_null()) {
-					img->create(1, 1, true, Image::FORMAT_RGBA8);
-					img->fill(material->get_albedo());
-				} else {
-					img = tex->get_data();
-					if (img->is_compressed()) {
-						img->decompress();
-					}
-					img->lock();
-					for (int32_t y = 0; y < img->get_height(); y++) {
-						for (int32_t x = 0; x < img->get_width(); x++) {
-							Color c = img->get_pixel(x, y);
-							img->set_pixel(x, y, c * material->get_albedo());
-						}
-					}
-				}
-				img->unlock();
-				image_cache.insert(chart.material, img);
-			}
-			ERR_EXPLAIN("Float textures are not supported yet");
-			ERR_CONTINUE(Image::get_format_pixel_size(img->get_format()) > 4);
-			if (img->is_compressed()) {
-				img->decompress();
-			}
-			Ref<ImageTexture> image_texture;
-			image_texture.instance();
-			image_texture->create_from_image(img);
-			material = material_cache.get(chart.material);
-			material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, image_texture);
-			img->convert(Image::FORMAT_RGBA8);
-			SetAtlasTexelArgs args;
-			args.sourceTexture = img;
-			args.atlasData = atlas_img_albedo;
-			args.sourceTexture->lock();
-			args.atlasData->lock();
-			args.atlas_lookup = atlas_lookup;
-			args.material_index = (uint16_t)chart.material;
-			for (uint32_t k = 0; k < chart.faceCount; k++) {
-				Vector2 v[3];
-				for (uint32_t l = 0; l < 3; l++) {
-					const uint32_t index = mesh.indexArray[chart.faceArray[k] * 3 + l];
-					const xatlas::Vertex &vertex = mesh.vertexArray[index];
-					v[l] = Vector2(vertex.uv[0], vertex.uv[1]);
-					args.source_uvs[l].x = uvs[i][vertex.xref].x / img->get_width();
-					args.source_uvs[l].y = uvs[i][vertex.xref].y / img->get_height();
-				}
-				Triangle tri(v[0], v[1], v[2], Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-
-				tri.drawAA(setAtlasTexel, &args);
-			}
-			args.atlasData->unlock();
-			args.sourceTexture->unlock();
-		}
-	}
-
-	Ref<Image> target_image = atlas_img_albedo->duplicate();
-	target_image->generate_mipmaps();
-	for (int32_t i = 0; i < r_mesh_items.size(); i++) {
-		if (r_mesh_items[i]->get_parent()) {
-			r_mesh_items[i]->get_parent()->remove_child(r_mesh_items[i]);
+	for (int32_t i = 0; i < state.r_mesh_items.size(); i++) {
+		if (state.r_mesh_items[i]->get_parent()) {
+			state.r_mesh_items[i]->get_parent()->remove_child(state.r_mesh_items[i]);
 		}
 	}
 	Ref<SurfaceTool> st_all;
 	st_all.instance();
 	st_all->begin(Mesh::PRIMITIVE_TRIANGLES);
-	for (uint32_t i = 0; i < atlas->meshCount; i++) {
+	for (uint32_t i = 0; i < state.atlas->meshCount; i++) {
 		Ref<SurfaceTool> st;
 		st.instance();
 		st->begin(Mesh::PRIMITIVE_TRIANGLES);
-		const xatlas::Mesh &mesh = atlas->meshes[i];
+		const xatlas::Mesh &mesh = state.atlas->meshes[i];
 		for (uint32_t v = 0; v < mesh.vertexCount; v++) {
 			const xatlas::Vertex vertex = mesh.vertexArray[v];
-			const ModelVertex &sourceVertex = model_vertices[i][vertex.xref];
-			// TODO (Ernest) UV2
-			st->add_uv(Vector2(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height));
+			const ModelVertex &sourceVertex = state.model_vertices[i][vertex.xref];
+			st->add_uv(Vector2(vertex.uv[0] / state.atlas->width, vertex.uv[1] / state.atlas->height));
 			st->add_normal(Vector3(sourceVertex.normal.x, sourceVertex.normal.y, sourceVertex.normal.z));
 			st->add_vertex(Vector3(sourceVertex.pos.x, sourceVertex.pos.y, sourceVertex.pos.z));
 		}
+
 		for (uint32_t f = 0; f < mesh.indexCount; f++) {
 			const uint32_t index = mesh.indexArray[f];
 			st->add_index(index);
@@ -477,25 +481,28 @@ Node *MeshMergeMaterialRepack::output(Node *p_root, xatlas::Atlas *atlas, Vector
 	}
 	Ref<SpatialMaterial> mat;
 	mat.instance();
-	if (atlas->width != 0 || atlas->height != 0) {
-		Ref<ImageTexture> texture;
-		texture.instance();
-		texture->create_from_image(target_image);
-		texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
-		texture->set_lossy_storage_quality(0.75);
-		mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-		mat->set_name("Atlas");
-		if (target_image->detect_alpha()) {
-			mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-			mat->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+	if (state.atlas->width != 0 || state.atlas->height != 0) {
+		Map<SpatialMaterial::TextureParam, Ref<Image> >::Element *A = state.texture_atlas.find(SpatialMaterial::TEXTURE_ALBEDO);
+		if (A) {
+			Ref<ImageTexture> texture;
+			texture.instance();
+			texture->create_from_image(A->get());
+			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
+			texture->set_lossy_storage_quality(0.75);
+			mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+			mat->set_name("Atlas");
+			if (A->get()->detect_alpha()) {
+				mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
+				mat->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+			}
 		}
 	}
 	MeshInstance *mi = memnew(MeshInstance);
 	Ref<ArrayMesh> array_mesh = st_all->commit();
 	mi->set_mesh(array_mesh);
-	mi->set_name(p_name + "Merged");
+	mi->set_name(state.p_name + "Merged");
 	array_mesh->surface_set_material(0, mat);
-	p_root->add_child(mi);
-	mi->set_owner(p_root);
-	return p_root;
+	state.p_root->add_child(mi);
+	mi->set_owner(state.p_root);
+	return state.p_root;
 }

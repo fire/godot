@@ -384,6 +384,19 @@ private:
 	};
 
 	void _find_all_mesh_instances(Vector<MeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
+	struct MergeState {
+		Node *p_root;
+		xatlas::Atlas *atlas;
+		Vector<MeshInstance *> &r_mesh_items;
+		Array &vertex_to_material;
+		const PoolVector<PoolVector2Array> uvs;
+		const PoolVector<PoolVector<ModelVertex> > &model_vertices;
+		String p_name;
+		const xatlas::PackOptions &pack_options;
+		Vector<AtlasLookupTexel> &atlas_lookup;
+		Vector<Ref<Material> > &material_cache;
+		Map<SpatialMaterial::TextureParam, Ref<Image>> texture_atlas;
+	};
 
 public:
 	Node *merge(Node *p_root, Node *p_original_root);
@@ -391,6 +404,6 @@ public:
 			xatlas::PackOptions &pack_options);
 	void scale_uvs_by_texture_dimension(Vector<MeshInstance *> &original_mesh_items, Vector<MeshInstance *> &mesh_items, PoolVector<PoolVector2Array> &uv_groups, Array &r_vertex_to_material, PoolVector<PoolVector<ModelVertex> > &r_model_vertices);
 	void map_vertex_to_material(Vector<MeshInstance *> mesh_items, Array &vertex_to_material, Vector<Ref<Material> > &material_cache);
-	Node *output(Node *p_root, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_mesh_items, Array &vertex_to_material, const PoolVector<PoolVector2Array> uvs, const PoolVector<PoolVector<ModelVertex> > &model_vertices, String p_name, const xatlas::PackOptions &pack_options, Vector<AtlasLookupTexel> &atlas_lookup, Vector<Ref<Material> > &material_cache);
+	Node *output(MergeState &state);
 };
 #endif
