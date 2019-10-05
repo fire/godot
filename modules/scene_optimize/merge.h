@@ -395,7 +395,7 @@ private:
 		const xatlas::PackOptions &pack_options;
 		Vector<AtlasLookupTexel> &atlas_lookup;
 		Vector<Ref<Material> > &material_cache;
-		Map<String, Ref<Image>> texture_atlas;
+		Map<String, Ref<Image> > texture_atlas;
 	};
 
 public:

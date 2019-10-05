@@ -76,7 +76,6 @@ bool MeshMergeMaterialRepack::setAtlasTexel(void *param, int x, int y, const Vec
 			sy = Math::fmod(sy, _height);
 		}
 		const Color color = args->sourceTexture->get_pixel(sx, sy);
-
 		args->atlasData->set_pixel(x, y, color);
 
 		AtlasLookupTexel &lookup = args->atlas_lookup.write[x + y * args->atlas_width];
@@ -184,7 +183,7 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String texture_type) {
 	Ref<Image> atlas_img;
 	atlas_img.instance();
-	atlas_img->create(state.atlas->width, state.atlas->height, true, Image::FORMAT_RGBA8);
+	atlas_img->create(1, 1, false, Image::FORMAT_RGBA8);
 	// Rasterize chart triangles.
 	Map<uint16_t, Ref<Image> > image_cache;
 	for (uint32_t i = 0; i < state.atlas->meshCount; i++) {
@@ -231,18 +230,12 @@ void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String 
 Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<uint16_t, Ref<Image> > &image_cache, const xatlas::Chart &chart, Ref<SpatialMaterial> &material, String texture_type) {
 	Ref<Image> img;
 	img.instance();
-	img->create(1, 1, false, Image::FORMAT_RGBA8);
+	img->create(32, 32, false, Image::FORMAT_RGBA8);
 	Map<uint16_t, Ref<Image> >::Element *E = image_cache.find(chart.material);
 	if (E) {
 		img = E->get();
 	} else {
-		if (chart.material >= state.material_cache.size()) {
-			return Ref<Image>();
-		}
 		material = state.material_cache.get(chart.material);
-		if (material.is_null()) {
-			return Ref<Image>();
-		}
 		Ref<Texture> tex;
 		if (texture_type == "orm") {
 			img.instance();
@@ -431,13 +424,13 @@ void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVe
 				indexes.write[k] = mesh_indices[k];
 				ERR_FAIL_COND(k >= materials_array.size());
 				Ref<Material> material = materials_array[k];
-				if (material.is_valid()) {
-					if (material_cache.find(material) != -1) {
-						materials.write[k] = material_cache.find(material);
-					}
-				} else {
-					materials.write[k] = 0;
+				if (!material.is_valid()) {
+					continue;
 				}
+				if (material_cache.find(material) == -1) {
+					continue;
+				}
+				materials.write[k] = material_cache.find(material);
 			}
 			meshDecl.indexCount = indexes.size();
 			meshDecl.indexData = indexes.ptr();
@@ -620,6 +613,7 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 	}
 	Ref<SpatialMaterial> mat;
 	mat.instance();
+	mat->set_name("Atlas");
 	if (state.atlas->width != 0 || state.atlas->height != 0) {
 		Map<String, Ref<Image> >::Element *A = state.texture_atlas.find("albedo");
 		if (A && !A->get()->empty()) {
@@ -629,11 +623,6 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
 			texture->set_lossy_storage_quality(0.75);
 			mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-			mat->set_name("AtlasAlbedo");
-			if (A->get()->detect_alpha()) {
-				mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-				mat->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
-			}
 		}
 		Map<String, Ref<Image> >::Element *E = state.texture_atlas.find("emission");
 		if (E && !E->get()->empty()) {
@@ -644,7 +633,6 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			texture->set_lossy_storage_quality(0.75);
 			mat->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
 			mat->set_texture(SpatialMaterial::TEXTURE_EMISSION, texture);
-			mat->set_name("Atlas");
 		}
 		Map<String, Ref<Image> >::Element *N = state.texture_atlas.find("normal");
 		if (N && !N->get()->empty()) {
@@ -667,7 +655,6 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 				texture->set_lossy_storage_quality(0.75);
 				mat->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, true);
 				mat->set_texture(SpatialMaterial::TEXTURE_NORMAL, texture);
-				mat->set_name("Atlas");
 			}
 		}
 		Map<String, Ref<Image> >::Element *ORM = state.texture_atlas.find("orm");
@@ -684,7 +671,6 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
 			mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
 			mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
-			mat->set_name("Atlas");
 		}
 	}
 	MeshInstance *mi = memnew(MeshInstance);
