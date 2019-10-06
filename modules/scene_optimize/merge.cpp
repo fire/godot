@@ -107,7 +107,8 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 				Ref<SpatialMaterial> spatial_mat = array_mesh->surface_get_material(i);
 				if (spatial_mat.is_valid()) {
 					Ref<Image> img = spatial_mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
-					if (spatial_mat->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
+					if (spatial_mat->get_feature(SpatialMaterial::FEATURE_TRANSPARENT) ||
+							spatial_mat->get_albedo().a != 1.0f) {
 						has_transparency |= true;
 					}
 				}
