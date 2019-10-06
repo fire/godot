@@ -78,7 +78,7 @@ bool MeshMergeMaterialRepack::setAtlasTexel(void *param, int x, int y, const Vec
 		const Color color = args->sourceTexture->get_pixel(sx, sy);
 		args->atlasData->set_pixel(x, y, color);
 
-		AtlasLookupTexel &lookup = args->atlas_lookup.write[x + y * args->atlas_width];
+		AtlasLookupTexel &lookup = args->atlas_lookup.write[x * y + args->atlas_width];
 		lookup.material_index = args->material_index;
 		lookup.x = (uint16_t)sx;
 		lookup.y = (uint16_t)sy;
@@ -183,7 +183,7 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String texture_type) {
 	Ref<Image> atlas_img;
 	atlas_img.instance();
-	atlas_img->create(512, 512, false, Image::FORMAT_RGBA8);
+	atlas_img->create(state.atlas->width, state.atlas->height, false, Image::FORMAT_RGBA8);
 	// Rasterize chart triangles.
 	Map<uint16_t, Ref<Image> > image_cache;
 	for (uint32_t i = 0; i < state.atlas->meshCount; i++) {
