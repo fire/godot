@@ -95,6 +95,7 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 			bool has_blends = false;
 			bool has_bones = false;
 			bool has_transparency = false;
+			bool has_emission = false;
 			for (int32_t i = 0; i < array_mesh->get_surface_count(); i++) {
 				Array array = array_mesh->surface_get_arrays(i);
 				Array bones = array[ArrayMesh::ARRAY_BONES];
@@ -110,9 +111,12 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 					if (spatial_mat->get_albedo().a != 1.0f || (img.is_valid() && img->detect_alpha() != Image::ALPHA_NONE)) {
 						has_transparency |= true;
 					}
+					if (spatial_mat->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+						has_emission |= true;
+					}
 				}
 			}
-			if (!has_blends && !has_bones && !has_transparency) {
+			if (!has_blends && !has_bones && !has_transparency && !has_emission) {
 				r_items.push_back(mi);
 			}
 		}
@@ -167,8 +171,8 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 
 	print_line("Generating albedo texture atlas.");
 	_generate_texture_atlas(state, "albedo");
-	print_line("Generating emission texture atlas.");
-	_generate_texture_atlas(state, "emission");
+	//print_line("Generating emission texture atlas.");
+	//_generate_texture_atlas(state, "emission");
 	print_line("Generating normal texture atlas.");
 	_generate_texture_atlas(state, "normal");
 	print_line("Generating orm texture atlas.");
@@ -349,27 +353,27 @@ Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<u
 				img->fill(material->get_albedo());
 			}
 		} else if (texture_type == "emission") {
-			tex = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
-			if (tex.is_valid()) {
-				img = tex->get_data();
-				if (!img->empty()) {
-					if (img->is_compressed()) {
-						img->decompress();
-					}
-				}
-				if (img.is_valid() && !img->empty()) {
-					img->lock();
-					for (int32_t y = 0; y < img->get_height(); y++) {
-						for (int32_t x = 0; x < img->get_width(); x++) {
-							Color c = img->get_pixel(x, y);
-							img->set_pixel(x, y, c + material->get_emission());
-						}
-					}
-					img->unlock();
-				}
-			} else {
-				img->fill(material->get_emission());
-			}
+			//tex = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
+			//if (tex.is_valid()) {
+			//	img = tex->get_data();
+			//	if (!img->empty()) {
+			//		if (img->is_compressed()) {
+			//			img->decompress();
+			//		}
+			//	}
+			//	if (img.is_valid() && !img->empty()) {
+			//		img->lock();
+			//		for (int32_t y = 0; y < img->get_height(); y++) {
+			//			for (int32_t x = 0; x < img->get_width(); x++) {
+			//				Color c = img->get_pixel(x, y);
+			//				img->set_pixel(x, y, c + material->get_emission());
+			//			}
+			//		}
+			//		img->unlock();
+			//	}
+			//} else {
+			//	img->fill(material->get_emission());
+			//}
 		} else if (texture_type == "normal") {
 			tex = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
 			if (tex.is_valid()) {
