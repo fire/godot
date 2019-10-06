@@ -607,7 +607,6 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			texture->create_from_image(A->get());
 			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
 			texture->set_lossy_storage_quality(0.75);
-			mat->set_flag(SpatialMaterial::FLAG_ALBEDO_TEXTURE_FORCE_SRGB, true);
 			mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 		}
 		Map<String, Ref<Image> >::Element *E = state.texture_atlas.find("emission");
