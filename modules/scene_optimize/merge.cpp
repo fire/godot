@@ -95,7 +95,6 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 			bool has_blends = false;
 			bool has_bones = false;
 			bool has_transparency = false;
-			bool has_emission = false;
 			for (int32_t i = 0; i < array_mesh->get_surface_count(); i++) {
 				Array array = array_mesh->surface_get_arrays(i);
 				Array bones = array[ArrayMesh::ARRAY_BONES];
@@ -108,15 +107,12 @@ void MeshMergeMaterialRepack::_find_all_mesh_instances(Vector<MeshInstance *> &r
 				Ref<SpatialMaterial> spatial_mat = array_mesh->surface_get_material(i);
 				if (spatial_mat.is_valid()) {
 					Ref<Image> img = spatial_mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
-					if (spatial_mat->get_albedo().a != 1.0f || (img.is_valid() && img->detect_alpha() != Image::ALPHA_NONE)) {
+					if (spatial_mat->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
 						has_transparency |= true;
-					}
-					if (spatial_mat->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
-						has_emission |= true;
 					}
 				}
 			}
-			if (!has_blends && !has_bones && !has_transparency && !has_emission) {
+			if (!has_blends && !has_bones && !has_transparency) {
 				r_items.push_back(mi);
 			}
 		}
@@ -171,8 +167,8 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 
 	print_line("Generating albedo texture atlas.");
 	_generate_texture_atlas(state, "albedo");
-	//print_line("Generating emission texture atlas.");
-	//_generate_texture_atlas(state, "emission");
+	print_line("Generating emission texture atlas.");
+	_generate_texture_atlas(state, "emission");
 	print_line("Generating normal texture atlas.");
 	_generate_texture_atlas(state, "normal");
 	print_line("Generating orm texture atlas.");
@@ -353,27 +349,27 @@ Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<u
 				img->fill(material->get_albedo());
 			}
 		} else if (texture_type == "emission") {
-			//tex = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
-			//if (tex.is_valid()) {
-			//	img = tex->get_data();
-			//	if (!img->empty()) {
-			//		if (img->is_compressed()) {
-			//			img->decompress();
-			//		}
-			//	}
-			//	if (img.is_valid() && !img->empty()) {
-			//		img->lock();
-			//		for (int32_t y = 0; y < img->get_height(); y++) {
-			//			for (int32_t x = 0; x < img->get_width(); x++) {
-			//				Color c = img->get_pixel(x, y);
-			//				img->set_pixel(x, y, c + material->get_emission());
-			//			}
-			//		}
-			//		img->unlock();
-			//	}
-			//} else {
-			//	img->fill(material->get_emission());
-			//}
+			tex = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
+			if (tex.is_valid()) {
+				img = tex->get_data();
+				if (!img->empty()) {
+					if (img->is_compressed()) {
+						img->decompress();
+					}
+				}
+				if (img.is_valid() && !img->empty()) {
+					img->lock();
+					for (int32_t y = 0; y < img->get_height(); y++) {
+						for (int32_t x = 0; x < img->get_width(); x++) {
+							Color c = img->get_pixel(x, y);
+							img->set_pixel(x, y, c + material->get_emission());
+						}
+					}
+					img->unlock();
+				}
+			} else {
+				img->fill(material->get_emission());
+			}
 		} else if (texture_type == "normal") {
 			tex = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
 			if (tex.is_valid()) {
@@ -449,12 +445,12 @@ void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVe
 		}
 	}
 	pack_options.texelsPerUnit = 1.0f;
-	pack_options.maxChartSize = 4096;
+	pack_options.maxChartSize = 2048;
 	pack_options.blockAlign = true;
 	xatlas::PackCharts(atlas, pack_options);
 }
 
-void MeshMergeMaterialRepack::scale_uvs_by_texture_dimension(Vector<MeshInstance *> &original_mesh_items, Vector<MeshInstance *> &mesh_items, PoolVector<PoolVector2Array> &uv_groups, Array &r_vertex_to_material, PoolVector<PoolVector<ModelVertex> > &r_model_vertices) {
+void MeshMergeMaterialRepack::scale_uvs_by_texture_dimension(const Vector<MeshInstance *> &original_mesh_items, Vector<MeshInstance *> &mesh_items, PoolVector<PoolVector2Array> &uv_groups, Array &r_vertex_to_material, PoolVector<PoolVector<ModelVertex> > &r_model_vertices) {
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
 		for (int32_t j = 0; j < mesh_items[i]->get_mesh()->get_surface_count(); j++) {
 			r_model_vertices.push_back(PoolVector<ModelVertex>());
@@ -466,12 +462,10 @@ void MeshMergeMaterialRepack::scale_uvs_by_texture_dimension(Vector<MeshInstance
 
 			Array mesh = mesh_items[i]->get_mesh()->surface_get_arrays(j);
 			if (mesh.empty()) {
-				mesh_items.remove(i);
 				continue;
 			}
 			Array vertices = mesh[ArrayMesh::ARRAY_VERTEX];
 			if (vertices.size() == 0) {
-				mesh_items.remove(i);
 				continue;
 			}
 			PoolVector3Array vertex_arr = mesh[Mesh::ARRAY_VERTEX];
@@ -502,12 +496,10 @@ void MeshMergeMaterialRepack::scale_uvs_by_texture_dimension(Vector<MeshInstance
 		for (int32_t j = 0; j < mesh_items[i]->get_mesh()->get_surface_count(); j++) {
 			Array mesh = mesh_items[i]->get_mesh()->surface_get_arrays(j);
 			if (mesh.empty()) {
-				mesh_items.remove(i);
 				continue;
 			}
 			PoolVector3Array vertices = mesh[ArrayMesh::ARRAY_VERTEX];
 			if (vertices.size() == 0) {
-				mesh_items.remove(i);
 				continue;
 			}
 			PoolVector2Array uvs;
@@ -615,6 +607,7 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			texture->create_from_image(A->get());
 			texture->set_storage(ImageTexture::Storage::STORAGE_COMPRESS_LOSSY);
 			texture->set_lossy_storage_quality(0.75);
+			mat->set_flag(SpatialMaterial::FLAG_ALBEDO_TEXTURE_FORCE_SRGB, true);
 			mat->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
 		}
 		Map<String, Ref<Image> >::Element *E = state.texture_atlas.find("emission");
@@ -663,6 +656,7 @@ Node *MeshMergeMaterialRepack::_output(MergeState &state) {
 			mat->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
 			mat->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, texture);
 			mat->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
+			mat->set_metallic(1.0f);
 			mat->set_texture(SpatialMaterial::TEXTURE_METALLIC, texture);
 		}
 	}
