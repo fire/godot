@@ -391,7 +391,7 @@ Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<u
 	return img;
 }
 
-void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVector<PoolVector2Array> &r_uvs, xatlas::Atlas *atlas, Vector<MeshInstance *> &r_meshes, Array vertex_to_material, const Vector<Ref<Material> > material_cache,
+void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVector<PoolVector2Array> &r_uvs, xatlas::Atlas *atlas, const Vector<MeshInstance *> &r_meshes, Array vertex_to_material, const Vector<Ref<Material> > material_cache,
 		xatlas::PackOptions &pack_options) {
 
 	int32_t mesh_first_index = 0;
@@ -401,17 +401,14 @@ void MeshMergeMaterialRepack::_generate_atlas(const int32_t p_num_meshes, PoolVe
 			// Handle blend shapes?
 			Array mesh = r_meshes[i]->get_mesh()->surface_get_arrays(j);
 			if (mesh.empty()) {
-				r_meshes.remove(i);
 				continue;
 			}
 			Array vertices = mesh[ArrayMesh::ARRAY_VERTEX];
 			if (vertices.empty()) {
-				r_meshes.remove(i);
 				continue;
 			}
 			Array indices = mesh[ArrayMesh::ARRAY_INDEX];
 			if (indices.empty()) {
-				r_meshes.remove(i);
 				continue;
 			}
 			xatlas::UvMeshDecl meshDecl;
@@ -549,19 +546,11 @@ void MeshMergeMaterialRepack::scale_uvs_by_texture_dimension(Vector<MeshInstance
 	}
 }
 
-void MeshMergeMaterialRepack::map_vertex_to_material(Vector<MeshInstance *> mesh_items, Array &vertex_to_material, Vector<Ref<Material> > &material_cache) {
+void MeshMergeMaterialRepack::map_vertex_to_material(const Vector<MeshInstance *> mesh_items, Array &vertex_to_material, Vector<Ref<Material> > &material_cache) {
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
 		for (int32_t j = 0; j < mesh_items[i]->get_mesh()->get_surface_count(); j++) {
 			Array mesh = mesh_items[i]->get_mesh()->surface_get_arrays(j);
-			if (mesh.empty()) {
-				mesh_items.remove(i);
-				continue;
-			}
 			PoolVector3Array indices = mesh[ArrayMesh::ARRAY_INDEX];
-			if (!indices.size()) {
-				mesh_items.remove(i);
-				continue;
-			}
 			Array materials;
 			materials.resize(indices.size());
 			Ref<Material> mat = mesh_items[i]->get_mesh()->surface_get_material(j);
