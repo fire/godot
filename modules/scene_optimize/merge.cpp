@@ -183,7 +183,7 @@ Node *MeshMergeMaterialRepack::merge(Node *p_root, Node *p_original_root) {
 void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String texture_type) {
 	Ref<Image> atlas_img;
 	atlas_img.instance();
-	atlas_img->create(1, 1, false, Image::FORMAT_RGBA8);
+	atlas_img->create(512, 512, false, Image::FORMAT_RGBA8);
 	// Rasterize chart triangles.
 	Map<uint16_t, Ref<Image> > image_cache;
 	for (uint32_t i = 0; i < state.atlas->meshCount; i++) {
