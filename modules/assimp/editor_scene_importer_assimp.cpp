@@ -805,7 +805,7 @@ void EditorSceneImporterAssimp::_import_animation(ImportState &state, int p_anim
 			}
 		}
 		if (!state.armature_skeletons.size()) {
-			_insert_animation_track(state, anim, i, p_bake_fps, animation, ticks_per_second, NULL, "Skeleton:" + node_name, node_name);
+			_insert_animation_track(state, anim, i, p_bake_fps, animation, ticks_per_second, skeleton, node_path, node_name, nullptr);
 		}
 	}
 
