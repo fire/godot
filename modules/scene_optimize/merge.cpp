@@ -198,8 +198,7 @@ void MeshMergeMaterialRepack::_generate_texture_atlas(MergeState &state, String 
 			const xatlas::Chart &chart = mesh.chartArray[j];
 			Ref<SpatialMaterial> material;
 			Ref<Image> img = _get_source_texture(state, image_cache, chart, material, texture_type);
-			ERR_EXPLAIN("Float textures are not supported yet");
-			ERR_CONTINUE(Image::get_format_pixel_size(img->get_format()) > 4);
+			ERR_CONTINUE_MSG(Image::get_format_pixel_size(img->get_format()) > 4, "Float textures are not supported yet");
 			Ref<ImageTexture> image_texture;
 			image_texture.instance();
 			image_texture->create_from_image(img);
@@ -274,8 +273,7 @@ Ref<Image> MeshMergeMaterialRepack::_get_source_texture(MergeState &state, Map<u
 			img->lock();
 
 			for (int32_t y = 0; y < img->get_height(); y++) {
-				for (int32_t x = 0; x < img->get_width(); x++) {
-					Color c = img->get_pixel(x, y);
+				for (int32_t x = 0; x < img->get_width(); x++) { 
 					Color orm;
 					if (ao_img.is_valid() && !ao_img->empty()) {
 						ao_img->lock();
