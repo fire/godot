@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  resource_saver.h                                                     */
+/*  register_types.cpp                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,67 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef RESOURCE_SAVER_H
-#define RESOURCE_SAVER_H
+#include "register_types.h"
 
-#include "core/resource.h"
-#include "core/io/resource_saver.h"
-#include "core/os/file_access.h"
+#ifdef TOOLS_ENABLED
+#include "editor/editor_node.h"
+#include "editor_scene_exporter_gltf.h"
+#include "editor_scene_exporter_gltf_plugin.h"
+#include "editor_scene_importer_gltf.h"
 
-class ResourceFormatSaver : public Reference {
-protected:
-	static void _bind_methods();
+static void _editor_init() {
+	Ref<EditorSceneImporterGLTF> import_gltf;
+	import_gltf.instance();
+	Ref<EditorSceneExporterGLTF> exporter_gltf;
+	exporter_gltf.instance();
+	ResourceImporterScene::get_singleton()->add_importer(import_gltf);
+	ResourceExporterScene::get_singleton()->add_exporter(exporter_gltf);
+}
+#endif
 
-public:
-	virtual Error save(const String &p_path, const RES &p_resource, uint32_t p_flags = 0);
-	virtual bool recognize(const RES &p_resource) const;
-	virtual bool recognize_path(const String &p_path) const;
-	virtual void get_recognized_extensions(const RES &p_resource, List<String> *p_extensions) const;
+void register_gltf_types() {
+#ifdef TOOLS_ENABLED
+	ClassDB::APIType prev_api = ClassDB::get_current_api();
+	ClassDB::set_current_api(ClassDB::API_EDITOR);
 
-	virtual ~ResourceFormatSaver() {}
-};
-
-typedef void (*ResourceSavedCallback)(Ref<Resource> p_resource, const String &p_path);
-
-class ResourceSaver : public Reference {
-	GDCLASS(ResourceSaver, Reference);
-	enum {
-		MAX_SAVERS = 64
-	};
-
-	static Ref<ResourceFormatSaver> saver[MAX_SAVERS];
-	static int saver_count;
-	static bool timestamp_on_save;
-	static ResourceSavedCallback save_callback;
-
-	static Ref<ResourceFormatSaver> _find_custom_resource_format_saver(String path);
-
-public:
-	enum SaverFlags {
-
-		FLAG_RELATIVE_PATHS = 1,
-		FLAG_BUNDLE_RESOURCES = 2,
-		FLAG_CHANGE_PATH = 4,
-		FLAG_OMIT_EDITOR_PROPERTIES = 8,
-		FLAG_SAVE_BIG_ENDIAN = 16,
-		FLAG_COMPRESS = 32,
-		FLAG_REPLACE_SUBRESOURCE_PATHS = 64,
-	};
-
-	static Error save(const String &p_path, const RES &p_resource, uint32_t p_flags = 0);
-	static void get_recognized_extensions(const RES &p_resource, List<String> *p_extensions);
-	static void add_resource_format_saver(Ref<ResourceFormatSaver> p_format_saver, bool p_at_front = false);
-	static void remove_resource_format_saver(Ref<ResourceFormatSaver> p_format_saver);
-
-	static void set_timestamp_on_save(bool p_timestamp) { timestamp_on_save = p_timestamp; }
-	static bool get_timestamp_on_save() { return timestamp_on_save; }
-
-	static void set_save_callback(ResourceSavedCallback p_callback);
-
-	static bool add_custom_resource_format_saver(String script_path);
-	static void remove_custom_resource_format_saver(String script_path);
-	static void add_custom_savers();
-	static void remove_custom_savers();
-};
+	ClassDB::register_class<EditorSceneImporterGLTF>();
+	ClassDB::register_class<EditorSceneExporterGLTF>();
+	EditorPlugins::add_by_type<SceneExporterGLTFPlugin>();
+	ClassDB::set_current_api(prev_api);
+	EditorNode::add_init_callback(_editor_init);
 
 #endif
+}
+
+void unregister_gltf_types() {
+}

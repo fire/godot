@@ -50,6 +50,7 @@
 #include "core/io/pck_packer.h"
 #include "core/io/resource_format_binary.h"
 #include "core/io/resource_importer.h"
+#include "core/io/resource_exporter.h"
 #include "core/io/stream_peer_ssl.h"
 #include "core/io/tcp_server.h"
 #include "core/io/translation_loader_po.h"
@@ -70,6 +71,7 @@
 static Ref<ResourceFormatSaverBinary> resource_saver_binary;
 static Ref<ResourceFormatLoaderBinary> resource_loader_binary;
 static Ref<ResourceFormatImporter> resource_format_importer;
+static Ref<ResourceFormatExporter> resource_format_exporter;
 static Ref<ResourceFormatLoaderImage> resource_format_image;
 static Ref<TranslationLoaderPO> resource_format_po;
 static Ref<ResourceFormatSaverCrypto> resource_format_saver_crypto;
@@ -120,6 +122,9 @@ void register_core_types() {
 
 	resource_format_importer.instance();
 	ResourceLoader::add_resource_format_loader(resource_format_importer);
+
+	resource_format_exporter.instance();
+	ResourceSaver::add_resource_format_saver(resource_format_exporter);
 
 	resource_format_image.instance();
 	ResourceLoader::add_resource_format_loader(resource_format_image);
@@ -287,6 +292,9 @@ void unregister_core_types() {
 
 	ResourceLoader::remove_resource_format_loader(resource_format_importer);
 	resource_format_importer.unref();
+
+	ResourceSaver::remove_resource_format_saver(resource_format_exporter);
+	resource_format_exporter.unref();
 
 	ResourceLoader::remove_resource_format_loader(resource_format_po);
 	resource_format_po.unref();
