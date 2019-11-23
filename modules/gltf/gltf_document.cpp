@@ -12,6 +12,107 @@
 #include "scene/animation/animation_player.h"
 #include "scene/resources/surface_tool.h"
 
+Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
+
+	// /* STEP 0 PARSE SCENE */
+	// Error err = _parse_scenes(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 1 PARSE NODES */
+	// err = _parse_nodes(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 2 PARSE BUFFERS */
+	// err = _parse_buffers(*state, p_path.get_base_dir());
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 3 PARSE BUFFER VIEWS */
+	// err = _parse_buffer_views(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 4 PARSE ACCESSORS */
+	// err = _parse_accessors(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 5 PARSE IMAGES */
+	// err = _parse_images(*state, p_path.get_base_dir());
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 6 PARSE TEXTURES */
+	// err = _parse_textures(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 7 PARSE TEXTURES */
+	// err = _parse_materials(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 9 PARSE SKINS */
+	// err = _parse_skins(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 10 DETERMINE SKELETONS */
+	// err = _determine_skeletons(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 11 CREATE SKELETONS */
+	// err = _create_skeletons(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 12 CREATE SKINS */
+	// err = _create_skins(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 13 PARSE MESHES (we have enough info now) */
+	// err = _parse_meshes(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 14 PARSE CAMERAS */
+	// err = _parse_cameras(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 15 PARSE ANIMATIONS */
+	// err = _parse_animations(*state);
+	// if (err != OK)
+	// 	return Error::FAILED;
+
+	// /* STEP 16 ASSIGN SCENE NAMES */
+	// _assign_scene_names(*state);
+
+    String version = "2.0";
+    state.major_version = version.get_slice(".", 0).to_int();
+    state.minor_version = version.get_slice(".", 1).to_int();
+    Dictionary asset;
+    asset["version"] = version;
+    state.json["asset"] = asset;
+    ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
+    ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
+
+	Error err;
+	FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
+	if (!f) {
+		return err;
+	}
+
+	PoolByteArray array;
+    String json = JSON::print(state.json);
+    f->store_string(json);
+	return OK;
+}
+
 Error GLTFDocument::_parse_json(const String &p_path, GLTFState &state) {
 
 	Error err;
@@ -2969,9 +3070,7 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); ++node_i) {
 		GLTFNode *node = state.nodes[node_i];
 
-		if (node->skin >= 0 && node->mesh >= 0) {
-			GLTFSkinIndex skin_i = node->skin;
-
+		if (node->mesh >= 0) {
 			Map<GLTFNodeIndex, Node *>::Element *mi_element = state.scene_nodes.find(node_i);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(mi_element->get());
 			ERR_FAIL_COND(mi == nullptr);
