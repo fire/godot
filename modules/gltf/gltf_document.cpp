@@ -2435,6 +2435,19 @@ BoneAttachment *GLTFDocument::_generate_bone_attachment(GLTFState &state, Skelet
 	return bone_attachment;
 }
 
+GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance) {
+	GLTFMesh mesh;
+	mesh.mesh = p_mesh_instance->get_mesh();
+
+	print_verbose("glTF: Creating mesh for: " + p_mesh_instance->get_name());
+
+	for (int i = 0; i < mesh.mesh->get_blend_shape_count(); i++) {        
+         mesh.blend_weights.push_back(p_mesh_instance->get("blend_shapes/" + mesh.mesh->get_blend_shape_name(i)));
+	}
+	state.meshes.push_back(mesh);
+    return state.meshes.size() - 1;
+}
+
 MeshInstance *GLTFDocument::_generate_mesh_instance(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index) {
 	const GLTFNode *gltf_node = state.nodes[node_index];
 
@@ -2483,7 +2496,69 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 
 	return spatial;
 }
-void GLTFDocument::_convert_scene_node(GLTFState *state, Node *_root_node, Spatial *p_root_node) {
+void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_node_index) {
+
+	Spatial *current_node = Object::cast_to<Spatial>(p_root_node);
+	GLTFNode *gltf_node = memnew(GLTFNode);
+
+	if (current_node != nullptr) {
+        MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
+		if (mi) {
+			gltf_node->mesh = _convert_mesh_instance(state, mi);
+		}
+		//  else if (Object::cast_to<Camera>(current_node)) {
+		// 	_convert_camera(state, current_node, p_node_index);
+		// } else {
+		// 	_convert_spatial(state, current_node, p_node_index);
+		// }
+
+		gltf_node->xform = current_node->get_transform();
+		gltf_node->name = current_node->get_name();
+
+		state.scene_nodes.insert(p_node_index, current_node);
+	}
+
+	state.nodes.push_back(gltf_node);
+
+	for (int i = 0; i < _root_node->get_child_count(); i++) {
+		_convert_scene_node(state, _root_node, p_root_node->get_child(i), p_node_index);
+	}
+	/*
+	// Is our parent a skeleton
+	Skeleton *active_skeleton = Object::cast_to<Skeleton>(scene_parent);
+
+	if (gltf_node->skeleton >= 0) {
+		Skeleton *skeleton = state.skeletons[gltf_node->skeleton].godot_skeleton;
+
+		if (active_skeleton != skeleton) {
+			ERR_FAIL_COND_MSG(active_skeleton != nullptr, "glTF: Generating scene detected direct parented Skeletons");
+
+			// Add it to the scene if it has not already been added
+			if (skeleton->get_parent() == nullptr) {
+				scene_parent->add_child(skeleton);
+				skeleton->set_owner(scene_root);
+			}
+		}
+
+		active_skeleton = skeleton;
+		current_node = skeleton;
+	}
+
+	// If we have an active skeleton, and the node is node skinned, we need to create a bone attachment
+	if (current_node == nullptr && active_skeleton != nullptr && gltf_node->skin < 0) {
+		BoneAttachment *bone_attachment = _generate_bone_attachment(state, active_skeleton, node_index);
+
+		scene_parent->add_child(bone_attachment);
+		bone_attachment->set_owner(scene_root);
+
+		// There is no gltf_node that represent this, so just directly create a unique name
+		bone_attachment->set_name(_gen_unique_name(state, "BoneAttachment"));
+
+		// We change the scene_parent to our bone attachment now. We do not set current_node because we want to make the node
+		// and attach it to the bone_attachment
+		scene_parent = bone_attachment;
+	}
+*/
 }
 
 void GLTFDocument::_generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index) {
@@ -2882,7 +2957,7 @@ void GLTFDocument::_process_mesh_instances(GLTFState &state, Spatial *scene_root
 	}
 }
 
-void GLTFDocument::_convert_animation(GLTFState *state, AnimationPlayer *ap, GLTFAnimationIndex i) {
+void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i) {
 }
 
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {

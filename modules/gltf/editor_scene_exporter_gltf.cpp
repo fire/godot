@@ -37,11 +37,11 @@
 #include "modules/csg/csg_shape.h"
 #include "modules/gridmap/grid_map.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/animation/animation_player.h"
 #include "scene/gui/check_box.h"
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
-#include "scene/animation/animation_player.h"
 
 void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial *p_root_node) {
 	Vector<MeshInstance *> mesh_items;
@@ -53,7 +53,6 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial 
 	Vector<GridMap *> grid_map_items;
 	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
 
-	// size_t num_meshes = 0;
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < mesh_items.size(); i++) {
 		MeshInfo mesh_info;
@@ -123,28 +122,28 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial 
 
 	Ref<GLTFDocument> gltf_document;
 	gltf_document.instance();
-	
+
 	GLTFDocument::GLTFState state;
 
-	const int scene_root = 0;
+	{
+		const int scene_root = 0;
+		state.root_nodes.push_back(scene_root);
+		gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root);
+		// gltf_document->_convert_mesh_instances(state, p_root_node);
 
-	state.root_nodes.push_back(scene_root);
-
-	gltf_document->_convert_scene_node(&state, p_root_node, p_root_node);
-
-	// gltf_document->_process_mesh_instances(state, p_root_node);
-
-	if (state.animations.size()) {
-		Node * node = p_root_node->find_node("AnimationPlayer");
-		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
-		if(ap) {
-			for (int i = 0; i < state.animations.size(); i++) {
-				gltf_document->_convert_animation(&state, ap, i);
+		if (state.animations.size()) {
+			Node *node = p_root_node->find_node("AnimationPlayer");
+			AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
+			if (ap) {
+				for (int i = 0; i < state.animations.size(); i++) {
+					gltf_document->_convert_animation(state, ap, i);
+				}
 			}
 		}
 	}
-
-	// Write gltf_document to disk
+	{
+		// Write gltf_document to disk
+	}
 }
 
 // void EditorSceneExporterGLTF::_generate_node(Node *p_node, size_t &num_meshes, /*aiNode *&p_assimp_current_node, aiNode *&p_assimp_root, */Vector<aiMesh *> &assimp_meshes, Vector<aiMaterial *> &assimp_materials) {
