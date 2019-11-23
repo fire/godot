@@ -39,10 +39,10 @@ class AnimationPlayer;
 class BoneAttachment;
 class MeshInstance;
 
-class EditorSceneImporterGLTF : public EditorSceneImporter {
+class GLTFDocument : public Reference {
+	GDCLASS(GLTFDocument, Reference);
 
-	GDCLASS(EditorSceneImporterGLTF, EditorSceneImporter);
-
+public:
 	typedef int GLTFAccessorIndex;
 	typedef int GLTFAnimationIndex;
 	typedef int GLTFBufferIndex;
@@ -56,29 +56,6 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 	typedef int GLTFSkinIndex;
 	typedef int GLTFTextureIndex;
 
-	enum {
-		ARRAY_BUFFER = 34962,
-		ELEMENT_ARRAY_BUFFER = 34963,
-
-		TYPE_BYTE = 5120,
-		TYPE_UNSIGNED_BYTE = 5121,
-		TYPE_SHORT = 5122,
-		TYPE_UNSIGNED_SHORT = 5123,
-		TYPE_UNSIGNED_INT = 5125,
-		TYPE_FLOAT = 5126,
-
-		COMPONENT_TYPE_BYTE = 5120,
-		COMPONENT_TYPE_UNSIGNED_BYTE = 5121,
-		COMPONENT_TYPE_SHORT = 5122,
-		COMPONENT_TYPE_UNSIGNED_SHORT = 5123,
-		COMPONENT_TYPE_INT = 5125,
-		COMPONENT_TYPE_FLOAT = 5126,
-
-	};
-
-	String _get_component_type_name(const uint32_t p_component);
-	int _get_component_type_size(const int component_type);
-
 	enum GLTFType {
 		TYPE_SCALAR,
 		TYPE_VEC2,
@@ -88,9 +65,6 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 		TYPE_MAT3,
 		TYPE_MAT4,
 	};
-
-	String _get_type_name(const GLTFType p_component);
-
 	struct GLTFNode {
 
 		//matrices need to be transformed to this
@@ -325,19 +299,46 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 		}
 	};
 
+	enum {
+		ARRAY_BUFFER = 34962,
+		ELEMENT_ARRAY_BUFFER = 34963,
+
+		TYPE_BYTE = 5120,
+		TYPE_UNSIGNED_BYTE = 5121,
+		TYPE_SHORT = 5122,
+		TYPE_UNSIGNED_SHORT = 5123,
+		TYPE_UNSIGNED_INT = 5125,
+		TYPE_FLOAT = 5126,
+
+		COMPONENT_TYPE_BYTE = 5120,
+		COMPONENT_TYPE_UNSIGNED_BYTE = 5121,
+		COMPONENT_TYPE_SHORT = 5122,
+		COMPONENT_TYPE_UNSIGNED_SHORT = 5123,
+		COMPONENT_TYPE_INT = 5125,
+		COMPONENT_TYPE_FLOAT = 5126,
+
+	};
+
+private:
+	String _get_component_type_name(const uint32_t p_component);
+	int _get_component_type_size(const int component_type);
+
+	Error _parse_scenes(GLTFState &state);
+
+	Error _parse_nodes(GLTFState &state);
+
+	String _get_type_name(const GLTFType p_component);
+
 	String _sanitize_scene_name(const String &name);
 	String _gen_unique_name(GLTFState &state, const String &p_name);
 
 	String _sanitize_bone_name(const String &name);
-	String _gen_unique_bone_name(GLTFState &state, const GLTFSkeletonIndex skel_i, const String &p_name);
+	String _gen_unique_bone_name(GLTFState &state, const GLTFDocument::GLTFSkeletonIndex skel_i, const String &p_name);
 
-	Ref<Texture> _get_texture(GLTFState &state, const GLTFTextureIndex p_texture);
+	Ref<Texture> _get_texture(GLTFState &state, const GLTFDocument::GLTFTextureIndex p_texture);
 
 	Error _parse_json(const String &p_path, GLTFState &state);
 	Error _parse_glb(const String &p_path, GLTFState &state);
-
-	Error _parse_scenes(GLTFState &state);
-	Error _parse_nodes(GLTFState &state);
 
 	void _compute_node_heights(GLTFState &state);
 
@@ -393,17 +394,24 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 	Camera *_generate_camera(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Spatial *_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 
-	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
-	Spatial *_generate_scene(GLTFState &state, const int p_bake_fps);
-
-	void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
-
 	void _assign_scene_names(GLTFState &state);
 
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
 
+public:
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
+	void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
+	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
+	Error parse(GLTFState *state, String p_path);
+};
+
+class EditorSceneImporterGLTF : public EditorSceneImporter {
+
+	GDCLASS(EditorSceneImporterGLTF, EditorSceneImporter);
+
+	Ref<GLTFDocument> gltf_document;
+	Spatial *_generate_scene(GLTFDocument::GLTFState &state, const int p_bake_fps);
 
 public:
 	virtual uint32_t get_import_flags() const;
