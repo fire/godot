@@ -2965,6 +2965,36 @@ void GLTFDocument::_import_animation(GLTFState &state, AnimationPlayer *ap, cons
 	ap->add_animation(name, animation);
 }
 
+void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root) {
+	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); ++node_i) {
+		GLTFNode *node = state.nodes[node_i];
+
+		if (node->skin >= 0 && node->mesh >= 0) {
+			GLTFSkinIndex skin_i = node->skin;
+
+			Map<GLTFNodeIndex, Node *>::Element *mi_element = state.scene_nodes.find(node_i);
+			MeshInstance *mi = Object::cast_to<MeshInstance>(mi_element->get());
+			ERR_FAIL_COND(mi == nullptr);
+
+			node->xform = mi->get_transform();
+
+			GLTFSkeletonIndex skel_i;
+			GLTFSkeleton gltf_skeleton;
+			GLTFSkin gltf_skin;
+			NodePath skeleton_path = mi->get_skeleton_path();
+			Skeleton *skeleton = Object::cast_to<Skeleton>(scene_root->get_node(skeleton_path));
+			if (skeleton) {
+				gltf_skeleton.godot_skeleton = skeleton;
+				gltf_skin.skeleton = state.skeletons.size();
+				state.skeletons.push_back(gltf_skeleton);
+				gltf_skin.godot_skin = mi->get_skin();
+				skel_i = state.skins.size();
+				state.skins.push_back(gltf_skin);
+			}
+		}
+	}
+}
+
 void GLTFDocument::_process_mesh_instances(GLTFState &state, Spatial *scene_root) {
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); ++node_i) {
 		const GLTFNode *node = state.nodes[node_i];

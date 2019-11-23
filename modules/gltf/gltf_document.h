@@ -375,6 +375,7 @@ public:
     void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
 	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
+    void _convert_mesh_instances(GLTFState &state, Spatial *scene_root);
     void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
 	Error parse(GLTFState *state, String p_path);
