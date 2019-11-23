@@ -2483,6 +2483,8 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 
 	return spatial;
 }
+void GLTFDocument::_convert_scene_node(GLTFState *state, Node *_root_node, Spatial *p_root_node) {
+}
 
 void GLTFDocument::_generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index) {
 
@@ -2880,8 +2882,7 @@ void GLTFDocument::_process_mesh_instances(GLTFState &state, Spatial *scene_root
 	}
 }
 
-void GLTFDocument::_export_animation(GLTFState *state, AnimationPlayer *ap, GLTFAnimationIndex i) {
-
+void GLTFDocument::_convert_animation(GLTFState *state, AnimationPlayer *ap, GLTFAnimationIndex i) {
 }
 
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {

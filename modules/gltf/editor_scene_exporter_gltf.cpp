@@ -126,9 +126,11 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial 
 	
 	GLTFDocument::GLTFState state;
 
-	// for (int i = 0; i < state.root_nodes.size(); ++i) {
-	// 	gltf_document->_generate_scene_node(state, p_root_node, p_root_node, state.root_nodes[i]);
-	// }
+	const int scene_root = 0;
+
+	state.root_nodes.push_back(scene_root);
+
+	gltf_document->_convert_scene_node(&state, p_root_node, p_root_node);
 
 	// gltf_document->_process_mesh_instances(state, p_root_node);
 
@@ -137,7 +139,7 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial 
 		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
 		if(ap) {
 			for (int i = 0; i < state.animations.size(); i++) {
-				gltf_document->_export_animation(&state, ap, i);
+				gltf_document->_convert_animation(&state, ap, i);
 			}
 		}
 	}
