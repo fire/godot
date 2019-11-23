@@ -2880,6 +2880,10 @@ void GLTFDocument::_process_mesh_instances(GLTFState &state, Spatial *scene_root
 	}
 }
 
+void GLTFDocument::_export_animation(GLTFState *state, AnimationPlayer *ap, GLTFAnimationIndex i) {
+
+}
+
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {
 
 	if (p_path.to_lower().ends_with("glb")) {

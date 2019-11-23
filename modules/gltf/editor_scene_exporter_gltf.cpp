@@ -28,10 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
+#include "editor_scene_exporter_gltf.h"
 #include "core/object.h"
 #include "core/project_settings.h"
 #include "core/vector.h"
 #include "editor/saver/resource_saver_scene.h"
+#include "gltf_document.h"
 #include "modules/csg/csg_shape.h"
 #include "modules/gridmap/grid_map.h"
 #include "scene/3d/mesh_instance.h"
@@ -39,9 +41,9 @@
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/animation/animation_player.h"
 
-#include "editor_scene_exporter_gltf.h"
-void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Node *p_root_node) {
+void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial *p_root_node) {
 	Vector<MeshInstance *> mesh_items;
 	_find_all_mesh_instances(mesh_items, p_root_node, p_root_node);
 
@@ -109,7 +111,7 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Node *p_
 	// r_scene.mRootNode = assimp_root_node;
 	// r_scene.mMeshes = new aiMesh *[num_meshes];
 	// for (int32_t i = 0; i < assimp_meshes.size(); i++) {
-		// r_scene.mMeshes[i] = assimp_meshes[i];
+	// r_scene.mMeshes[i] = assimp_meshes[i];
 	// }
 	// r_scene.mMaterials = new aiMaterial *[assimp_materials.size()]();
 	// r_scene.mNumMaterials = assimp_materials.size();
@@ -118,6 +120,29 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Node *p_
 	// }
 	// r_scene.mNumMaterials = assimp_materials.size();
 	// r_scene.mNumMeshes = num_meshes;
+
+	Ref<GLTFDocument> gltf_document;
+	gltf_document.instance();
+	
+	GLTFDocument::GLTFState state;
+
+	// for (int i = 0; i < state.root_nodes.size(); ++i) {
+	// 	gltf_document->_generate_scene_node(state, p_root_node, p_root_node, state.root_nodes[i]);
+	// }
+
+	// gltf_document->_process_mesh_instances(state, p_root_node);
+
+	if (state.animations.size()) {
+		Node * node = p_root_node->find_node("AnimationPlayer");
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
+		if(ap) {
+			for (int i = 0; i < state.animations.size(); i++) {
+				gltf_document->_export_animation(&state, ap, i);
+			}
+		}
+	}
+
+	// Write gltf_document to disk
 }
 
 // void EditorSceneExporterGLTF::_generate_node(Node *p_node, size_t &num_meshes, /*aiNode *&p_assimp_current_node, aiNode *&p_assimp_root, */Vector<aiMesh *> &assimp_meshes, Vector<aiMaterial *> &assimp_materials) {
@@ -329,5 +354,6 @@ void EditorSceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, N
 
 void EditorSceneExporterGLTF::export_gltf2(const String p_file, Node *p_root_node) {
 	const String file = ProjectSettings::get_singleton()->globalize_path(p_file);
-	_generate_gltf_scene(file, p_root_node);
+	Spatial *spatial = Object::cast_to<Spatial>(p_root_node);
+	_generate_gltf_scene(file, spatial);
 }

@@ -369,6 +369,7 @@ private:
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
 
 public:
+    void _export_animation(GLTFState *state, AnimationPlayer *ap, GLTFAnimationIndex i);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
 	void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
