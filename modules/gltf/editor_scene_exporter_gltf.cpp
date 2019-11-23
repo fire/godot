@@ -128,7 +128,7 @@ void EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial 
 	{
 		const int scene_root = 0;
 		state.root_nodes.push_back(scene_root);
-		gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root);
+		gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root, scene_root);
 		// gltf_document->_convert_mesh_instances(state, p_root_node);
 
 		if (state.animations.size()) {

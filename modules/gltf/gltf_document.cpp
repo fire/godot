@@ -2525,10 +2525,16 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 
 	return spatial;
 }
-void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_node_index) {
+void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
 
 	Spatial *current_node = Object::cast_to<Spatial>(p_root_node);
 	GLTFNode *gltf_node = memnew(GLTFNode);
+
+	state.nodes.push_back(gltf_node);
+	GLTFNodeIndex current_node_index = state.nodes.size() - 1;
+	if (current_node_index != p_root_node_index) {
+		state.nodes[p_root_node_index]->children.push_back(current_node_index);
+	}
 
 	if (current_node) {
 		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
@@ -2544,14 +2550,14 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		gltf_node->xform = current_node->get_transform();
 		gltf_node->name = current_node->get_name();
 
-		state.scene_nodes.insert(p_node_index, current_node);
+		state.scene_nodes.insert(current_node_index, current_node);
 	}
-
-	state.nodes.push_back(gltf_node);
-
-	// for (int i = 0; i < _root_node->get_child_count(); i++) {
-	// 	_convert_scene_node(state, _root_node, p_root_node->get_child(i), p_node_index);
-	// }
+	for (int i = 0; i < p_root_node->get_child_count(); i++) {
+		if (current_node_index != p_root_node_index) {
+			gltf_node->parent = p_parent_node_index;
+		}
+		_convert_scene_node(state, _root_node, p_root_node->get_child(i), p_root_node_index, current_node_index);
+	}
 	/*
 	// Is our parent a skeleton
 	Skeleton *active_skeleton = Object::cast_to<Skeleton>(scene_parent);

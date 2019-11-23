@@ -371,7 +371,7 @@ private:
 public:
 	GLTFNodeIndex _convert_camera(GLTFState &state, Camera *p_camera);
 	GLTFNodeIndex _convert_spatial(GLTFState &state, Spatial *p_spatial);
-    void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex node_index);
+    void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
     void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
 	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
