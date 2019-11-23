@@ -250,22 +250,21 @@ static PoolRealArray _xform_to_array(const Transform p_transform) {
 	array.write()[0] = axis_x.x;
 	array.write()[1] = axis_x.y;
 	array.write()[2] = axis_x.z;
-
+	array.write()[3] = 0.0f;
 	Vector3 axis_y = p_transform.get_basis().get_axis(Vector3::AXIS_Y);
 	array.write()[4] = axis_y.x;
 	array.write()[5] = axis_y.y;
 	array.write()[6] = axis_y.z;
-
+	array.write()[7] = 0.0f;
 	Vector3 axis_z = p_transform.get_basis().get_axis(Vector3::AXIS_Z);
 	array.write()[8] = axis_z.x;
 	array.write()[9] = axis_z.y;
 	array.write()[10] = axis_z.z;
-
+	array.write()[11] = 0.0f;
 	Vector3 origin = p_transform.get_origin();
 	array.write()[12] = origin.x;
 	array.write()[13] = origin.y;
 	array.write()[14] = origin.z;
-
 	array.write()[15] = 1.0f;
 	return array;
 }
