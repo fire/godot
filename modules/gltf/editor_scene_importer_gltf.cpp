@@ -84,7 +84,6 @@ Node *EditorSceneImporterGLTF::import_scene(const String &p_path, uint32_t p_fla
 	GLTFDocument::GLTFState state;
 	ERR_FAIL_COND_V(gltf_document->parse(&state, p_path) != Error::OK, NULL);
 
-	/* STEP 17 MAKE SCENE! */
 	Spatial *scene = _generate_scene(state, p_bake_fps);
 
 	return scene;

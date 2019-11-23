@@ -125,8 +125,8 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 
 	GLTFDocument::GLTFState state;
 
+	const GLTFDocument::GLTFNodeIndex scene_root = 0;
 	{
-		const int scene_root = 0;
 		state.root_nodes.push_back(scene_root);
 		gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root, scene_root);
 		gltf_document->_convert_mesh_instances(state, p_root_node);
@@ -140,6 +140,10 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 				}
 			}
 		}
+	}
+	{
+		state.scene_name = p_root_node->get_name();
+		state.root_nodes.push_back(scene_root);
 	}
 	{
 		if (p_path.to_lower().ends_with("glb")) {

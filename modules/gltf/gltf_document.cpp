@@ -14,15 +14,17 @@
 
 Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
-	// /* STEP 0 PARSE SCENE */
-	// Error err = _parse_scenes(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	/* STEP 1 PARSE NODES */
+	Error err = _serialize_nodes(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
-	// /* STEP 1 PARSE NODES */
-	// err = _parse_nodes(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	/* STEP 0 PARSE SCENE */
+	err = _serialize_scenes(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
 	// /* STEP 2 PARSE BUFFERS */
 	// err = _parse_buffers(*state, p_path.get_base_dir());
@@ -92,24 +94,49 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// /* STEP 16 ASSIGN SCENE NAMES */
 	// _assign_scene_names(*state);
 
-    String version = "2.0";
-    state.major_version = version.get_slice(".", 0).to_int();
-    state.minor_version = version.get_slice(".", 1).to_int();
-    Dictionary asset;
-    asset["version"] = version;
-    state.json["asset"] = asset;
-    ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
-    ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
+	String version = "2.0";
+	state.major_version = version.get_slice(".", 0).to_int();
+	state.minor_version = version.get_slice(".", 1).to_int();
+	Dictionary asset;
+	asset["version"] = version;
+	state.json["asset"] = asset;
+	ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
+	ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
 
-	Error err;
 	FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
 	if (!f) {
 		return err;
 	}
 
 	PoolByteArray array;
-    String json = JSON::print(state.json);
-    f->store_string(json);
+	String json = JSON::print(state.json);
+	f->store_string(json);
+	return OK;
+}
+
+Error GLTFDocument::_serialize_scenes(GLTFState &state) {
+	Array scenes;
+	const int loaded_scene = 0;
+	state.json["scene"] = loaded_scene;
+
+	if (state.nodes.size()) {
+		Dictionary s;
+		Array nodes;
+		for (int j = 0; j < state.nodes.size(); j++) {
+			if (state.nodes[j]->parent == -1) {
+				nodes.push_back(j);
+			}
+		}
+		if (!state.scene_name.empty()) {
+			s["name"] = _gen_unique_name(state, state.scene_name);
+		} else {
+			s["name"] = _gen_unique_name(state, "Scene");
+		}
+		s["nodes"] = nodes;
+		scenes.push_back(s);
+	}
+	state.json["scenes"] = scenes;
+
 	return OK;
 }
 
@@ -214,6 +241,84 @@ static Transform _arr_to_xform(const Array &p_array) {
 	xform.set_origin(Vector3(p_array[12], p_array[13], p_array[14]));
 
 	return xform;
+}
+
+static PoolRealArray _xform_to_array(const Transform p_transform) {
+	PoolRealArray array;
+	array.resize(16);
+	Vector3 axis_x = p_transform.get_basis().get_axis(Vector3::AXIS_X);
+	array.write()[0] = axis_x.x;
+	array.write()[1] = axis_x.y;
+	array.write()[2] = axis_x.z;
+
+	Vector3 axis_y = p_transform.get_basis().get_axis(Vector3::AXIS_Y);
+	array.write()[4] = axis_y.x;
+	array.write()[5] = axis_y.y;
+	array.write()[6] = axis_y.z;
+
+	Vector3 axis_z = p_transform.get_basis().get_axis(Vector3::AXIS_Z);
+	array.write()[8] = axis_z.x;
+	array.write()[9] = axis_z.y;
+	array.write()[10] = axis_z.z;
+
+	Vector3 origin = p_transform.get_origin();
+	array.write()[12] = origin.x;
+	array.write()[13] = origin.y;
+	array.write()[14] = origin.z;
+
+	array.write()[15] = 1.0f;
+	return array;
+}
+
+Error GLTFDocument::_serialize_nodes(GLTFState &state) {
+	Array nodes;
+	for (int i = 0; i < state.nodes.size(); i++) {
+		Dictionary node;
+		GLTFNode *n = state.nodes[i];
+		if (!n->name.empty()) {
+			node["name"] = n->name;
+		}
+		if (n->camera != -1) {
+			GLTFCamera cam = state.cameras[n->camera];
+			Dictionary json_camera;
+			;
+			if (cam.perspective) {
+				Dictionary og;
+				og["ymag"] = cam.fov_size;
+				og["zfar"] = cam.zfar;
+				og["znear"] = cam.znear;
+
+				json_camera["orthographic"] = og;
+			} else {
+				Dictionary ppt;
+				;
+				ppt["yfov"] = cam.fov_size;
+				ppt["zfar"] = cam.zfar;
+				ppt["znear"] = cam.znear;
+				json_camera["perspective"] = ppt;
+			}
+			node["camera"] = json_camera;
+		}
+		if (n->mesh != -1) {
+			node["mesh"] = n->mesh;
+		}
+		if (n->skin != -1) {
+			node["skin"] = n->skin;
+		}
+		if (n->xform != Transform()) {
+			node["matrix"] = _xform_to_array(n->xform);
+		}
+		if (n->children.size()) {
+			Array children;
+			for (int j = 0; j < n->children.size(); j++) {
+				children.push_back(n->children[j]);
+			}
+			node["children"] = children;
+		}
+		nodes.push_back(node);
+	}
+	state.json["nodes"] = nodes;
+	return OK;
 }
 
 String GLTFDocument::_sanitize_scene_name(const String &name) {
@@ -2589,8 +2694,7 @@ Camera *GLTFDocument::_generate_camera(GLTFState &state, Node *scene_parent, con
 	return camera;
 }
 
-GLTFDocument::GLTFNodeIndex GLTFDocument::_convert_camera(GLTFState &state, Camera *p_camera) {
-	GLTFNode *gltf_node = memnew(GLTFNode);
+GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Camera *p_camera) {
 	print_verbose("glTF: Creating camera for: " + p_camera->get_name());
 
 	GLTFCamera c;
@@ -2606,16 +2710,11 @@ GLTFDocument::GLTFNodeIndex GLTFDocument::_convert_camera(GLTFState &state, Came
 		c.znear = p_camera->get_znear();
 	}
 	state.cameras.push_back(c);
-	gltf_node->camera = state.cameras.size() - 1;
-	state.nodes.push_back(gltf_node);
-	return state.nodes.size() - 1;
+	return state.cameras.size() - 1;
 }
-GLTFDocument::GLTFNodeIndex GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial) {
+void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
 	print_verbose("glTF: Creating spatial for: " + p_spatial->get_name());
-	GLTFNode *gltf_node = memnew(GLTFNode);
-	gltf_node->name = p_spatial->get_name();
-	state.nodes.push_back(gltf_node);
-	return state.nodes.size() - 1;
+	p_node->name = p_spatial->get_name();
 }
 
 Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index) {
@@ -2626,15 +2725,16 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 
 	return spatial;
 }
-void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
+void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_current_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
 
-	Spatial *current_node = Object::cast_to<Spatial>(p_root_node);
+	Spatial *current_node = Object::cast_to<Spatial>(p_current_node);
 	GLTFNode *gltf_node = memnew(GLTFNode);
-
+	GLTFNodeIndex current_node_index = state.nodes.size();
+	bool is_root_node = p_root_node_index == current_node_index;
 	state.nodes.push_back(gltf_node);
-	GLTFNodeIndex current_node_index = state.nodes.size() - 1;
-	if (current_node_index != p_root_node_index) {
-		state.nodes[p_root_node_index]->children.push_back(current_node_index);
+	if (!is_root_node) {
+		state.nodes[p_parent_node_index]->children.push_back(current_node_index);
+		gltf_node->parent = p_parent_node_index;
 	}
 
 	if (current_node) {
@@ -2643,9 +2743,9 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		if (mi) {
 			gltf_node->mesh = _convert_mesh_instance(state, mi);
 		} else if (c) {
-			_convert_camera(state, c);
+			gltf_node->camera = _convert_camera(state, c);
 		} else {
-			_convert_spatial(state, current_node);
+			_convert_spatial(state, current_node, gltf_node);
 		}
 
 		gltf_node->xform = current_node->get_transform();
@@ -2653,11 +2753,8 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 
 		state.scene_nodes.insert(current_node_index, current_node);
 	}
-	for (int i = 0; i < p_root_node->get_child_count(); i++) {
-		if (current_node_index != p_root_node_index) {
-			gltf_node->parent = p_parent_node_index;
-		}
-		_convert_scene_node(state, _root_node, p_root_node->get_child(i), p_root_node_index, current_node_index);
+	for (int i = 0; i < current_node->get_child_count(); i++) {
+		_convert_scene_node(state, _root_node, current_node->get_child(i), p_root_node_index, current_node_index);
 	}
 	/*
 	// Is our parent a skeleton
