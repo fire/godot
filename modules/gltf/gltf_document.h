@@ -97,8 +97,8 @@ public:
 		bool normalized;
 		int count;
 		GLTFType type;
-		float min;
-		float max;
+		Array min;
+		Array max;
 		int sparse_count;
 		int sparse_indices_buffer_view;
 		int sparse_indices_byte_offset;
@@ -112,8 +112,8 @@ public:
 			component_type = 0;
 			normalized = false;
 			count = 0;
-			min = 0;
-			max = 0;
+			min = Array();
+			max = Array();
 			sparse_count = 0;
 			sparse_indices_byte_offset = 0;
 			sparse_values_byte_offset = 0;
@@ -369,14 +369,15 @@ private:
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
 
-    GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
+	GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
+	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
 
-public: 
+public:
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
 	Error _encode_buffer_views(GLTFState &state);
 	Error _encode_buffers(GLTFState &state, const String &p_base_path);
-    Error _serialize_meshes(GLTFState &state);
+	Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
 	Error _serialize_json(const String &p_path, GLTFState &state);

@@ -636,7 +636,9 @@ Error GLTFDocument::_encode_buffer_views(GLTFState &state) {
 
 		d["byteOffset"] = buffer_view.byte_offset;
 
-		d["byteStride"] = buffer_view.byte_stride;
+		if (buffer_view.byte_stride != -1) {
+			d["byteStride"] = buffer_view.byte_stride;
+		}
 
 		// TODO Sparse
 		// d["target"] = buffer_view.indices;
@@ -936,7 +938,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 	const uint32_t offset = bv.byte_offset = byte_offset;
 	Vector<uint8_t> &gltf_buffer = state.buffers.write[0];
 
-	int stride = bv.byte_stride = _get_component_type_size(component_type);
+	int stride = _get_component_type_size(component_type);
 	if (for_vertex && stride % 4) {
 		stride += 4 - (stride % 4); //according to spec must be multiple of 4
 	}
@@ -946,25 +948,27 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 	print_verbose("glTF: encoding accessor offset " + itos(byte_offset) + " view offset: " + itos(bv.byte_offset) + " total buffer len: " + itos(gltf_buffer.size()) + " view len " + itos(bv.byte_length));
 
 	const int buffer_end = (stride * (count - 1)) + _get_component_type_size(component_type);
-	bv.byte_stride = stride;
+	// TODO define bv.byte_stride
 	bv.byte_offset = gltf_buffer.size();
 
 	switch (component_type) {
 		case COMPONENT_TYPE_BYTE: {
 			Vector<int8_t> buffer;
-			buffer.resize(count * component_count);
+			buffer.resize(count * component_count);\
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[i] = d / 128.0;
+						buffer.write[dst_i] = d / 128.0;
 					} else {
-						buffer.write[i] = d;
+						buffer.write[dst_i] = d;
 					}
 					src++;
+					dst_i++;
 				}
 			}
 			int64_t old_size = gltf_buffer.size();
@@ -975,18 +979,20 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 		case COMPONENT_TYPE_UNSIGNED_BYTE: {
 			Vector<uint8_t> buffer;
 			buffer.resize(count * component_count);
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[i] = d / 255.0;
+						buffer.write[dst_i] = d / 255.0;
 					} else {
-						buffer.write[i] = d;
+						buffer.write[dst_i] = d;
 					}
 					src++;
+					dst_i++;
 				}
 			}
 			gltf_buffer.append_array(buffer);
@@ -995,18 +1001,20 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 		case COMPONENT_TYPE_SHORT: {
 			Vector<int16_t> buffer;
 			buffer.resize(count * component_count);
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[i] = d / 32768.0;
+						buffer.write[dst_i] = d / 32768.0;
 					} else {
-						buffer.write[i] = d;
+						buffer.write[dst_i] = d;
 					}
 					src++;
+					dst_i++;
 				}
 			}
 			int64_t old_size = gltf_buffer.size();
@@ -1017,18 +1025,20 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 		case COMPONENT_TYPE_UNSIGNED_SHORT: {
 			Vector<uint16_t> buffer;
 			buffer.resize(count * component_count);
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[i] = d / 65535.0;
+						buffer.write[dst_i] = d / 65535.0;
 					} else {
-						buffer.write[i] = d;
+						buffer.write[dst_i] = d;
 					}
 					src++;
+					dst_i++;
 				}
 			}
 			int64_t old_size = gltf_buffer.size();
@@ -1039,14 +1049,16 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 		case COMPONENT_TYPE_INT: {
 			Vector<int> buffer;
 			buffer.resize(count * component_count);
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
-					buffer.write[i] = d;
+					buffer.write[dst_i] = d;
 					src++;
+					dst_i++;
 				}
 			}
 			int64_t old_size = gltf_buffer.size();
@@ -1057,14 +1069,16 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 		case COMPONENT_TYPE_FLOAT: {
 			Vector<float> buffer;
 			buffer.resize(count * component_count);
+			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
 					if (skip_every && j > 0 && (j % skip_every) == 0) {
-						src += skip_bytes;
+						dst_i += skip_bytes;
 					}
 					double d = *src;
-					buffer.write[i] = d;
+					buffer.write[dst_i] = d;
 					src++;
+					dst_i++;
 				}
 			}
 			int64_t old_size = gltf_buffer.size();
@@ -1281,6 +1295,47 @@ Vector<double> GLTFDocument::_decode_accessor(GLTFState &state, const GLTFAccess
 	return dst_buffer;
 }
 
+GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+	const int ret_size = p_attribs.size();
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	PoolVector<double>::Write w = attribs.write();
+	for (int i = 0; i < p_attribs.size(); i++) {
+		w[i] = p_attribs[i];
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 3 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_SCALAR;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_INT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array int_max;
+	int_max.push_back(UINT32_MAX);
+	Array int_min;
+	int_min.push_back(0);
+	accessor.max = int_max;
+	accessor.min = int_min;
+	accessor.normalized = true;
+	accessor.count = ret_size;
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
 PoolVector<int> GLTFDocument::_decode_accessor_as_ints(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1370,14 +1425,22 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC3;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
 	if (err != OK) {
 		return -1;
 	}
-	accessor.max = GLTFDocument::_get_component_type_size(component_type);
-	accessor.min = GLTFDocument::_get_component_type_size(component_type);
+	Array vec3_max;
+	accessor.max = vec3_max;
+	vec3_max.push_back(FLT_MAX);
+	vec3_max.push_back(FLT_MAX);
+	vec3_max.push_back(FLT_MAX);
+	Array vec3_min;
+	vec3_min.push_back(FLT_MIN);
+	vec3_min.push_back(FLT_MIN);
+	vec3_min.push_back(FLT_MIN);
+	accessor.min = vec3_min;
 	accessor.normalized = true;
-	accessor.count = ret_size;
+	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
 	accessor.buffer_view = buffer_view_i;
@@ -1540,7 +1603,6 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				ERR_FAIL_COND_V(!a.size(), ERR_INVALID_DATA);
 				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
 			}
-			primitive["attributes"] = attributes;
 			// if (a.has("NORMAL")) {
 			// 	array[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, a["NORMAL"], true);
 			// }
@@ -1581,44 +1643,37 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// 	}
 			// 	array[Mesh::ARRAY_WEIGHTS] = weights;
 			// }
-
-			// TODO
-			/*
-			if (p.has("indices")) {
-				PoolVector<int> indices = _decode_accessor_as_ints(state, p["indices"], false);
-
-				if (primitive == Mesh::PRIMITIVE_TRIANGLES) {
-					//swap around indices, convert ccw to cw for front face
-
-					const int is = indices.size();
-					const PoolVector<int>::Write w = indices.write();
-					for (int k = 0; k < is; k += 3) {
-						SWAP(w[k + 1], w[k + 2]);
+			{
+				Array mesh_indices = array[Mesh::ARRAY_INDEX];
+				if (mesh_indices.size()) {
+					if (primitive_type == Mesh::PRIMITIVE_TRIANGLES) {
+						//swap around indices, convert ccw to cw  for front face
+						const int is = mesh_indices.size();
+						for (int k = 0; k < is; k += 3) {
+							SWAP(mesh_indices[k + 0], mesh_indices[k + 2]);
+						}
 					}
-				}
-				array[Mesh::ARRAY_INDEX] = indices;
+					primitive["indices"] = _encode_accessor_as_ints(state, mesh_indices, true);
 
-			} else if (primitive == Mesh::PRIMITIVE_TRIANGLES) {
-				//generate indices because they need to be swapped for CW/CCW
-				const PoolVector<Vector3> &vertices = array[Mesh::ARRAY_VERTEX];
-				ERR_FAIL_COND_V(vertices.size() == 0, ERR_PARSE_ERROR);
-				PoolVector<int> indices;
-				const int vs = vertices.size();
-				indices.resize(vs);
-				{
-					const PoolVector<int>::Write w = indices.write();
-					for (int k = 0; k < vs; k += 3) {
-						w[k] = k;
-						w[k + 1] = k + 2;
-						w[k + 2] = k + 1;
+				} else {
+					//generate indices because they need to be swapped for CW/CCW
+					const PoolVector<Vector3> &vertices = array[Mesh::ARRAY_VERTEX];
+					ERR_FAIL_COND_V(vertices.size() == 0, ERR_PARSE_ERROR);
+					Array generated_indices;
+					const int vs = vertices.size();
+					generated_indices.resize(vs);
+					{
+						for (int k = 0; k < vs; k += 3) {
+							generated_indices[k] = k;
+							generated_indices[k + 1] = k + 2;
+							generated_indices[k + 2] = k + 1;
+						}
 					}
+					primitive["indices"] = _encode_accessor_as_ints(state, generated_indices, true);
 				}
-				array[Mesh::ARRAY_INDEX] = indices;
 			}
 
-
-
-*/
+			primitive["attributes"] = attributes;
 			//TODO
 			// bool generated_tangents = false;
 			// Variant erased_indices;
