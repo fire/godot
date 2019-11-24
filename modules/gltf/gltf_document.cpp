@@ -26,23 +26,53 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 2 PARSE BUFFERS */
-	// err = _parse_buffers(*state, p_path.get_base_dir());
+	// /* STEP 16 ASSIGN SCENE NAMES */
+	// _assign_scene_names(*state);
+
+	// /* STEP 15 PARSE ANIMATIONS */
+	// err = _parse_animations(*state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
-	// /* STEP 3 PARSE BUFFER VIEWS */
-	// err = _parse_buffer_views(*state);
+	// /* STEP 14 PARSE CAMERAS */
+	// err = _parse_cameras(*state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
-	// /* STEP 4 PARSE ACCESSORS */
-	// err = _parse_accessors(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	if (!state.buffers.size()) {
+		state.buffers.push_back(Vector<uint8_t>());
+	}
+
+	/* STEP 13 PARSE MESHES (we have enough info now) */
+	err = _serialize_meshes(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 4 PARSE ACCESSORS */
+	err = _encode_accessors(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	for (GLTFBufferViewIndex i = 0; i < state.buffer_views.size(); i++) {
+		state.buffer_views.write[i].buffer = 0;
+	}
+
+	/* STEP 3 PARSE BUFFER VIEWS */
+	err = _encode_buffer_views(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 2 PARSE BUFFERS */
+	err = _encode_buffers(state, p_path);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
 	// /* STEP 5 PARSE IMAGES */
-	// err = _parse_images(*state, p_path.get_base_dir());
+	// err = _parse_images(state, p_path.get_base_dir());
 	// if (err != OK)
 	// 	return Error::FAILED;
 
@@ -52,47 +82,29 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// 	return Error::FAILED;
 
 	// /* STEP 7 PARSE TEXTURES */
-	// err = _parse_materials(*state);
+	// err = _parse_materials(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
 	// /* STEP 9 PARSE SKINS */
-	// err = _parse_skins(*state);
+	// err = _parse_skins(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
 	// /* STEP 10 DETERMINE SKELETONS */
-	// err = _determine_skeletons(*state);
+	// err = _determine_skeletons(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
 	// /* STEP 11 CREATE SKELETONS */
-	// err = _create_skeletons(*state);
+	// err = _create_skeletons(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
 	// /* STEP 12 CREATE SKINS */
-	// err = _create_skins(*state);
+	// err = _create_skins(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
-
-	/* STEP 13 PARSE MESHES (we have enough info now) */
-	err = _serialize_meshes(state);
-	if (err != OK)
-		return Error::FAILED;
-
-	// /* STEP 14 PARSE CAMERAS */
-	// err = _parse_cameras(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 15 PARSE ANIMATIONS */
-	// err = _parse_animations(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 16 ASSIGN SCENE NAMES */
-	// _assign_scene_names(*state);
 
 	String version = "2.0";
 	state.major_version = version.get_slice(".", 0).to_int();
@@ -530,6 +542,45 @@ static Vector<uint8_t> _parse_base64_uri(const String &uri) {
 	return buf;
 }
 
+Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
+
+	print_verbose("glTF: Total buffers: " + itos(state.buffers.size()));
+
+	if (!state.buffers.size()) {
+		return ERR_INVALID_DATA;
+	}
+	Array buffers;
+	for (GLTFBufferIndex i = 0; i < state.buffers.size(); i++) {
+		// if (i == 0 && state.glb_data.size()) {
+		// 	state.buffers.push_back(state.glb_data);
+
+		// } else {
+		// }
+		Dictionary gltf_buffer;
+
+		Vector<uint8_t> buffer_data = state.buffers[i];
+
+		// if (uri.findn("data:application/octet-stream;base64") == 0) {
+		// 	//embedded data
+		// 	buffer_data = _parse_base64_uri(uri);
+		// } else {
+		// }
+		String uri = ProjectSettings::get_singleton()->localize_path(p_path.get_basename().get_file() + itos(i) + ".bin");
+		FileAccess *f = FileAccess::open(uri, FileAccess::WRITE_READ);
+		ERR_CONTINUE(!f);
+		ERR_FAIL_COND_V(buffer_data.size() == 0, ERR_INVALID_DATA);
+		f->create(FileAccess::ACCESS_RESOURCES);
+		f->store_buffer(buffer_data.ptr(), buffer_data.size());
+		f->close();
+		gltf_buffer["uri"] = uri.split("://")[1];
+		gltf_buffer["byteLength"] = buffer_data.size();
+		buffers.push_back(gltf_buffer);
+	}
+	state.json["buffers"] = buffers;
+
+	return OK;
+}
+
 Error GLTFDocument::_parse_buffers(GLTFState &state, const String &p_base_path) {
 
 	if (!state.json.has("buffers"))
@@ -571,6 +622,34 @@ Error GLTFDocument::_parse_buffers(GLTFState &state, const String &p_base_path) 
 	return OK;
 }
 
+Error GLTFDocument::_encode_buffer_views(GLTFState &state) {
+
+	Array buffers;
+	for (GLTFBufferViewIndex i = 0; i < state.buffer_views.size(); i++) {
+
+		Dictionary d;
+
+		GLTFBufferView buffer_view = state.buffer_views[i];
+
+		d["buffer"] = buffer_view.buffer;
+		d["byteLength"] = buffer_view.byte_length;
+
+		d["byteOffset"] = buffer_view.byte_offset;
+
+		d["byteStride"] = buffer_view.byte_stride;
+
+		// TODO Sparse
+		// d["target"] = buffer_view.indices;
+
+		ERR_FAIL_COND_V(!d.has("buffer"), ERR_INVALID_DATA);
+		ERR_FAIL_COND_V(!d.has("byteLength"), ERR_INVALID_DATA);
+		buffers.push_back(d);
+	}
+	print_verbose("glTF: Total buffer views: " + itos(state.buffer_views.size()));
+	state.json["bufferViews"] = buffers;
+	return OK;
+}
+
 Error GLTFDocument::_parse_buffer_views(GLTFState &state) {
 
 	ERR_FAIL_COND_V(!state.json.has("bufferViews"), ERR_FILE_CORRUPT);
@@ -605,6 +684,89 @@ Error GLTFDocument::_parse_buffer_views(GLTFState &state) {
 	print_verbose("glTF: Total buffer views: " + itos(state.buffer_views.size()));
 
 	return OK;
+}
+
+Error GLTFDocument::_encode_accessors(GLTFDocument::GLTFState &state) {
+
+	Array accessors;
+	for (GLTFDocument::GLTFAccessorIndex i = 0; i < state.accessors.size(); i++) {
+
+		Dictionary d;
+
+		GLTFDocument::GLTFAccessor accessor = state.accessors[i];
+		d["componentType"] = accessor.component_type;
+		d["count"] = accessor.count;
+		d["type"] = _get_accessor_type_name(accessor.type);
+		d["byteOffset"] = accessor.byte_offset;
+		d["max"] = accessor.max;
+		d["min"] = accessor.min;
+		d["bufferView"] = accessor.buffer_view; //optional because it may be sparse...
+
+		// Dictionary s;
+		// s["count"] = accessor.sparse_count;
+		// ERR_FAIL_COND_V(!s.has("count"), ERR_PARSE_ERROR);
+
+		// s["indices"] = accessor.sparse_accessors;
+		// ERR_FAIL_COND_V(!s.has("indices"), ERR_PARSE_ERROR);
+
+		// Dictionary si;
+
+		// si["bufferView"] = accessor.sparse_indices_buffer_view;
+
+		// ERR_FAIL_COND_V(!si.has("bufferView"), ERR_PARSE_ERROR);
+		// si["componentType"] = accessor.sparse_indices_component_type;
+
+		// if (si.has("byteOffset")) {
+		// 	si["byteOffset"] = accessor.sparse_indices_byte_offset;
+		// }
+
+		// ERR_FAIL_COND_V(!si.has("componentType"), ERR_PARSE_ERROR);
+		// s["indices"] = si;
+		// Dictionary sv;
+
+		// sv["bufferView"] = accessor.sparse_values_buffer_view;
+		// if (sv.has("byteOffset")) {
+		// 	sv["byteOffset"] = accessor.sparse_values_byte_offset;
+		// }
+		// ERR_FAIL_COND_V(!sv.has("bufferView"), ERR_PARSE_ERROR);
+		// s["values"] = sv;
+		// ERR_FAIL_COND_V(!s.has("values"), ERR_PARSE_ERROR);
+		// d["sparse"] = s;
+		accessors.push_back(d);
+	}
+
+	state.json["accessors"] = accessors;
+	ERR_FAIL_COND_V(!state.json.has("accessors"), ERR_FILE_CORRUPT);
+	print_verbose("glTF: Total accessors: " + itos(state.accessors.size()));
+
+	return OK;
+}
+
+String GLTFDocument::_get_accessor_type_name(const GLTFDocument::GLTFType p_type) {
+
+	if (p_type == GLTFDocument::TYPE_SCALAR) {
+		return "SCALAR";
+	}
+	if (p_type == GLTFDocument::TYPE_VEC2) {
+		return "VEC2";
+	}
+	if (p_type == GLTFDocument::TYPE_VEC3) {
+		return "VEC3";
+	}
+	if (p_type == GLTFDocument::TYPE_VEC4) {
+		return "VEC4";
+	}
+
+	if (p_type == GLTFDocument::TYPE_MAT2) {
+		return "MAT2";
+	}
+	if (p_type == GLTFDocument::TYPE_MAT3) {
+		return "MAT3";
+	}
+	if (p_type == GLTFDocument::TYPE_MAT4) {
+		return "MAT4";
+	}
+	ERR_FAIL_V("SCALAR");
 }
 
 GLTFDocument::GLTFType GLTFDocument::_get_type_from_str(const String &p_string) {
@@ -728,6 +890,197 @@ String GLTFDocument::_get_type_name(const GLTFType p_component) {
 	return names[p_component];
 }
 
+Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFDocument::GLTFBufferViewIndex &r_bufferview_i) {
+
+	const int component_count_for_type[7] = {
+		1, 2, 3, 4, 4, 9, 16
+	};
+
+	const int component_count = component_count_for_type[type];
+	const int component_size = _get_component_type_size(component_type);
+	ERR_FAIL_COND_V(component_size == 0, FAILED);
+	int element_size = component_count * component_size;
+
+	int skip_every = 0;
+	int skip_bytes = 0;
+	//special case of alignments, as described in spec
+	switch (component_type) {
+		case COMPONENT_TYPE_BYTE:
+		case COMPONENT_TYPE_UNSIGNED_BYTE: {
+
+			if (type == TYPE_MAT2) {
+				skip_every = 2;
+				skip_bytes = 2;
+				element_size = 8; //override for this case
+			}
+			if (type == TYPE_MAT3) {
+				skip_every = 3;
+				skip_bytes = 1;
+				element_size = 12; //override for this case
+			}
+
+		} break;
+		case COMPONENT_TYPE_SHORT:
+		case COMPONENT_TYPE_UNSIGNED_SHORT: {
+			if (type == TYPE_MAT3) {
+				skip_every = 6;
+				skip_bytes = 4;
+				element_size = 16; //override for this case
+			}
+		} break;
+		default: {
+		}
+	}
+
+	GLTFBufferView bv;
+	const uint32_t offset = bv.byte_offset = byte_offset;
+	Vector<uint8_t> &gltf_buffer = state.buffers.write[0];
+
+	int stride = bv.byte_stride = _get_component_type_size(component_type);
+	if (for_vertex && stride % 4) {
+		stride += 4 - (stride % 4); //according to spec must be multiple of 4
+	}
+	//use to debug
+	print_verbose("glTF: encoding type " + _get_type_name(type) + " component type: " + _get_component_type_name(component_type) + " stride: " + itos(stride) + " amount " + itos(count));
+
+	print_verbose("glTF: encoding accessor offset " + itos(byte_offset) + " view offset: " + itos(bv.byte_offset) + " total buffer len: " + itos(gltf_buffer.size()) + " view len " + itos(bv.byte_length));
+
+	const int buffer_end = (stride * (count - 1)) + _get_component_type_size(component_type);
+	bv.byte_stride = stride;
+	bv.byte_offset = gltf_buffer.size();
+
+	switch (component_type) {
+		case COMPONENT_TYPE_BYTE: {
+			Vector<int8_t> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					if (normalized) {
+						buffer.write[i] = d / 128.0;
+					} else {
+						buffer.write[i] = d;
+					}
+					src++;
+				}
+			}
+			int64_t old_size = gltf_buffer.size();
+			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int8_t)));
+			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int8_t));
+			bv.byte_length = buffer.size() * sizeof(int8_t);
+		} break;
+		case COMPONENT_TYPE_UNSIGNED_BYTE: {
+			Vector<uint8_t> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					if (normalized) {
+						buffer.write[i] = d / 255.0;
+					} else {
+						buffer.write[i] = d;
+					}
+					src++;
+				}
+			}
+			gltf_buffer.append_array(buffer);
+			bv.byte_length = buffer.size() * sizeof(uint8_t);
+		} break;
+		case COMPONENT_TYPE_SHORT: {
+			Vector<int16_t> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					if (normalized) {
+						buffer.write[i] = d / 32768.0;
+					} else {
+						buffer.write[i] = d;
+					}
+					src++;
+				}
+			}
+			int64_t old_size = gltf_buffer.size();
+			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int16_t)));
+			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int16_t));
+			bv.byte_length = buffer.size() * sizeof(int16_t);
+		} break;
+		case COMPONENT_TYPE_UNSIGNED_SHORT: {
+			Vector<uint16_t> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					if (normalized) {
+						buffer.write[i] = d / 65535.0;
+					} else {
+						buffer.write[i] = d;
+					}
+					src++;
+				}
+			}
+			int64_t old_size = gltf_buffer.size();
+			gltf_buffer.resize(old_size + (buffer.size() * sizeof(uint16_t)));
+			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(uint16_t));
+			bv.byte_length = buffer.size() * sizeof(uint16_t);
+		} break;
+		case COMPONENT_TYPE_INT: {
+			Vector<int> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					buffer.write[i] = d;
+					src++;
+				}
+			}
+			int64_t old_size = gltf_buffer.size();
+			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int32_t)));
+			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int32_t));
+			bv.byte_length = buffer.size() * sizeof(int32_t);
+		} break;
+		case COMPONENT_TYPE_FLOAT: {
+			Vector<float> buffer;
+			buffer.resize(count * component_count);
+			for (int i = 0; i < count; i++) {
+				for (int j = 0; j < component_count; j++) {
+					if (skip_every && j > 0 && (j % skip_every) == 0) {
+						src += skip_bytes;
+					}
+					double d = *src;
+					buffer.write[i] = d;
+					src++;
+				}
+			}
+			int64_t old_size = gltf_buffer.size();
+			gltf_buffer.resize(old_size + (buffer.size() * sizeof(float)));
+			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(float));
+			bv.byte_length = buffer.size() * sizeof(float);
+		} break;
+	}
+	ERR_FAIL_COND_V(buffer_end > bv.byte_length, ERR_INVALID_DATA);
+
+	ERR_FAIL_COND_V((int)(offset + buffer_end) > gltf_buffer.size(), ERR_INVALID_DATA);
+	r_bufferview_i = bv.buffer = state.buffer_views.size();
+	state.buffer_views.push_back(bv);
+	return OK;
+}
+
 Error GLTFDocument::_decode_buffer_view(GLTFState &state, double *dst, const GLTFBufferViewIndex p_buffer_view, const int skip_every, const int skip_bytes, const int element_size, const int count, const GLTFType type, const int component_count, const int component_type, const int component_size, const bool normalized, const int byte_offset, const bool for_vertex) {
 
 	const GLTFBufferView &bv = state.buffer_views[p_buffer_view];
@@ -745,7 +1098,7 @@ Error GLTFDocument::_decode_buffer_view(GLTFState &state, double *dst, const GLT
 
 	//use to debug
 	print_verbose("glTF: type " + _get_type_name(type) + " component type: " + _get_component_type_name(component_type) + " stride: " + itos(stride) + " amount " + itos(count));
-	print_verbose("glTF: accessor offset" + itos(byte_offset) + " view offset: " + itos(bv.byte_offset) + " total buffer len: " + itos(buffer.size()) + " view len " + itos(bv.byte_length));
+	print_verbose("glTF: accessor offset " + itos(byte_offset) + " view offset: " + itos(bv.byte_offset) + " total buffer len: " + itos(buffer.size()) + " view len " + itos(bv.byte_length));
 
 	const int buffer_end = (stride * (count - 1)) + element_size;
 	ERR_FAIL_COND_V(buffer_end > bv.byte_length, ERR_PARSE_ERROR);
@@ -830,21 +1183,6 @@ int GLTFDocument::_get_component_type_size(const int component_type) {
 		}
 	}
 	return 0;
-}
-
-GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor(GLTFState &state, PoolVector<double> p_attribs, const bool p_for_vertex) {
-
-	//spec, for reference:
-	//https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#data-alignment
-
-	GLTFAccessor a;
-
-	// Error err = _encode_buffer_view(state, p_attribs.write().ptr(), a.sparse_values_buffer_view, skip_every, skip_bytes, element_size, a.sparse_count, a.type, component_count, a.component_type, component_size, a.normalized, a.sparse_values_byte_offset, p_for_vertex);
-	// if (err != OK) {
-	return -1;
-	// }
-	state.accessors.push_back(a);
-	return state.accessors.size() - 1;
 }
 
 Vector<double> GLTFDocument::_decode_accessor(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
@@ -1007,10 +1345,9 @@ PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, con
 GLTFDocument::GLTFAccessorIndex
 GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
 
-	if (p_attribs.size() == 0)
+	if (p_attribs.size() == 0) {
 		return -1;
-
-	ERR_FAIL_COND_V(p_attribs.size() % 3 != 0, -1);
+	}
 
 	const int ret_size = p_attribs.size() * 3;
 	PoolVector<double> attribs;
@@ -1025,7 +1362,28 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 		}
 	}
 
-	return _encode_accessor(state, attribs, p_for_vertex);
+	ERR_FAIL_COND_V(attribs.size() % 3 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC3;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), ret_size, type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.max = GLTFDocument::_get_component_type_size(component_type);
+	accessor.min = GLTFDocument::_get_component_type_size(component_type);
+	accessor.normalized = true;
+	accessor.count = ret_size;
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = state.buffer_views[buffer_view_i].byte_offset;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
 }
 
 PoolVector<Vector3> GLTFDocument::_decode_accessor_as_vec3(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
@@ -3050,15 +3408,16 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_current_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
 
 	Spatial *current_node = Object::cast_to<Spatial>(p_current_node);
+
 	GLTFNode *gltf_node = memnew(GLTFNode);
 	GLTFNodeIndex current_node_index = state.nodes.size();
 	bool is_root_node = p_root_node_index == current_node_index;
 	state.nodes.push_back(gltf_node);
+	state.scene_nodes.insert(current_node_index, p_current_node);
 	if (!is_root_node) {
 		state.nodes[p_parent_node_index]->children.push_back(current_node_index);
 		gltf_node->parent = p_parent_node_index;
 	}
-
 	if (current_node) {
 		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
 		Camera *c = Object::cast_to<Camera>(current_node);
@@ -3072,11 +3431,9 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 
 		gltf_node->xform = current_node->get_transform();
 		gltf_node->name = current_node->get_name();
-
-		state.scene_nodes.insert(current_node_index, current_node);
 	}
-	for (int i = 0; i < current_node->get_child_count(); i++) {
-		_convert_scene_node(state, _root_node, current_node->get_child(i), p_root_node_index, current_node_index);
+	for (int i = 0; i < p_current_node->get_child_count(); i++) {
+		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_index);
 	}
 	/*
 	// Is our parent a skeleton

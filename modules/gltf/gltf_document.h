@@ -77,7 +77,7 @@ public:
 		int byte_offset;
 		int byte_length;
 		int byte_stride;
-		bool indices;
+		int indices;
 		//matrices need to be transformed to this
 
 		GLTFBufferView() :
@@ -85,7 +85,7 @@ public:
 				byte_offset(0),
 				byte_length(0),
 				byte_stride(0),
-				indices(false) {
+				indices(-1) {
 		}
 	};
 
@@ -297,6 +297,7 @@ private:
 	Error _parse_nodes(GLTFState &state);
 
 	String _get_type_name(const GLTFType p_component);
+	String _get_accessor_type_name(const GLTFDocument::GLTFType p_type);
 
 	String _sanitize_scene_name(const String &name);
 	String _gen_unique_name(GLTFState &state, const String &p_name);
@@ -317,8 +318,6 @@ private:
 	Error _parse_accessors(GLTFState &state);
 	Error _decode_buffer_view(GLTFState &state, double *dst, const GLTFBufferViewIndex p_buffer_view, const int skip_every, const int skip_bytes, const int element_size, const int count, const GLTFType type, const int component_count, const int component_type, const int component_size, const bool normalized, const int byte_offset, const bool for_vertex);
 
-    GLTFAccessorIndex _encode_accessor(GLTFState &state, PoolVector<double> p_attribs, const bool p_for_vertex);
-	
 	Vector<double> _decode_accessor(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	PoolVector<float> _decode_accessor_as_floats(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	PoolVector<int> _decode_accessor_as_ints(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
@@ -371,8 +370,12 @@ private:
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
 
     GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
-   
+	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
+
 public: 
+	Error _encode_accessors(GLTFDocument::GLTFState &state);
+	Error _encode_buffer_views(GLTFState &state);
+	Error _encode_buffers(GLTFState &state, const String &p_base_path);
     Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
