@@ -1606,18 +1606,31 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				ERR_FAIL_COND_V(!a.size(), ERR_INVALID_DATA);
 				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
 			}
-			// if (a.has("NORMAL")) {
-			// 	array[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, a["NORMAL"], true);
+			// {
+			// 	Array a = array[Mesh::ARRAY_TANGENT];
+			// 	if (a.size()) {
+			// 		attributes["TANGENT"] = _encode_accessor_as_floats(state, a, true);
+			// 	}
 			// }
-			// if (a.has("TANGENT")) {
-			// 	array[Mesh::ARRAY_TANGENT] = _decode_accessor_as_floats(state, a["TANGENT"], true);
-			// }
-			// if (a.has("TEXCOORD_0")) {
-			// 	array[Mesh::ARRAY_TEX_UV] = _decode_accessor_as_vec2(state, a["TEXCOORD_0"], true);
-			// }
-			// if (a.has("TEXCOORD_1")) {
-			// 	array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
-			// }
+			{
+				Array a = array[Mesh::ARRAY_NORMAL];
+				if (a.size()) {
+					attributes["NORMAL"] = _encode_accessor_as_vec3(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_TEX_UV];
+				if (a.size()) {
+					attributes["TEXCOORD_0"] = _encode_accessor_as_vec3(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_TEX_UV2];
+				if (a.size()) {
+
+					attributes["TEXCOORD_1"] = _encode_accessor_as_vec3(state, a, true);
+				}
+			}
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
