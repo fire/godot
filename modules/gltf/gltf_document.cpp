@@ -1381,7 +1381,7 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	accessor.type = type;
 	accessor.component_type = component_type;
 	accessor.buffer_view = buffer_view_i;
-	accessor.byte_offset = state.buffer_views[buffer_view_i].byte_offset;
+	accessor.byte_offset = 0;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
