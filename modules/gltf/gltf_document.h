@@ -84,7 +84,7 @@ public:
 				buffer(-1),
 				byte_offset(0),
 				byte_length(0),
-				byte_stride(0),
+				byte_stride(-1),
 				indices(-1) {
 		}
 	};
