@@ -1359,6 +1359,7 @@ PoolVector<int> GLTFDocument::_decode_accessor_as_ints(GLTFState &state, const G
 	return ret;
 }
 
+
 PoolVector<float> GLTFDocument::_decode_accessor_as_floats(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1398,6 +1399,46 @@ PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, con
 		}
 	}
 	return ret;
+}
+
+GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+	const int ret_size = p_attribs.size();
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	PoolVector<double>::Write w = attribs.write();
+	for (int i = 0; i < p_attribs.size(); i++) {
+		w[i] = p_attribs[i];
+	}
+
+	ERR_FAIL_COND_V(!attribs.size(), -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_SCALAR;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array float_max;
+	float_max.push_back(FLT_MAX);
+	Array float_min;
+	float_min.push_back(FLT_MIN);
+	accessor.max = float_max;
+	accessor.min = float_min;
+	accessor.normalized = true;
+	accessor.count = ret_size;
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
 }
 
 GLTFDocument::GLTFAccessorIndex
@@ -1606,12 +1647,12 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				ERR_FAIL_COND_V(!a.size(), ERR_INVALID_DATA);
 				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
 			}
-			// {
-			// 	Array a = array[Mesh::ARRAY_TANGENT];
-			// 	if (a.size()) {
-			// 		attributes["TANGENT"] = _encode_accessor_as_floats(state, a, true);
-			// 	}
-			// }
+			{
+				Array a = array[Mesh::ARRAY_TANGENT];
+				if (a.size()) {
+					attributes["TANGENT"] = _encode_accessor_as_floats(state, a, true);
+				}
+			}
 			{
 				Array a = array[Mesh::ARRAY_NORMAL];
 				if (a.size()) {
@@ -1634,31 +1675,19 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
-			// if (a.has("JOINTS_0")) {
-			// 	array[Mesh::ARRAY_BONES] = _decode_accessor_as_ints(state, a["JOINTS_0"], true);
-			// }
-			// if (a.has("WEIGHTS_0")) {
-			// 	PoolVector<float> weights = _decode_accessor_as_floats(state, a["WEIGHTS_0"], true);
-			// 	{ //gltf does not seem to normalize the weights for some reason..
-			// 		int wc = weights.size();
-			// 		PoolVector<float>::Write w = weights.write();
+			{
+				Array a = array[Mesh::ARRAY_BONES];
+				if (a.size()) {
 
-			// 		for (int k = 0; k < wc; k += 4) {
-			// 			float total = 0.0;
-			// 			total += w[k + 0];
-			// 			total += w[k + 1];
-			// 			total += w[k + 2];
-			// 			total += w[k + 3];
-			// 			if (total > 0.0) {
-			// 				w[k + 0] /= total;
-			// 				w[k + 1] /= total;
-			// 				w[k + 2] /= total;
-			// 				w[k + 3] /= total;
-			// 			}
-			// 		}
-			// 	}
-			// 	array[Mesh::ARRAY_WEIGHTS] = weights;
-			// }
+					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_WEIGHTS];
+				if (a.size()) {
+					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+				}
+			}
 			{
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
