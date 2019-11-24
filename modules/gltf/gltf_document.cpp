@@ -76,10 +76,10 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// if (err != OK)
 	// 	return Error::FAILED;
 
-	// /* STEP 13 PARSE MESHES (we have enough info now) */
-	// err = _parse_meshes(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	/* STEP 13 PARSE MESHES (we have enough info now) */
+	err = _serialize_meshes(state);
+	if (err != OK)
+		return Error::FAILED;
 
 	// /* STEP 14 PARSE CAMERAS */
 	// err = _parse_cameras(*state);
@@ -832,6 +832,10 @@ int GLTFDocument::_get_component_type_size(const int component_type) {
 	return 0;
 }
 
+GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor(GLTFState &state, PoolVector<double> p_attribs, const bool p_for_vertex) {
+	return -1;
+}
+
 Vector<double> GLTFDocument::_decode_accessor(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	//spec, for reference:
@@ -989,6 +993,30 @@ PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, con
 	return ret;
 }
 
+GLTFDocument::GLTFAccessorIndex
+GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0)
+		return -1;
+
+	ERR_FAIL_COND_V(p_attribs.size() % 3 != 0, -1);
+
+	const int ret_size = p_attribs.size() * 3;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Vector3 attrib = p_attribs[i];
+			w[i + 0] = attrib.x;
+			w[i + 1] = attrib.y;
+			w[i + 2] = attrib.z;
+		}
+	}
+
+	return _encode_accessor(state, attribs, p_for_vertex);
+}
+
 PoolVector<Vector3> GLTFDocument::_decode_accessor_as_vec3(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1112,6 +1140,290 @@ Vector<Transform> GLTFDocument::_decode_accessor_as_xform(GLTFState &state, cons
 	return ret;
 }
 
+Error GLTFDocument::_serialize_meshes(GLTFState &state) {
+	Array meshes;
+	for (GLTFMeshIndex i = 0; i < state.meshes.size(); i++) {
+
+		print_verbose("glTF: Serializing mesh: " + itos(i));
+		Ref<ArrayMesh> godot_mesh = state.meshes[i].mesh;
+		Array primitives;
+		Dictionary gltf_mesh;
+		gltf_mesh["primitives"] = primitives;
+		for (int j = 0; j < godot_mesh->get_surface_count(); j++) {
+			Dictionary primitive;
+
+			Mesh::PrimitiveType primitive_type = godot_mesh->surface_get_primitive_type(j);
+			static const Mesh::PrimitiveType primitives2[7] = {
+				Mesh::PRIMITIVE_POINTS,
+				Mesh::PRIMITIVE_LINES,
+				Mesh::PRIMITIVE_LINE_LOOP,
+				Mesh::PRIMITIVE_LINE_STRIP,
+				Mesh::PRIMITIVE_TRIANGLES,
+				Mesh::PRIMITIVE_TRIANGLE_STRIP,
+				Mesh::PRIMITIVE_TRIANGLE_FAN,
+			};
+			primitive["mode"] = primitives2[primitive_type];
+
+			Array array = godot_mesh->surface_get_arrays(j);
+			Dictionary attributes;
+			{
+				Array a = array[Mesh::ARRAY_VERTEX];
+				ERR_FAIL_COND_V(!a.size(), ERR_INVALID_DATA);
+				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
+			}
+			primitive["attributes"] = attributes;
+			// if (a.has("NORMAL")) {
+			// 	array[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, a["NORMAL"], true);
+			// }
+			// if (a.has("TANGENT")) {
+			// 	array[Mesh::ARRAY_TANGENT] = _decode_accessor_as_floats(state, a["TANGENT"], true);
+			// }
+			// if (a.has("TEXCOORD_0")) {
+			// 	array[Mesh::ARRAY_TEX_UV] = _decode_accessor_as_vec2(state, a["TEXCOORD_0"], true);
+			// }
+			// if (a.has("TEXCOORD_1")) {
+			// 	array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
+			// }
+			// if (a.has("COLOR_0")) {
+			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
+			// }
+			// if (a.has("JOINTS_0")) {
+			// 	array[Mesh::ARRAY_BONES] = _decode_accessor_as_ints(state, a["JOINTS_0"], true);
+			// }
+			// if (a.has("WEIGHTS_0")) {
+			// 	PoolVector<float> weights = _decode_accessor_as_floats(state, a["WEIGHTS_0"], true);
+			// 	{ //gltf does not seem to normalize the weights for some reason..
+			// 		int wc = weights.size();
+			// 		PoolVector<float>::Write w = weights.write();
+
+			// 		for (int k = 0; k < wc; k += 4) {
+			// 			float total = 0.0;
+			// 			total += w[k + 0];
+			// 			total += w[k + 1];
+			// 			total += w[k + 2];
+			// 			total += w[k + 3];
+			// 			if (total > 0.0) {
+			// 				w[k + 0] /= total;
+			// 				w[k + 1] /= total;
+			// 				w[k + 2] /= total;
+			// 				w[k + 3] /= total;
+			// 			}
+			// 		}
+			// 	}
+			// 	array[Mesh::ARRAY_WEIGHTS] = weights;
+			// }
+
+			// TODO
+			/*
+			if (p.has("indices")) {
+				PoolVector<int> indices = _decode_accessor_as_ints(state, p["indices"], false);
+
+				if (primitive == Mesh::PRIMITIVE_TRIANGLES) {
+					//swap around indices, convert ccw to cw for front face
+
+					const int is = indices.size();
+					const PoolVector<int>::Write w = indices.write();
+					for (int k = 0; k < is; k += 3) {
+						SWAP(w[k + 1], w[k + 2]);
+					}
+				}
+				array[Mesh::ARRAY_INDEX] = indices;
+
+			} else if (primitive == Mesh::PRIMITIVE_TRIANGLES) {
+				//generate indices because they need to be swapped for CW/CCW
+				const PoolVector<Vector3> &vertices = array[Mesh::ARRAY_VERTEX];
+				ERR_FAIL_COND_V(vertices.size() == 0, ERR_PARSE_ERROR);
+				PoolVector<int> indices;
+				const int vs = vertices.size();
+				indices.resize(vs);
+				{
+					const PoolVector<int>::Write w = indices.write();
+					for (int k = 0; k < vs; k += 3) {
+						w[k] = k;
+						w[k + 1] = k + 2;
+						w[k + 2] = k + 1;
+					}
+				}
+				array[Mesh::ARRAY_INDEX] = indices;
+			}
+
+
+
+*/
+			//TODO
+			// bool generated_tangents = false;
+			// Variant erased_indices;
+
+			// if (primitive == Mesh::PRIMITIVE_TRIANGLES && !a.has("TANGENT") && a.has("TEXCOORD_0") && a.has("NORMAL")) {
+			// 	//must generate mikktspace tangents.. ergh..
+			// 	Ref<SurfaceTool> st;
+			// 	st.instance();
+			// 	st->create_from_triangle_arrays(array);
+			// 	if (!p.has("targets")) {
+			// 		//morph targets should not be reindexed, as array size might differ
+			// 		//removing indices is the best bet here
+			// 		st->deindex();
+			// 		erased_indices = a[Mesh::ARRAY_INDEX];
+			// 		a[Mesh::ARRAY_INDEX] = Variant();
+			// 	}
+			// 	st->generate_tangents();
+			// 	array = st->commit_to_arrays();
+			// 	generated_tangents = true;
+			// }
+
+			// Array morphs;
+			// //blend shapes
+			// if (p.has("targets")) {
+			// 	print_verbose("glTF: Mesh has targets");
+			// 	const Array &targets = p["targets"];
+
+			// 	//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
+			// 	//but it could require a larger refactor?
+			// 	mesh.mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
+
+			// 	if (j == 0) {
+			// 		const Array &target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();
+			// 		for (int k = 0; k < targets.size(); k++) {
+			// 			const String name = k < target_names.size() ? (String)target_names[k] : String("morph_") + itos(k);
+			// 			mesh.mesh->add_blend_shape(name);
+			// 		}
+			// 	}
+
+			// 	for (int k = 0; k < targets.size(); k++) {
+
+			// 		const Dictionary &t = targets[k];
+
+			// 		Array array_copy;
+			// 		array_copy.resize(Mesh::ARRAY_MAX);
+
+			// 		for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
+			// 			array_copy[l] = array[l];
+			// 		}
+
+			// 		array_copy[Mesh::ARRAY_INDEX] = Variant();
+
+			// 		if (t.has("POSITION")) {
+			// 			PoolVector<Vector3> varr = _decode_accessor_as_vec3(state, t["POSITION"], true);
+			// 			const PoolVector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+			// 			const int size = src_varr.size();
+			// 			ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
+			// 			{
+
+			// 				const int max_idx = varr.size();
+			// 				varr.resize(size);
+
+			// 				const PoolVector<Vector3>::Write w_varr = varr.write();
+			// 				const PoolVector<Vector3>::Read r_varr = varr.read();
+			// 				const PoolVector<Vector3>::Read r_src_varr = src_varr.read();
+			// 				for (int l = 0; l < size; l++) {
+			// 					if (l < max_idx) {
+			// 						w_varr[l] = r_varr[l] + r_src_varr[l];
+			// 					} else {
+			// 						w_varr[l] = r_src_varr[l];
+			// 					}
+			// 				}
+			// 			}
+			// 			array_copy[Mesh::ARRAY_VERTEX] = varr;
+			// 		}
+			// 		if (t.has("NORMAL")) {
+			// 			PoolVector<Vector3> narr = _decode_accessor_as_vec3(state, t["NORMAL"], true);
+			// 			const PoolVector<Vector3> src_narr = array[Mesh::ARRAY_NORMAL];
+			// 			int size = src_narr.size();
+			// 			ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
+			// 			{
+			// 				int max_idx = narr.size();
+			// 				narr.resize(size);
+
+			// 				const PoolVector<Vector3>::Write w_narr = narr.write();
+			// 				const PoolVector<Vector3>::Read r_narr = narr.read();
+			// 				const PoolVector<Vector3>::Read r_src_narr = src_narr.read();
+			// 				for (int l = 0; l < size; l++) {
+			// 					if (l < max_idx) {
+			// 						w_narr[l] = r_narr[l] + r_src_narr[l];
+			// 					} else {
+			// 						w_narr[l] = r_src_narr[l];
+			// 					}
+			// 				}
+			// 			}
+			// 			array_copy[Mesh::ARRAY_NORMAL] = narr;
+			// 		}
+			// 		if (t.has("TANGENT")) {
+			// 			const PoolVector<Vector3> tangents_v3 = _decode_accessor_as_vec3(state, t["TANGENT"], true);
+			// 			const PoolVector<float> src_tangents = array[Mesh::ARRAY_TANGENT];
+			// 			ERR_FAIL_COND_V(src_tangents.size() == 0, ERR_PARSE_ERROR);
+
+			// 			PoolVector<float> tangents_v4;
+
+			// 			{
+
+			// 				int max_idx = tangents_v3.size();
+
+			// 				int size4 = src_tangents.size();
+			// 				tangents_v4.resize(size4);
+			// 				const PoolVector<float>::Write w4 = tangents_v4.write();
+
+			// 				const PoolVector<Vector3>::Read r3 = tangents_v3.read();
+			// 				const PoolVector<float>::Read r4 = src_tangents.read();
+
+			// 				for (int l = 0; l < size4 / 4; l++) {
+
+			// 					if (l < max_idx) {
+			// 						w4[l * 4 + 0] = r3[l].x + r4[l * 4 + 0];
+			// 						w4[l * 4 + 1] = r3[l].y + r4[l * 4 + 1];
+			// 						w4[l * 4 + 2] = r3[l].z + r4[l * 4 + 2];
+			// 					} else {
+			// 						w4[l * 4 + 0] = r4[l * 4 + 0];
+			// 						w4[l * 4 + 1] = r4[l * 4 + 1];
+			// 						w4[l * 4 + 2] = r4[l * 4 + 2];
+			// 					}
+			// 					w4[l * 4 + 3] = r4[l * 4 + 3]; //copy flip value
+			// 				}
+			// 			}
+
+			// 			array_copy[Mesh::ARRAY_TANGENT] = tangents_v4;
+			// 		}
+
+			// 		if (generated_tangents) {
+			// 			Ref<SurfaceTool> st;
+			// 			st.instance();
+			// 			array_copy[Mesh::ARRAY_INDEX] = erased_indices; //needed for tangent generation, erased by deindex
+			// 			st->create_from_triangle_arrays(array_copy);
+			// 			st->deindex();
+			// 			st->generate_tangents();
+			// 			array_copy = st->commit_to_arrays();
+			// 		}
+
+			// 		morphs.push_back(array_copy);
+			primitives.push_back(primitive);
+		}
+
+		meshes.push_back(gltf_mesh);
+		//just add it
+		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
+		// Array morphs;
+		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
+
+		// if (p.has("material")) {
+		// 	const int material = p["material"];
+		// 	ERR_FAIL_INDEX_V(material, state.materials.size(), ERR_FILE_CORRUPT);
+		// 	const Ref<Material> &mat = state.materials[material];
+
+		// 	mesh.mesh->surface_set_material(mesh.mesh->get_surface_count() - 1, mat);
+		// }
+	}
+	// if (d.has("weights")) {
+	// 	const Array &weights = d["weights"];
+	// 	ERR_FAIL_COND_V(mesh.mesh->get_blend_shape_count() != weights.size(), ERR_PARSE_ERROR);
+	// 	mesh.blend_weights.resize(weights.size());
+	// 	for (int j = 0; j < weights.size(); j++) {
+	// 		mesh.blend_weights.write[j] = weights[j];
+	// 	}
+	// }
+	state.json["meshes"] = meshes;
+	print_verbose("glTF: Total meshes: " + itos(meshes.size()));
+
+	return OK;
+}
 Error GLTFDocument::_parse_meshes(GLTFState &state) {
 
 	if (!state.json.has("meshes"))
