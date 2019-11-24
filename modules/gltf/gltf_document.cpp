@@ -1356,9 +1356,9 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Vector3 attrib = p_attribs[i];
-			w[i + 0] = attrib.x;
-			w[i + 1] = attrib.y;
-			w[i + 2] = attrib.z;
+			w[(i * 3) + 0] = attrib.x;
+			w[(i * 3) + 1] = attrib.y;
+			w[(i * 3) + 2] = attrib.z;
 		}
 	}
 
@@ -1370,7 +1370,7 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC3;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), ret_size, type, component_type, true, size, p_for_vertex, buffer_view_i);
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
 	if (err != OK) {
 		return -1;
 	}
@@ -3325,7 +3325,7 @@ GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &stat
 	GLTFMesh mesh;
 	mesh.mesh = p_mesh_instance->get_mesh();
 
-	print_verbose("glTF: Creating mesh for: " + p_mesh_instance->get_name());
+	print_verbose("glTF: Converting mesh: " + p_mesh_instance->get_name());
 
 	for (int i = 0; i < mesh.mesh->get_blend_shape_count(); i++) {
 		mesh.blend_weights.push_back(p_mesh_instance->get("blend_shapes/" + mesh.mesh->get_blend_shape_name(i)));
@@ -3375,7 +3375,7 @@ Camera *GLTFDocument::_generate_camera(GLTFState &state, Node *scene_parent, con
 }
 
 GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Camera *p_camera) {
-	print_verbose("glTF: Creating camera for: " + p_camera->get_name());
+	print_verbose("glTF: Converting camera: " + p_camera->get_name());
 
 	GLTFCamera c;
 
@@ -3393,7 +3393,7 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 	return state.cameras.size() - 1;
 }
 void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
-	print_verbose("glTF: Creating spatial for: " + p_spatial->get_name());
+	print_verbose("glTF: Converting spatial: " + p_spatial->get_name());
 	p_node->name = p_spatial->get_name();
 }
 
@@ -3401,7 +3401,7 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 	const GLTFNode *gltf_node = state.nodes[node_index];
 
 	Spatial *spatial = memnew(Spatial);
-	print_verbose("glTF: Creating spatial for: " + gltf_node->name);
+	print_verbose("glTF: Converting spatial: " + gltf_node->name);
 
 	return spatial;
 }
