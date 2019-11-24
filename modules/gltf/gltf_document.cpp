@@ -833,7 +833,18 @@ int GLTFDocument::_get_component_type_size(const int component_type) {
 }
 
 GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor(GLTFState &state, PoolVector<double> p_attribs, const bool p_for_vertex) {
+
+	//spec, for reference:
+	//https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#data-alignment
+
+	GLTFAccessor a;
+
+	// Error err = _encode_buffer_view(state, p_attribs.write().ptr(), a.sparse_values_buffer_view, skip_every, skip_bytes, element_size, a.sparse_count, a.type, component_count, a.component_type, component_size, a.normalized, a.sparse_values_byte_offset, p_for_vertex);
+	// if (err != OK) {
 	return -1;
+	// }
+	state.accessors.push_back(a);
+	return state.accessors.size() - 1;
 }
 
 Vector<double> GLTFDocument::_decode_accessor(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
