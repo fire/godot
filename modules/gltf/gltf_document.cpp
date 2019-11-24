@@ -954,7 +954,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 	switch (component_type) {
 		case COMPONENT_TYPE_BYTE: {
 			Vector<int8_t> buffer;
-			buffer.resize(count * component_count);\
+			buffer.resize(count * component_count);
 			int32_t dst_i = 0;
 			for (int i = 0; i < count; i++) {
 				for (int j = 0; j < component_count; j++) {
@@ -1099,7 +1099,10 @@ Error GLTFDocument::_decode_buffer_view(GLTFState &state, double *dst, const GLT
 
 	const GLTFBufferView &bv = state.buffer_views[p_buffer_view];
 
-	int stride = bv.byte_stride ? bv.byte_stride : element_size;
+	int stride = element_size;
+	if (bv.byte_stride != -1) {
+		stride = bv.byte_stride;
+	}
 	if (for_vertex && stride % 4) {
 		stride += 4 - (stride % 4); //according to spec must be multiple of 4
 	}
