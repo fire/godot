@@ -379,6 +379,7 @@ public:
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
 	Error _encode_buffer_views(GLTFState &state);
 	Error _encode_buffers(GLTFState &state, const String &p_base_path);
+	Error _serialize_materials(GLTFState &state);
 	Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);

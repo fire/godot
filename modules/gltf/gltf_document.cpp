@@ -50,6 +50,12 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
+	/* STEP 7 PARSE TEXTURES */
+	err = _serialize_materials(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
 	/* STEP 4 PARSE ACCESSORS */
 	err = _encode_accessors(state);
 	if (err != OK) {
@@ -79,11 +85,6 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
 	// /* STEP 6 PARSE TEXTURES */
 	// err = _parse_textures(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 7 PARSE TEXTURES */
-	// err = _parse_materials(state);
 	// if (err != OK)
 	// 	return Error::FAILED;
 
@@ -1360,7 +1361,6 @@ PoolVector<int> GLTFDocument::_decode_accessor_as_ints(GLTFState &state, const G
 	return ret;
 }
 
-
 PoolVector<float> GLTFDocument::_decode_accessor_as_floats(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1429,7 +1429,6 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
-
 
 PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
@@ -1914,6 +1913,11 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// 		}
 
 			// 		morphs.push_back(array_copy);
+
+			Ref<Material> mat = godot_mesh->surface_get_material(j);
+			state.materials.push_back(mat);
+			primitive["material"] = state.materials.size() - 1;
+
 			primitives.push_back(primitive);
 		}
 
@@ -1923,13 +1927,6 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 		// Array morphs;
 		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
 
-		// if (p.has("material")) {
-		// 	const int material = p["material"];
-		// 	ERR_FAIL_INDEX_V(material, state.materials.size(), ERR_FILE_CORRUPT);
-		// 	const Ref<Material> &mat = state.materials[material];
-
-		// 	mesh.mesh->surface_set_material(mesh.mesh->get_surface_count() - 1, mat);
-		// }
 	}
 	// if (d.has("weights")) {
 	// 	const Array &weights = d["weights"];
@@ -2362,6 +2359,95 @@ Ref<Texture> GLTFDocument::_get_texture(GLTFState &state, const GLTFTextureIndex
 	ERR_FAIL_INDEX_V(image, state.images.size(), Ref<Texture>());
 
 	return state.images[image];
+}
+
+Error GLTFDocument::_serialize_materials(GLTFState &state) {
+
+	Array materials;
+	for (int32_t i = 0; i < state.materials.size(); i++) {
+		Dictionary d;
+
+		Ref<SpatialMaterial> material =  state.materials[i];
+		material.instance();
+		if (!material->get_name().empty()) {
+			d["name"] = material->get_name();
+		}
+		{
+			Dictionary mr;
+			{
+				Array arr;
+				const Color c = material->get_albedo().to_linear();
+				arr.push_back(c.r);
+				arr.push_back(c.g);
+				arr.push_back(c.b);
+				arr.push_back(c.a);
+				mr["baseColorFactor"] = arr;
+			}
+
+			Dictionary bct;
+			// Ref<Texture> albedo_texture;
+			// bct["index"] = _set_texture(state, texture);
+			// mr["baseColorTexture"] = bct;
+
+			mr["metallicFactor"] = material->get_metallic();
+			mr["roughnessFactor"] = material->get_roughness();
+			d["pbrMetallicRoughness"] = mr;
+		}
+		// {
+		// 	Dictionary bct;
+		// 	Ref<Texture> roughness_metallic_texture;
+		// 	material->set_texture(SpatialMaterial::TEXTURE_METALLIC);
+		// 	material->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
+		// 	material->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, t);
+		// 	material->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
+		// 	bct["index"] = _set_texture(state, roughness_metallic_texture);
+		// 	mr["metallicRoughnessTexture"] = bct;
+		// }
+
+		// if (material->get_textureSpatialMaterial::FEATURE_NORMAL_MAPPING)) {
+		// 	Dictionary bct;
+		// 	Ref<Material> normal_texture = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
+		// 	bct["index"] = _set_texture(state, normal_texture);
+		// 	bct["scale"] = material->get_normal_scale());
+		// 	d["normalTexture"] = bct;
+		// }
+
+		// if (materia->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
+		// 	Dictionary bct;
+		// 	Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+		// 	//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
+		// 	bct["index"] = _set_texture(state, ao_texture);
+		// 	d["occlusionTexture"] = bct;
+		// }
+
+		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+			const Color c = material->get_emission().to_linear();
+			Array arr;
+			arr.push_back(c.r);
+			arr.push_back(c.g);
+			arr.push_back(c.b);
+			arr.push_back(c.a);
+			d["emissiveFactor"] = arr;
+		}
+		// if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+		// 	Dictionary bct;
+		// 	Ref<Texture> emission_texture = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
+		// 	bct["index"] = _set_texture(state, emission_texture);
+		// 	d["emissiveTexture"] = bct;
+		// }
+		const bool ds = material->get_cull_mode() == SpatialMaterial::CULL_DISABLED;
+		if (ds) {
+			d["doubleSided"] = ds;
+		}
+		if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT) && material->get_depth_draw_mode() == SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS) {
+			d["alphaMode"] = "OPAQUE";
+		}
+		materials.push_back(d);
+	}
+	state.json["materials"] = materials;
+	print_verbose("Total materials: " + itos(state.materials.size()));
+
+	return OK;
 }
 
 Error GLTFDocument::_parse_materials(GLTFState &state) {
