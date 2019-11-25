@@ -2546,8 +2546,8 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		if (ds) {
 			d["doubleSided"] = ds;
 		}
-		if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT) && material->get_depth_draw_mode() == SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS) {
-			d["alphaMode"] = "OPAQUE";
+		if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
+			d["alphaMode"] = "BLEND";
 		}
 		materials.push_back(d);
 	}
