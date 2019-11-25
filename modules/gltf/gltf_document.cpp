@@ -1731,19 +1731,19 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
-			{
-				Array a = array[Mesh::ARRAY_BONES];
-				if (a.size()) {
+			//{
+			//	Array a = array[Mesh::ARRAY_BONES];
+			//	if (a.size()) {
 
-					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
-				}
-			}
-			{
-				Array a = array[Mesh::ARRAY_WEIGHTS];
-				if (a.size()) {
-					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
-				}
-			}
+			//		attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+			//	}
+			//}
+			//{
+			//	Array a = array[Mesh::ARRAY_WEIGHTS];
+			//	if (a.size()) {
+			//		attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+			//	}
+			//}
 			{
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
