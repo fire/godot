@@ -549,7 +549,7 @@ Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
 	print_verbose("glTF: Total buffers: " + itos(state.buffers.size()));
 
 	if (!state.buffers.size()) {
-		return ERR_INVALID_DATA;
+		return OK;
 	}
 	Array buffers;
 	for (GLTFBufferIndex i = 0; i < state.buffers.size(); i++) {
@@ -3593,9 +3593,9 @@ GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &stat
 		return -1;
 	}
 	print_verbose("glTF: Converting mesh: " + p_mesh_instance->get_name());
-
-	for (int i = 0; i < mesh.mesh->get_blend_shape_count(); i++) {
-		mesh.blend_weights.push_back(p_mesh_instance->get("blend_shapes/" + mesh.mesh->get_blend_shape_name(i)));
+	Ref<ArrayMesh> array_mesh = mesh.mesh;
+	for (int i = 0; i < array_mesh->get_blend_shape_count(); i++) {
+		mesh.blend_weights.push_back(p_mesh_instance->get("blend_shapes/" + array_mesh->get_blend_shape_name(i)));
 	}
 	state.meshes.push_back(mesh);
 	return state.meshes.size() - 1;
