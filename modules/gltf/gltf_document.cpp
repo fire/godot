@@ -2477,19 +2477,134 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 
 			mr["metallicFactor"] = material->get_metallic();
 			mr["roughnessFactor"] = material->get_roughness();
-			{
+			bool has_roughness = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS).is_valid() && material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS)->get_data().is_valid();
+			bool has_ao = material->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION) && material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION).is_valid();
+			bool has_metalness = material->get_texture(SpatialMaterial::TEXTURE_METALLIC).is_valid() && material->get_texture(SpatialMaterial::TEXTURE_METALLIC)->get_data().is_valid();
+			if (has_ao || has_roughness || has_metalness) {
 				Dictionary mrt;
-				Ref<Texture> roughness_metallic_texture = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
-				GLTFTextureIndex gltf_texture_index = -1;
-				// material->set_texture(SpatialMaterial::TEXTURE_METALLIC);
-				// material->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
-				// material->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, roughness_metallic_texture);
-				// material->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
-				if (roughness_metallic_texture.is_valid() && roughness_metallic_texture->get_data().is_valid()) {
-					gltf_texture_index = _set_texture(state, roughness_metallic_texture);
+				Ref<StreamTexture> roughness_texture = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
+				SpatialMaterial::TextureChannel roughness_channel = material->get_roughness_texture_channel();
+				Ref<StreamTexture> metallic_texture = material->get_texture(SpatialMaterial::TEXTURE_METALLIC);
+				SpatialMaterial::TextureChannel metalness_channel = material->get_metallic_texture_channel();
+				Ref<StreamTexture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+				SpatialMaterial::TextureChannel ao_channel = material->get_ao_texture_channel();
+				Ref<ImageTexture> orm_texture;
+				orm_texture.instance();
+				Ref<Image> orm_image;
+				orm_image.instance();
+				int32_t height = 0;
+				int32_t width = 0;
+				Ref<Image> ao_image;
+				if (has_ao) {
+					height = ao_texture->get_height();
+					width = ao_texture->get_width();
+					ao_image = ao_texture->get_data();
+					if (ao_image->is_compressed()) {
+						ao_image->decompress();
+					}
 				}
-				if (gltf_texture_index != -1) {
-					mrt["index"] = gltf_texture_index;
+				Ref<Image> roughness_image;
+				if (has_roughness) {
+					height = roughness_texture->get_height();
+					width = roughness_texture->get_width();
+					roughness_image = roughness_texture->get_data();
+					if (roughness_image->is_compressed()) {
+						roughness_image->decompress();
+					}
+				}
+				Ref<Image> metallness_image;
+				if (has_metalness) {
+					height = metallic_texture->get_height();
+					width = metallic_texture->get_width();
+					metallness_image = metallic_texture->get_data();
+					if (metallness_image->is_compressed()) {
+						metallness_image->decompress();
+					}
+				}
+				Ref<Texture> albedo_texture = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+				if (albedo_texture.is_valid() && albedo_texture->get_data().is_valid()) {
+					height = albedo_texture->get_height();
+					width = albedo_texture->get_width();
+				}
+				orm_image->create(width, height, false, Image::FORMAT_RGBA8);
+				orm_image->lock();
+				for (int32_t h = 0; h < height; h++) {
+					for (int32_t w = 0; w < height; w++) {
+						Color c;
+						if (has_ao) {
+							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == ao_channel) {
+								ao_image->lock();
+								c.r = ao_image->get_pixel(w, h).r;
+								ao_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == ao_channel) {
+								ao_image->lock();
+								c.r = ao_image->get_pixel(w, h).g;
+								ao_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == ao_channel) {
+								ao_image->lock();
+								c.r = ao_image->get_pixel(w, h).b;
+								ao_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == ao_channel) {
+								ao_image->lock();
+								c.r = ao_image->get_pixel(w, h).a;
+								ao_image->unlock();
+							}
+						}
+						if (has_roughness) {
+							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == roughness_channel) {
+								roughness_image->lock();
+								c.g = roughness_image->get_pixel(w, h).r;
+								roughness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == roughness_channel) {
+								roughness_image->lock();
+								c.g = roughness_image->get_pixel(w, h).g;
+								roughness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == roughness_channel) {
+								roughness_image->lock();
+								c.g = roughness_image->get_pixel(w, h).b;
+								roughness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == roughness_channel) {
+								roughness_image->lock();
+								c.g = roughness_image->get_pixel(w, h).a;
+								roughness_image->unlock();
+							}
+						}
+						if (has_metalness) {
+							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == metalness_channel) {
+								metallness_image->lock();
+								c.b = metallness_image->get_pixel(w, h).r;
+								metallness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == metalness_channel) {
+								metallness_image->lock();
+								c.b = metallness_image->get_pixel(w, h).g;
+								metallness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == metalness_channel) {
+								metallness_image->lock();
+								c.b = metallness_image->get_pixel(w, h).b;
+								metallness_image->unlock();
+							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == metalness_channel) {
+								metallness_image->lock();
+								c.b = metallness_image->get_pixel(w, h).a;
+								metallness_image->unlock();
+							}
+						}
+						orm_image->set_pixel(w, h, c);
+					}
+				}
+				orm_image->unlock();
+				orm_image->generate_mipmaps();
+				orm_texture->create_from_image(orm_image);
+				GLTFTextureIndex orm_texture_index = -1;
+				if (has_ao || has_roughness || has_metalness) {
+					orm_texture_index = _set_texture(state, orm_texture);
+				}
+				if (has_ao) {
+					Dictionary ot;
+					ot["index"] = orm_texture_index;
+					d["occlusionTexture"] = ot;
+				}
+				if (has_roughness || has_metalness) {
+					mrt["index"] = orm_texture_index;
 					mr["metallicRoughnessTexture"] = mrt;
 				}
 			}
@@ -2510,17 +2625,6 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 				d["normalTexture"] = nt;
 			}
 		}
-
-		// if (material->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
-		// 	Dictionary ot;
-		// 	Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
-		// 	//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
-		// 	GLTFTextureIndex gltf_texture_index = _set_texture(state, ao_texture);
-		// 	if (gltf_texture_index != -1) {
-		// 		ot["index"] = gltf_texture_index;
-		// 		d["occlusionTexture"] = ot;
-		// 	}
-		// }
 
 		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
 			const Color c = material->get_emission().to_linear();
