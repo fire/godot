@@ -1319,7 +1319,7 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 		w[i] = p_attribs[i];
 	}
 
-	ERR_FAIL_COND_V(attribs.size() % 3 != 0, -1);
+	ERR_FAIL_COND_V(attribs.size() == 0, -1);
 
 	GLTFAccessor accessor;
 	GLTFBufferIndex buffer_view_i;
