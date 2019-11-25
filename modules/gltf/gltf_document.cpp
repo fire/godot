@@ -1704,7 +1704,13 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
 			}
 			{
-				Array a = array[Mesh::ARRAY_TANGENT];
+				Array tangents = array[Mesh::ARRAY_TANGENT];
+				Array a;
+				for (int32_t i = 0; i < tangents.size(); i += 4) {
+					a.push_back(tangents[i + 0]);
+					a.push_back(tangents[i + 1]);
+					a.push_back(tangents[i + 2]);
+				}
 				if (a.size()) {
 					attributes["TANGENT"] = _encode_accessor_as_floats(state, a, true);
 				}
