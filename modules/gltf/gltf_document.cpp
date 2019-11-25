@@ -2,6 +2,7 @@
 #include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
 #include "core/math/disjoint_set.h"
+#include "drivers/png/png_driver_common.h"
 #include "editor/import/resource_importer_scene.h"
 #include "modules/regex/regex.h"
 #include "scene/3d/bone_attachment.h"
@@ -56,6 +57,18 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
+	/* STEP 5 PARSE IMAGES */
+	err = _serialize_images(state, p_path);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 6 PARSE TEXTURES */
+	err = _serialize_textures(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
 	/* STEP 4 PARSE ACCESSORS */
 	err = _encode_accessors(state);
 	if (err != OK) {
@@ -77,16 +90,6 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	if (err != OK) {
 		return Error::FAILED;
 	}
-
-	// /* STEP 5 PARSE IMAGES */
-	// err = _parse_images(state, p_path.get_base_dir());
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 6 PARSE TEXTURES */
-	// err = _parse_textures(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
 
 	// /* STEP 9 PARSE SKINS */
 	// err = _parse_skins(state);
@@ -2241,6 +2244,50 @@ Error GLTFDocument::_parse_meshes(GLTFState &state) {
 	return OK;
 }
 
+Error GLTFDocument::_serialize_images(GLTFState &state, const String &p_path) {
+
+	Array images;
+	for (int i = 0; i < state.images.size(); i++) {
+
+		Dictionary d;
+
+		ERR_CONTINUE(state.images[i].is_null());
+
+		Ref<Image> image = state.images[i]->get_data();
+		ERR_CONTINUE(image.is_null());
+
+		{
+			GLTFBufferViewIndex bvi;
+
+			GLTFBufferView bv;
+
+			const GLTFBufferIndex bi = 0;
+			bv.buffer = bi;
+			bv.byte_offset = state.buffers[bi].size();
+			ERR_FAIL_INDEX_V(bi, state.buffers.size(), ERR_PARAMETER_RANGE_ERROR);
+
+			PoolVector<uint8_t> buffer;
+			Error err = PNGDriverCommon::image_to_png(image, buffer);
+			ERR_FAIL_COND_V_MSG(err, err, "Can't convert image to PNG.");
+
+			bv.byte_length = buffer.size();
+			state.buffers.write[bi].resize(state.buffers[bi].size() + bv.byte_length);
+			copymem(&state.buffers.write[bi].write[bv.byte_offset], buffer.read().ptr(), buffer.size());
+			ERR_FAIL_COND_V(bv.byte_offset + bv.byte_length > state.buffers[bi].size(), ERR_FILE_CORRUPT);
+
+			state.buffer_views.push_back(bv);
+			bvi = state.buffer_views.size() - 1;
+			d["bufferView"] = bvi;
+			d["mimeType"] = "image/png";
+		}
+		images.push_back(d);
+	}
+	state.json["images"] = images;
+	print_verbose("Total images: " + itos(state.images.size()));
+
+	return OK;
+}
+
 Error GLTFDocument::_parse_images(GLTFState &state, const String &p_base_path) {
 
 	if (!state.json.has("images"))
@@ -2333,6 +2380,25 @@ Error GLTFDocument::_parse_images(GLTFState &state, const String &p_base_path) {
 	return OK;
 }
 
+Error GLTFDocument::_serialize_textures(GLTFState &state) {
+
+	if (!state.textures.size()) {
+		return OK;
+	}
+
+	Array textures;
+	for (int32_t i = 0; i < state.textures.size(); i++) {
+		Dictionary d;
+		GLTFTexture t = state.textures[i];
+		ERR_CONTINUE(t.src_image == -1);
+		d["source"] = t.src_image;
+		textures.push_back(d);
+	}
+	state.json["textures"] = textures;
+
+	return OK;
+}
+
 Error GLTFDocument::_parse_textures(GLTFState &state) {
 
 	if (!state.json.has("textures"))
@@ -2354,14 +2420,10 @@ Error GLTFDocument::_parse_textures(GLTFState &state) {
 }
 
 GLTFDocument::GLTFTextureIndex GLTFDocument::_set_texture(GLTFState &state, Ref<Texture> p_texture) {
-	if (p_texture.is_null()) {
-		return -1;
-	}
+	ERR_FAIL_COND_V(p_texture.is_null(), -1);
 	GLTFTexture gltf_texture;
-	if (p_texture->get_data().is_null()) {
-		return -1;
-	}
-	gltf_texture.src_image = state.images.size() - 1;
+	ERR_FAIL_COND_V(p_texture->get_data().is_null(), -1);
+	gltf_texture.src_image = state.images.size();
 	state.images.push_back(p_texture);
 	state.textures.push_back(gltf_texture);
 	return state.textures.size() - 1;
@@ -2399,8 +2461,11 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			}
 			{
 				Dictionary bct;
-				Ref<Texture> albedo_texture;
-				GLTFTextureIndex gltf_texture_index = _set_texture(state, albedo_texture);
+				Ref<Texture> albedo_texture = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+				GLTFTextureIndex gltf_texture_index = -1;
+				if (albedo_texture.is_valid() && albedo_texture->get_data().is_valid()) {
+					gltf_texture_index = _set_texture(state, albedo_texture);
+				}
 				if (gltf_texture_index != -1) {
 					bct["index"] = gltf_texture_index;
 					mr["baseColorTexture"] = bct;
@@ -2411,12 +2476,15 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			mr["roughnessFactor"] = material->get_roughness();
 			{
 				Dictionary mrt;
-				Ref<Texture> roughness_metallic_texture;
+				Ref<Texture> roughness_metallic_texture = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
+				GLTFTextureIndex gltf_texture_index = -1;
 				// material->set_texture(SpatialMaterial::TEXTURE_METALLIC);
 				// material->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
 				// material->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, roughness_metallic_texture);
 				// material->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
-				GLTFTextureIndex gltf_texture_index = _set_texture(state, roughness_metallic_texture);
+				if (roughness_metallic_texture.is_valid() && roughness_metallic_texture->get_data().is_valid()) {
+					gltf_texture_index = _set_texture(state, roughness_metallic_texture);
+				}
 				if (gltf_texture_index != -1) {
 					mrt["index"] = gltf_texture_index;
 					mr["metallicRoughnessTexture"] = mrt;
@@ -2428,8 +2496,11 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 
 		if (material->get_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING)) {
 			Dictionary nt;
-			Ref<Material> normal_texture = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
-			GLTFTextureIndex gltf_texture_index = _set_texture(state, normal_texture);
+			Ref<Texture> normal_texture = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
+			GLTFTextureIndex gltf_texture_index = -1;
+			if (normal_texture.is_valid() && normal_texture->get_data().is_valid()) {
+				gltf_texture_index = _set_texture(state, normal_texture);
+			}
 			nt["scale"] = material->get_normal_scale();
 			if (gltf_texture_index != -1) {
 				nt["index"] = gltf_texture_index;
@@ -2437,16 +2508,16 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			}
 		}
 
-		if (material->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
-			Dictionary ot;
-			Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
-			//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
-			GLTFTextureIndex gltf_texture_index = _set_texture(state, ao_texture);
-			if (gltf_texture_index != -1) {
-				ot["index"] = gltf_texture_index;
-				d["occlusionTexture"] = ot;
-			}
-		}
+		// if (material->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
+		// 	Dictionary ot;
+		// 	Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+		// 	//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
+		// 	GLTFTextureIndex gltf_texture_index = _set_texture(state, ao_texture);
+		// 	if (gltf_texture_index != -1) {
+		// 		ot["index"] = gltf_texture_index;
+		// 		d["occlusionTexture"] = ot;
+		// 	}
+		// }
 
 		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
 			const Color c = material->get_emission().to_linear();
@@ -2459,7 +2530,10 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
 			Dictionary et;
 			Ref<Texture> emission_texture = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
-			GLTFTextureIndex gltf_texture_index = _set_texture(state, emission_texture);
+			GLTFTextureIndex gltf_texture_index = -1;
+			if (emission_texture.is_valid() && emission_texture->get_data().is_valid()) {
+				gltf_texture_index = _set_texture(state, emission_texture);
+			}
 			if (gltf_texture_index != -1) {
 				et["index"] = gltf_texture_index;
 				d["emissiveTexture"] = et;

@@ -331,6 +331,8 @@ private:
 	Vector<Transform> _decode_accessor_as_xform(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 
 	Error _parse_meshes(GLTFState &state);
+	Error _serialize_textures(GLTFState &state);
+	Error _serialize_images(GLTFState &state, const String &p_path);
 	Error _parse_images(GLTFState &state, const String &p_base_path);
 	Error _parse_textures(GLTFState &state);
 
