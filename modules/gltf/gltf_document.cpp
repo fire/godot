@@ -1915,8 +1915,10 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// 		morphs.push_back(array_copy);
 
 			Ref<Material> mat = godot_mesh->surface_get_material(j);
-			state.materials.push_back(mat);
-			primitive["material"] = state.materials.size() - 1;
+			if (mat.is_valid()) {
+				state.materials.push_back(mat);
+				primitive["material"] = state.materials.size() - 1;
+			}
 
 			primitives.push_back(primitive);
 		}
