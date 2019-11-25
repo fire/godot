@@ -44,9 +44,6 @@
 #include "scene/resources/surface_tool.h"
 
 Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial *p_root_node) {
-	Vector<MeshInstance *> mesh_items;
-	_find_all_mesh_instances(mesh_items, p_root_node, p_root_node);
-
 	Vector<CSGShape *> csg_items;
 	_find_all_csg_roots(csg_items, p_root_node, p_root_node);
 
@@ -54,17 +51,6 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
 
 	Vector<MeshInfo> meshes;
-	for (int32_t i = 0; i < mesh_items.size(); i++) {
-		MeshInfo mesh_info;
-		mesh_info.mesh = mesh_items[i]->get_mesh();
-		mesh_info.transform = mesh_items[i]->get_transform();
-		mesh_info.name = mesh_items[i]->get_name();
-		mesh_info.original_node = mesh_items[i];
-		for (int32_t j = 0; j < mesh_items[i]->get_surface_material_count(); j++) {
-			mesh_info.materials.push_back(mesh_items[i]->get_surface_material(j));
-		}
-		meshes.push_back(mesh_info);
-	}
 	for (int32_t i = 0; i < csg_items.size(); i++) {
 		Ref<Mesh> mesh = csg_items[i]->get_calculated_mesh();
 		MeshInfo mesh_info;
@@ -102,23 +88,6 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 		mi->set_transform(meshes[i].transform);
 		meshes[i].original_node->replace_by(mi);
 	}
-
-	// Vector<aiMesh *> assimp_meshes;
-	// Vector<aiMaterial *> assimp_materials;
-	// aiNode *assimp_root_node = NULL;
-	// _generate_node(p_root_node, num_meshes, assimp_root_node, assimp_root_node, assimp_meshes, assimp_materials);
-	// r_scene.mRootNode = assimp_root_node;
-	// r_scene.mMeshes = new aiMesh *[num_meshes];
-	// for (int32_t i = 0; i < assimp_meshes.size(); i++) {
-	// r_scene.mMeshes[i] = assimp_meshes[i];
-	// }
-	// r_scene.mMaterials = new aiMaterial *[assimp_materials.size()]();
-	// r_scene.mNumMaterials = assimp_materials.size();
-	// for (uint32_t i = 0; i < r_scene.mNumMaterials; i++) {
-	// 	r_scene.mMaterials[i] = assimp_materials[i];
-	// }
-	// r_scene.mNumMaterials = assimp_materials.size();
-	// r_scene.mNumMeshes = num_meshes;
 
 	Ref<GLTFDocument> gltf_document;
 	gltf_document.instance();
