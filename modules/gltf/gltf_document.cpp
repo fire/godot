@@ -11,6 +11,7 @@
 #include "scene/3d/spatial.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/surface_tool.h"
+#include <limits>
 
 Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
@@ -1324,7 +1325,7 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 		return -1;
 	}
 	Array int_max;
-	int_max.push_back(UINT32_MAX);
+	int_max.push_back(std::numeric_limits<uint32_t>::max());
 	Array int_min;
 	int_min.push_back(0);
 	accessor.max = int_max;
@@ -1380,6 +1381,56 @@ PoolVector<float> GLTFDocument::_decode_accessor_as_floats(GLTFState &state, con
 	return ret;
 }
 
+GLTFDocument::GLTFAccessorIndex
+GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int ret_size = p_attribs.size() * 2;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Vector2 attrib = p_attribs[i];
+			w[(i * 2) + 0] = attrib.x;
+			w[(i * 2) + 1] = attrib.y;
+		}
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 2 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC2;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array vec2_max;
+	accessor.max = vec2_max;
+	vec2_max.push_back(std::numeric_limits<float>::max());
+	vec2_max.push_back(std::numeric_limits<float>::max());
+	Array vec2_min;
+	vec2_min.push_back(std::numeric_limits<float>::min());
+	vec2_min.push_back(std::numeric_limits<float>::min());
+	accessor.min = vec2_min;
+	accessor.normalized = true;
+	accessor.count = p_attribs.size();
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
+
 PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1426,9 +1477,9 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 		return -1;
 	}
 	Array float_max;
-	float_max.push_back(FLT_MAX);
+	float_max.push_back(std::numeric_limits<float>::max());
 	Array float_min;
-	float_min.push_back(FLT_MIN);
+	float_min.push_back(std::numeric_limits<float>::min());
 	accessor.max = float_max;
 	accessor.min = float_min;
 	accessor.normalized = true;
@@ -1475,13 +1526,13 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	}
 	Array vec3_max;
 	accessor.max = vec3_max;
-	vec3_max.push_back(FLT_MAX);
-	vec3_max.push_back(FLT_MAX);
-	vec3_max.push_back(FLT_MAX);
+	vec3_max.push_back(std::numeric_limits<float>::max());
+	vec3_max.push_back(std::numeric_limits<float>::max());
+	vec3_max.push_back(std::numeric_limits<float>::max());
 	Array vec3_min;
-	vec3_min.push_back(FLT_MIN);
-	vec3_min.push_back(FLT_MIN);
-	vec3_min.push_back(FLT_MIN);
+	vec3_min.push_back(std::numeric_limits<float>::min());
+	vec3_min.push_back(std::numeric_limits<float>::min());
+	vec3_min.push_back(std::numeric_limits<float>::min());
 	accessor.min = vec3_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
@@ -1662,14 +1713,14 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			{
 				Array a = array[Mesh::ARRAY_TEX_UV];
 				if (a.size()) {
-					attributes["TEXCOORD_0"] = _encode_accessor_as_vec3(state, a, true);
+					attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, a, true);
 				}
 			}
 			{
 				Array a = array[Mesh::ARRAY_TEX_UV2];
 				if (a.size()) {
 
-					attributes["TEXCOORD_1"] = _encode_accessor_as_vec3(state, a, true);
+					attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
 				}
 			}
 			// if (a.has("COLOR_0")) {
@@ -3524,7 +3575,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		if (mi) {
 			gltf_node->mesh = _convert_mesh_instance(state, mi);
 		} else if (c) {
-			gltf_node->camera = _convert_camera(state, c);
+			// gltf_node->camera = _convert_camera(state, c);
 		} else {
 			_convert_spatial(state, current_node, gltf_node);
 		}
