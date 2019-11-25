@@ -570,14 +570,17 @@ Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
 		// 	buffer_data = _parse_base64_uri(uri);
 		// } else {
 		// }
-		String uri = ProjectSettings::get_singleton()->localize_path(p_path.get_basename().get_file() + itos(i) + ".bin");
-		FileAccess *f = FileAccess::open(uri, FileAccess::WRITE_READ);
-		ERR_CONTINUE(!f);
+		String filename = p_path.get_basename().get_file() + itos(i) + ".bin";
+		String path = p_path.get_base_dir() + "/" + filename;
+		Error err;
+		FileAccessRef f = FileAccess::open(path, FileAccess::WRITE, &err);
+		if (!f) {
+			return err;
+		}
 		ERR_FAIL_COND_V(buffer_data.size() == 0, ERR_INVALID_DATA);
 		f->create(FileAccess::ACCESS_RESOURCES);
 		f->store_buffer(buffer_data.ptr(), buffer_data.size());
-		f->close();
-		gltf_buffer["uri"] = uri.split("://")[1];
+		gltf_buffer["uri"] = filename;
 		gltf_buffer["byteLength"] = buffer_data.size();
 		buffers.push_back(gltf_buffer);
 	}
