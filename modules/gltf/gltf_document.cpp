@@ -1926,7 +1926,6 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
 		// Array morphs;
 		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
-
 	}
 	// if (d.has("weights")) {
 	// 	const Array &weights = d["weights"];
@@ -2352,6 +2351,20 @@ Error GLTFDocument::_parse_textures(GLTFState &state) {
 	return OK;
 }
 
+GLTFDocument::GLTFTextureIndex GLTFDocument::_set_texture(GLTFState &state, Ref<Texture> p_texture) {
+	if (p_texture.is_null()) {
+		return -1;
+	}
+	GLTFTexture gltf_texture;
+	if (p_texture->get_data().is_null()) {
+		return -1;
+	}
+	gltf_texture.src_image = state.images.size() - 1;
+	state.images.push_back(p_texture);
+	state.textures.push_back(gltf_texture);
+	return state.textures.size() - 1;
+}
+
 Ref<Texture> GLTFDocument::_get_texture(GLTFState &state, const GLTFTextureIndex p_texture) {
 	ERR_FAIL_INDEX_V(p_texture, state.textures.size(), Ref<Texture>());
 	const GLTFImageIndex image = state.textures[p_texture].src_image;
@@ -2367,8 +2380,7 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 	for (int32_t i = 0; i < state.materials.size(); i++) {
 		Dictionary d;
 
-		Ref<SpatialMaterial> material =  state.materials[i];
-		material.instance();
+		Ref<SpatialMaterial> material = state.materials[i];
 		if (!material->get_name().empty()) {
 			d["name"] = material->get_name();
 		}
@@ -2383,42 +2395,56 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 				arr.push_back(c.a);
 				mr["baseColorFactor"] = arr;
 			}
-
-			Dictionary bct;
-			// Ref<Texture> albedo_texture;
-			// bct["index"] = _set_texture(state, texture);
-			// mr["baseColorTexture"] = bct;
+			{
+				Dictionary bct;
+				Ref<Texture> albedo_texture;
+				GLTFTextureIndex gltf_texture_index = _set_texture(state, albedo_texture);
+				if (gltf_texture_index != -1) {
+					bct["index"] = gltf_texture_index;
+					mr["baseColorTexture"] = bct;
+				}
+			}
 
 			mr["metallicFactor"] = material->get_metallic();
 			mr["roughnessFactor"] = material->get_roughness();
+			{
+				Dictionary mrt;
+				Ref<Texture> roughness_metallic_texture;
+				// material->set_texture(SpatialMaterial::TEXTURE_METALLIC);
+				// material->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
+				// material->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, roughness_metallic_texture);
+				// material->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
+				GLTFTextureIndex gltf_texture_index = _set_texture(state, roughness_metallic_texture);
+				if (gltf_texture_index != -1) {
+					mrt["index"] = gltf_texture_index;
+					mr["metallicRoughnessTexture"] = mrt;
+				}
+			}
+
 			d["pbrMetallicRoughness"] = mr;
 		}
-		// {
-		// 	Dictionary bct;
-		// 	Ref<Texture> roughness_metallic_texture;
-		// 	material->set_texture(SpatialMaterial::TEXTURE_METALLIC);
-		// 	material->set_metallic_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_BLUE);
-		// 	material->set_texture(SpatialMaterial::TEXTURE_ROUGHNESS, t);
-		// 	material->set_roughness_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_GREEN);
-		// 	bct["index"] = _set_texture(state, roughness_metallic_texture);
-		// 	mr["metallicRoughnessTexture"] = bct;
-		// }
 
-		// if (material->get_textureSpatialMaterial::FEATURE_NORMAL_MAPPING)) {
-		// 	Dictionary bct;
-		// 	Ref<Material> normal_texture = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
-		// 	bct["index"] = _set_texture(state, normal_texture);
-		// 	bct["scale"] = material->get_normal_scale());
-		// 	d["normalTexture"] = bct;
-		// }
+		if (material->get_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING)) {
+			Dictionary nt;
+			Ref<Material> normal_texture = material->get_texture(SpatialMaterial::TEXTURE_NORMAL);
+			GLTFTextureIndex gltf_texture_index = _set_texture(state, normal_texture);
+			nt["scale"] = material->get_normal_scale();
+			if (gltf_texture_index != -1) {
+				nt["index"] = gltf_texture_index;
+				d["normalTexture"] = nt;
+			}
+		}
 
-		// if (materia->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
-		// 	Dictionary bct;
-		// 	Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
-		// 	//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
-		// 	bct["index"] = _set_texture(state, ao_texture);
-		// 	d["occlusionTexture"] = bct;
-		// }
+		if (material->get_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION)) {
+			Dictionary ot;
+			Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+			//material->get_ao_texture_channel(SpatialMaterial::TEXTURE_CHANNEL_RED);
+			GLTFTextureIndex gltf_texture_index = _set_texture(state, ao_texture);
+			if (gltf_texture_index != -1) {
+				ot["index"] = gltf_texture_index;
+				d["occlusionTexture"] = ot;
+			}
+		}
 
 		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
 			const Color c = material->get_emission().to_linear();
@@ -2426,15 +2452,17 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			arr.push_back(c.r);
 			arr.push_back(c.g);
 			arr.push_back(c.b);
-			arr.push_back(c.a);
 			d["emissiveFactor"] = arr;
 		}
-		// if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
-		// 	Dictionary bct;
-		// 	Ref<Texture> emission_texture = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
-		// 	bct["index"] = _set_texture(state, emission_texture);
-		// 	d["emissiveTexture"] = bct;
-		// }
+		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+			Dictionary et;
+			Ref<Texture> emission_texture = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
+			GLTFTextureIndex gltf_texture_index = _set_texture(state, emission_texture);
+			if (gltf_texture_index != -1) {
+				et["index"] = gltf_texture_index;
+				d["emissiveTexture"] = et;
+			}
+		}
 		const bool ds = material->get_cull_mode() == SpatialMaterial::CULL_DISABLED;
 		if (ds) {
 			d["doubleSided"] = ds;
@@ -3561,7 +3589,9 @@ BoneAttachment *GLTFDocument::_generate_bone_attachment(GLTFState &state, Skelet
 GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance) {
 	GLTFMesh mesh;
 	mesh.mesh = p_mesh_instance->get_mesh();
-
+	if (mesh.mesh.is_null()) {
+		return -1;
+	}
 	print_verbose("glTF: Converting mesh: " + p_mesh_instance->get_name());
 
 	for (int i = 0; i < mesh.mesh->get_blend_shape_count(); i++) {
@@ -3659,7 +3689,10 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
 		Camera *c = Object::cast_to<Camera>(current_node);
 		if (mi) {
-			gltf_node->mesh = _convert_mesh_instance(state, mi);
+			GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
+			if (gltf_mesh_index != -1) {
+				gltf_node->mesh = gltf_mesh_index;
+			}
 		} else if (c) {
 			// gltf_node->camera = _convert_camera(state, c);
 		} else {
