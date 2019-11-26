@@ -4321,7 +4321,7 @@ void GLTFDocument::_import_animation(GLTFState &state, AnimationPlayer *ap, cons
 	ap->add_animation(name, animation);
 }
 
-void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root) {
+void GLTFDocument::_convert_mesh_instances(GLTFState &state, Node *scene_root) {
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); ++node_i) {
 		GLTFNode *node = state.nodes[node_i];
 
@@ -4347,7 +4347,7 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root
 	}
 }
 
-void GLTFDocument::_process_mesh_instances(GLTFState &state, Spatial *scene_root) {
+void GLTFDocument::_process_mesh_instances(GLTFState &state, Node *scene_root) {
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); ++node_i) {
 		const GLTFNode *node = state.nodes[node_i];
 
