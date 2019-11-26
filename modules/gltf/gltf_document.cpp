@@ -3887,13 +3887,8 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 
 	GLTFNode *gltf_node = memnew(GLTFNode);
 	GLTFNodeIndex current_node_index = state.nodes.size();
-	bool is_root_node = p_root_node_index == current_node_index;
 	state.nodes.push_back(gltf_node);
 	state.scene_nodes.insert(current_node_index, p_current_node);
-	if (!is_root_node) {
-		state.nodes[p_parent_node_index]->children.push_back(current_node_index);
-		gltf_node->parent = p_parent_node_index;
-	}
 	if (current_node) {
 		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
 		Camera *c = Object::cast_to<Camera>(current_node);
@@ -3912,6 +3907,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		gltf_node->name = current_node->get_name();
 	}
 	for (int i = 0; i < p_current_node->get_child_count(); i++) {
+		state.nodes[current_node_index]->children.push_back(state.nodes.size());
 		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_index);
 	}
 	/*
