@@ -939,7 +939,6 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 	const int component_count = component_count_for_type[type];
 	const int component_size = _get_component_type_size(component_type);
 	ERR_FAIL_COND_V(component_size == 0, FAILED);
-	int element_size = component_count * component_size;
 
 	int skip_every = 0;
 	int skip_bytes = 0;
@@ -951,12 +950,10 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 			if (type == TYPE_MAT2) {
 				skip_every = 2;
 				skip_bytes = 2;
-				element_size = 8; //override for this case
 			}
 			if (type == TYPE_MAT3) {
 				skip_every = 3;
 				skip_bytes = 1;
-				element_size = 12; //override for this case
 			}
 
 		} break;
@@ -965,7 +962,6 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 			if (type == TYPE_MAT3) {
 				skip_every = 6;
 				skip_bytes = 4;
-				element_size = 16; //override for this case
 			}
 		} break;
 		default: {
@@ -4336,7 +4332,6 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root
 
 			node->xform = mi->get_transform();
 
-			GLTFSkeletonIndex skel_i;
 			GLTFSkeleton gltf_skeleton;
 			GLTFSkin gltf_skin;
 			NodePath skeleton_path = mi->get_skeleton_path();
