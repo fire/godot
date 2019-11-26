@@ -70,24 +70,25 @@ void EditorSceneExporter::get_exporter_extensions(List<String> *r_extensions) co
 	ERR_FAIL();
 }
 void EditorSceneExporter::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-	Error err;
+	Error err = Error::FAILED;
 	if (get_script_instance()) {
 		get_script_instance()->call("_save_scene", p_node, p_path, p_src_path, p_flags, p_bake_fps);
-	} else {
-		err = Error::FAILED;
+		err = Error::OK;
 	}
-	r_err = &err;
+	if (r_err) {
+		*r_err = err;
+	}
 }
 
 void EditorSceneExporter::save_animation(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-	Error err = Error::OK;
-	r_err = &err;
+	Error err = Error::FAILED;
 	if (get_script_instance()) {
 		get_script_instance()->call("_save_animation", p_node, p_path, p_flags);
-		return;
+		err = OK;
 	}
-	err = Error::FAILED;
-	return;
+	if (r_err) {
+		*r_err = err;
+	}
 }
 
 void EditorSceneExporter::_bind_methods() {
@@ -177,63 +178,6 @@ String ResourceExporterScene::get_preset_name(int p_idx) const {
 	//}
 
 	return "";
-}
-
-static bool _teststr(const String &p_what, const String &p_str) {
-
-	String what = p_what;
-
-	//remove trailing spaces and numbers, some apps like blender add ".number" to duplicates so also compensate for this
-	while (what.length() && ((what[what.length() - 1] >= '0' && what[what.length() - 1] <= '9') || what[what.length() - 1] <= 32 || what[what.length() - 1] == '.')) {
-
-		what = what.substr(0, what.length() - 1);
-	}
-
-	if (what.findn("$" + p_str) != -1) //blender and other stuff
-		return true;
-	if (what.to_lower().ends_with("-" + p_str)) //collada only supports "_" and "-" besides letters
-		return true;
-	if (what.to_lower().ends_with("_" + p_str)) //collada only supports "_" and "-" besides letters
-		return true;
-	return false;
-}
-
-static String _fixstr(const String &p_what, const String &p_str) {
-
-	String what = p_what;
-
-	//remove trailing spaces and numbers, some apps like blender add ".number" to duplicates so also compensate for this
-	while (what.length() && ((what[what.length() - 1] >= '0' && what[what.length() - 1] <= '9') || what[what.length() - 1] <= 32 || what[what.length() - 1] == '.')) {
-
-		what = what.substr(0, what.length() - 1);
-	}
-
-	String end = p_what.substr(what.length(), p_what.length() - what.length());
-
-	if (what.findn("$" + p_str) != -1) //blender and other stuff
-		return what.replace("$" + p_str, "") + end;
-	if (what.to_lower().ends_with("-" + p_str)) //collada only supports "_" and "-" besides letters
-		return what.substr(0, what.length() - (p_str.length() + 1)) + end;
-	if (what.to_lower().ends_with("_" + p_str)) //collada only supports "_" and "-" besides letters
-		return what.substr(0, what.length() - (p_str.length() + 1)) + end;
-	return what;
-}
-
-static void _gen_shape_list(const Ref<Mesh> &mesh, List<Ref<Shape> > &r_shape_list, bool p_convex) {
-
-	if (!p_convex) {
-
-		Ref<Shape> shape = mesh->create_trimesh_shape();
-		r_shape_list.push_back(shape);
-	} else {
-
-		Vector<Ref<Shape> > cd = mesh->convex_decompose();
-		if (cd.size()) {
-			for (int i = 0; i < cd.size(); i++) {
-				r_shape_list.push_back(cd[i]);
-			}
-		}
-	}
 }
 
 void ResourceExporterScene::_create_clips(Node *scene, const Array &p_clips, bool p_bake_all) {
