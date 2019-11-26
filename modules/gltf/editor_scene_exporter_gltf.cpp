@@ -101,13 +101,11 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 
 	GLTFDocument::GLTFState state;
 	state.json["scene"] = state.nodes.size();
-	for (int32_t i = 0; i < root_node->get_child_count(); i++) {
-		const GLTFDocument::GLTFNodeIndex scene_root = state.nodes.size();
-		state.root_nodes.push_back(scene_root);
-		gltf_document->_convert_scene_node(state, root_node->get_child(i), root_node->get_child(i), scene_root, scene_root);
-		gltf_document->_convert_mesh_instances(state, root_node->get_child(i));
-		state.root_nodes.push_back(scene_root);
-	}
+	const GLTFDocument::GLTFNodeIndex scene_root = state.nodes.size();
+	state.root_nodes.push_back(scene_root);
+	gltf_document->_convert_scene_node(state, root_node, root_node, scene_root, scene_root);
+	gltf_document->_convert_mesh_instances(state, root_node);
+	state.root_nodes.push_back(scene_root);
 	if (state.animations.size()) {
 		Node *node = root_node->find_node("AnimationPlayer");
 		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
