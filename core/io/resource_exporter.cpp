@@ -128,7 +128,7 @@ Error ResourceFormatExporter::save(const String &p_path, const RES &p_resource, 
 	return ResourceSaver::save(pat.path, p_resource);
 }
 
-void ResourceFormatExporter::get_recognized_extensions(List<String> *p_extensions) const {
+void ResourceFormatExporter::get_recognized_exporter_extensions(List<String> *p_extensions) const {
 	Set<String> found;
 
 	for (int i = 0; i < exporters.size(); i++) {
@@ -143,10 +143,10 @@ void ResourceFormatExporter::get_recognized_extensions(List<String> *p_extension
 	}
 }
 
-void ResourceFormatExporter::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
+void ResourceFormatExporter::get_recognized_exporter_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
 
 	if (p_type == "") {
-		get_recognized_extensions(p_extensions);
+		get_recognized_exporter_extensions(p_extensions);
 		return;
 	}
 

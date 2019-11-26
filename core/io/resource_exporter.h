@@ -60,8 +60,8 @@ class ResourceFormatExporter : public ResourceFormatSaver {
 public:
 	static ResourceFormatExporter *get_singleton() { return singleton; }
 	virtual Error save(const String &p_path, const RES &p_resource, uint32_t p_flags = 0);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual void get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const;
+	virtual void get_recognized_exporter_extensions(List<String> *p_extensions) const;
+	virtual void get_recognized_exporter_extensions_for_type(const String &p_type, List<String> *p_extensions) const;
 	virtual bool recognize_path(const String &p_path) const;
 	virtual bool handles_type(const String &p_type) const;
 	virtual String get_resource_type(const String &p_path) const;
