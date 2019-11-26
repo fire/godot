@@ -4341,7 +4341,6 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Spatial *scene_root
 				gltf_skin.skeleton = state.skeletons.size();
 				state.skeletons.push_back(gltf_skeleton);
 				gltf_skin.godot_skin = mi->get_skin();
-				skel_i = state.skins.size();
 				state.skins.push_back(gltf_skin);
 			}
 		}

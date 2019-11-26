@@ -64,6 +64,9 @@ bool SceneExporterGLTFPlugin::has_main_screen() const {
 
 SceneExporterGLTFPlugin::SceneExporterGLTFPlugin(EditorNode *p_node) {
 	editor = p_node;
+	convert_gltf2.instance();
+	file_export_lib_merge = NULL;
+	file_export_lib = NULL;
 }
 
 void SceneExporterGLTFPlugin::_gltf2_dialog_action(String p_file) {
@@ -81,7 +84,8 @@ void SceneExporterGLTFPlugin::_gltf2_dialog_action(String p_file) {
 			root->add_child(scene->instance());
 		}
 	}
-	convert_gltf2->export_gltf2(p_file, root);
+	List<String> deps;
+	convert_gltf2->save_scene(root, p_file, p_file, 0, 1000.0f, &deps);
 	EditorFileSystem::get_singleton()->scan_changes();
 	file_export_lib->queue_delete();
 	file_export_lib_merge->queue_delete();

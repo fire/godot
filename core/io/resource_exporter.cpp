@@ -129,7 +129,6 @@ Error ResourceFormatExporter::save(const String &p_path, const RES &p_resource, 
 }
 
 void ResourceFormatExporter::get_recognized_extensions(List<String> *p_extensions) const {
-
 	Set<String> found;
 
 	for (int i = 0; i < exporters.size(); i++) {
@@ -174,12 +173,12 @@ void ResourceFormatExporter::get_recognized_extensions_for_type(const String &p_
 
 bool ResourceFormatExporter::exists(const String &p_path) const {
 
-	return FileAccess::exists(p_path + ".import");
+	return FileAccess::exists(p_path);
 }
 
 bool ResourceFormatExporter::recognize_path(const String &p_path, const String &p_for_type) const {
 
-	return FileAccess::exists(p_path + ".import");
+	return FileAccess::exists(p_path);
 }
 
 bool ResourceFormatExporter::can_be_exported(const String &p_path) const {

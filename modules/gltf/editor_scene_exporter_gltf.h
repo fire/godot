@@ -50,7 +50,7 @@ class EditorSceneExporterGLTF : public EditorSceneExporter {
 	GDCLASS(EditorSceneExporterGLTF, EditorSceneExporter);
 
 public:
-	virtual void save_scene(const Node *p_node, const String &p_path, uint32_t p_flags, int p_bake_fps, Error *err = NULL) {}
+	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
 
 	struct MeshInfo {
 		Transform transform;
@@ -61,12 +61,7 @@ public:
 	};
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
-	// void _set_gltf_materials(Ref<SpatialMaterial> &mat, aiMaterial *assimp_mat);
-	Error _generate_gltf_scene(const String p_path, Spatial *p_root_node);
-	// void _generate_node(Node *p_node, size_t &num_meshes, /*aiNode *&p_assimp_current_node, aiNode *&p_assimp_root, */ Vector<aiMesh *> &assimp_meshes, Vector<aiMaterial *> &assimp_materials);
-
-	void export_gltf2(const String p_file, Node *p_root_node);
-
+	void get_exporter_extensions(List<String> *r_extensions) const override;
 	EditorSceneExporterGLTF() {}
 	~EditorSceneExporterGLTF() {}
 };

@@ -49,9 +49,9 @@ public:
 	enum Exportflags {
 	};
 	virtual uint32_t get_save_flags() const;
-	virtual void get_extensions(List<String> *r_extensions) const;
-	virtual void save_scene(const Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
-	virtual void save_animation(const Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
+	virtual void get_exporter_extensions(List<String> *r_extensions) const;
+	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
+	virtual void save_animation(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
 
 	EditorSceneExporter() {}
 };
@@ -98,7 +98,7 @@ public:
 	void _filter_anim_tracks(Ref<Animation> anim, Set<String> &keep);
 	void _filter_tracks(Node *scene, const String &p_text);
 	void _optimize_animations(Node *scene, float p_max_lin_error, float p_max_ang_error, float p_max_angle);
-	virtual Error export_(const Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = NULL, Variant *r_metadata = NULL);
+	virtual Error export_(Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = NULL, Variant *r_metadata = NULL);
 
 	ResourceExporterScene();
 	~ResourceExporterScene() {}

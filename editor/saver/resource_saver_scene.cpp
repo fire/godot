@@ -57,7 +57,7 @@ uint32_t EditorSceneExporter::get_save_flags() const {
 
 	ERR_FAIL_V(0);
 }
-void EditorSceneExporter::get_extensions(List<String> *r_extensions) const {
+void EditorSceneExporter::get_exporter_extensions(List<String> *r_extensions) const {
 
 	if (get_script_instance()) {
 		Array arr = get_script_instance()->call("_get_extensions");
@@ -69,7 +69,7 @@ void EditorSceneExporter::get_extensions(List<String> *r_extensions) const {
 
 	ERR_FAIL();
 }
-void EditorSceneExporter::save_scene(const Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+void EditorSceneExporter::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Error err;
 	if (get_script_instance()) {
 		get_script_instance()->call("_save_scene", p_node, p_path, p_src_path, p_flags, p_bake_fps);
@@ -79,7 +79,7 @@ void EditorSceneExporter::save_scene(const Node *p_node, const String &p_path, c
 	r_err = &err;
 }
 
-void EditorSceneExporter::save_animation(const Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+void EditorSceneExporter::save_animation(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Error err = Error::OK;
 	r_err = &err;
 	if (get_script_instance()) {
@@ -113,9 +113,8 @@ String ResourceExporterScene::get_visible_name() const {
 }
 
 void ResourceExporterScene::get_recognized_extensions(List<String> *p_extensions) const {
-
 	for (Set<Ref<EditorSceneExporter> >::Element *E = exporters.front(); E; E = E->next()) {
-		E->get()->get_extensions(p_extensions);
+		E->get()->get_exporter_extensions(p_extensions);
 	}
 }
 
@@ -164,7 +163,7 @@ int ResourceExporterScene::get_preset_count() const {
 }
 String ResourceExporterScene::get_preset_name(int p_idx) const {
 
-	switch (p_idx) {
+	//switch (p_idx) {
 		//case PRESET_SINGLE_SCENE: return TTR("Import as Single Scene");
 		//case PRESET_SEPARATE_ANIMATIONS: return TTR("Import with Separate Animations");
 		//case PRESET_SEPARATE_MATERIALS: return TTR("Import with Separate Materials");
@@ -175,7 +174,7 @@ String ResourceExporterScene::get_preset_name(int p_idx) const {
 		//case PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Objects+Materials+Animations");
 		//case PRESET_MULTIPLE_SCENES: return TTR("Import as Multiple Scenes");
 		//case PRESET_MULTIPLE_SCENES_AND_MATERIALS: return TTR("Import as Multiple Scenes+Materials");
-	}
+	//}
 
 	return "";
 }
@@ -785,7 +784,7 @@ void ResourceExporterScene::_replace_owner(Node *p_node, Node *p_scene, Node *p_
 	}
 }
 
-Error ResourceExporterScene::export_(const Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+Error ResourceExporterScene::export_(Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	const String &src_path = p_source_file;
 
 	Ref<EditorSceneExporter> exporter;
@@ -797,7 +796,7 @@ Error ResourceExporterScene::export_(const Node *p_node, const String &p_source_
 	for (Set<Ref<EditorSceneExporter> >::Element *E = exporters.front(); E; E = E->next()) {
 
 		List<String> extensions;
-		E->get()->get_extensions(&extensions);
+		E->get()->get_exporter_extensions(&extensions);
 
 		for (List<String>::Element *F = extensions.front(); F; F = F->next()) {
 

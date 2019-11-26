@@ -38,8 +38,8 @@
 class AnimationPlayer;
 class BoneAttachment;
 class MeshInstance;
-class GLTFDocument : public Reference {
-	GDCLASS(GLTFDocument, Reference);
+class GLTFDocument : public Resource {
+	GDCLASS(GLTFDocument, Resource);
 
 public:
 	typedef int GLTFAccessorIndex;

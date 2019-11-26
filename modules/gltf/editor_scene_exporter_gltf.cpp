@@ -43,12 +43,18 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 
-Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial *p_root_node) {
+void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions) const {
+	r_extensions->push_back("*.gltf");
+	r_extensions->push_back("*.glb");
+}
+
+void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+	Spatial *root_node = Object::cast_to<Spatial>(p_node);
 	Vector<CSGShape *> csg_items;
-	_find_all_csg_roots(csg_items, p_root_node, p_root_node);
+	_find_all_csg_roots(csg_items, root_node, root_node);
 
 	Vector<GridMap *> grid_map_items;
-	_find_all_gridmaps(grid_map_items, p_root_node, p_root_node);
+	_find_all_gridmaps(grid_map_items, root_node, root_node);
 
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < csg_items.size(); i++) {
@@ -97,11 +103,11 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 	const GLTFDocument::GLTFNodeIndex scene_root = 0;
 
 	state.root_nodes.push_back(scene_root);
-	gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root, scene_root);
-	gltf_document->_convert_mesh_instances(state, p_root_node);
+	gltf_document->_convert_scene_node(state, root_node, root_node, scene_root, scene_root);
+	gltf_document->_convert_mesh_instances(state, root_node);
 
 	if (state.animations.size()) {
-		Node *node = p_root_node->find_node("AnimationPlayer");
+		Node *node = root_node->find_node("AnimationPlayer");
 		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
 		if (ap) {
 			for (int i = 0; i < state.animations.size(); i++) {
@@ -109,21 +115,22 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 			}
 		}
 	}
-	state.scene_name = p_root_node->get_name();
+	state.scene_name = root_node->get_name();
 	state.root_nodes.push_back(scene_root);
+	Error err = OK;
 	if (p_path.to_lower().ends_with("glb")) {
 		//binary file
 		//text file
 		// Error err = _serialize_glb(p_path, *state);
-		// if (err)
-		// 	return FAILED;
+		// r_err = &err;
+		// return;
 	} else {
 		//text file
 		Error err = gltf_document->_serialize_json(p_path, state);
-		if (err)
-			return FAILED;
+		r_err = &err;
+		return;
 	}
-	return OK;
+	r_err = &err;
 }
 
 void EditorSceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner) {
@@ -144,10 +151,4 @@ void EditorSceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, N
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
 		_find_all_csg_roots(r_items, p_current_node->get_child(i), p_owner);
 	}
-}
-
-void EditorSceneExporterGLTF::export_gltf2(const String p_file, Node *p_root_node) {
-	const String file = ProjectSettings::get_singleton()->globalize_path(p_file);
-	Spatial *spatial = Object::cast_to<Spatial>(p_root_node);
-	_generate_gltf_scene(file, spatial);
 }
