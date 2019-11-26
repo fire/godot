@@ -334,7 +334,7 @@ private:
 
 	String _sanitize_bone_name(const String &name);
 	String _gen_unique_bone_name(GLTFState &state, const GLTFDocument::GLTFSkeletonIndex skel_i, const String &p_name);
-	
+
 	GLTFTextureIndex _set_texture(GLTFState &state, Ref<Texture> p_texture);
 	Ref<Texture> _get_texture(GLTFState &state, const GLTFDocument::GLTFTextureIndex p_texture);
 
