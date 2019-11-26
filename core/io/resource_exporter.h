@@ -62,7 +62,7 @@ public:
 	virtual Error save(const String &p_path, const RES &p_resource, uint32_t p_flags = 0);
 	virtual void get_recognized_extensions(List<String> *p_extensions) const;
 	virtual void get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const;
-	virtual bool recognize_path(const String &p_path, const String &p_for_type = String()) const;
+	virtual bool recognize_path(const String &p_path) const;
 	virtual bool handles_type(const String &p_type) const;
 	virtual String get_resource_type(const String &p_path) const;
 	virtual Variant get_resource_metadata(const String &p_path) const;

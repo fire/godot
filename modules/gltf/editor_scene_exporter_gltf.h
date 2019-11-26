@@ -61,7 +61,7 @@ public:
 	};
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
-	void get_exporter_extensions(List<String> *r_extensions) const override;
+	void get_exporter_extensions(List<String> *r_extensions) const;
 	EditorSceneExporterGLTF() {}
 	~EditorSceneExporterGLTF() {}
 };

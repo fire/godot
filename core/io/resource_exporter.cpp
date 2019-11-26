@@ -176,7 +176,7 @@ bool ResourceFormatExporter::exists(const String &p_path) const {
 	return FileAccess::exists(p_path);
 }
 
-bool ResourceFormatExporter::recognize_path(const String &p_path, const String &p_for_type) const {
+bool ResourceFormatExporter::recognize_path(const String &p_path) const {
 
 	return FileAccess::exists(p_path);
 }
