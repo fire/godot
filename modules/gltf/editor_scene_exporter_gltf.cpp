@@ -123,6 +123,7 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 		if (err)
 			return FAILED;
 	}
+	return OK;
 }
 
 void EditorSceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner) {

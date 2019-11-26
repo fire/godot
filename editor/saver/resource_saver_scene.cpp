@@ -100,17 +100,6 @@ void EditorSceneExporter::_bind_methods() {
 	mi = MethodInfo(Variant::OBJECT, "_import_animation", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::INT, "flags"), PropertyInfo(Variant::INT, "bake_fps"));
 	mi.return_val.class_name = "Animation";
 	BIND_VMETHOD(mi);
-
-	BIND_CONSTANT(IMPORT_SCENE);
-	BIND_CONSTANT(IMPORT_ANIMATION);
-	BIND_CONSTANT(IMPORT_ANIMATION_DETECT_LOOP);
-	BIND_CONSTANT(IMPORT_ANIMATION_OPTIMIZE);
-	BIND_CONSTANT(IMPORT_ANIMATION_FORCE_ALL_TRACKS_IN_ALL_CLIPS);
-	BIND_CONSTANT(IMPORT_ANIMATION_KEEP_VALUE_TRACKS);
-	BIND_CONSTANT(IMPORT_GENERATE_TANGENT_ARRAYS);
-	BIND_CONSTANT(IMPORT_FAIL_ON_MISSING_DEPENDENCIES);
-	BIND_CONSTANT(IMPORT_MATERIALS_IN_INSTANCES);
-	BIND_CONSTANT(IMPORT_USE_COMPRESSION);
 }
 
 String ResourceExporterScene::get_exporter_name() const {
@@ -176,16 +165,16 @@ int ResourceExporterScene::get_preset_count() const {
 String ResourceExporterScene::get_preset_name(int p_idx) const {
 
 	switch (p_idx) {
-		case PRESET_SINGLE_SCENE: return TTR("Import as Single Scene");
-		case PRESET_SEPARATE_ANIMATIONS: return TTR("Import with Separate Animations");
-		case PRESET_SEPARATE_MATERIALS: return TTR("Import with Separate Materials");
-		case PRESET_SEPARATE_MESHES: return TTR("Import with Separate Objects");
-		case PRESET_SEPARATE_MESHES_AND_MATERIALS: return TTR("Import with Separate Objects+Materials");
-		case PRESET_SEPARATE_MESHES_AND_ANIMATIONS: return TTR("Import with Separate Objects+Animations");
-		case PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Materials+Animations");
-		case PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Objects+Materials+Animations");
-		case PRESET_MULTIPLE_SCENES: return TTR("Import as Multiple Scenes");
-		case PRESET_MULTIPLE_SCENES_AND_MATERIALS: return TTR("Import as Multiple Scenes+Materials");
+		//case PRESET_SINGLE_SCENE: return TTR("Import as Single Scene");
+		//case PRESET_SEPARATE_ANIMATIONS: return TTR("Import with Separate Animations");
+		//case PRESET_SEPARATE_MATERIALS: return TTR("Import with Separate Materials");
+		//case PRESET_SEPARATE_MESHES: return TTR("Import with Separate Objects");
+		//case PRESET_SEPARATE_MESHES_AND_MATERIALS: return TTR("Import with Separate Objects+Materials");
+		//case PRESET_SEPARATE_MESHES_AND_ANIMATIONS: return TTR("Import with Separate Objects+Animations");
+		//case PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Materials+Animations");
+		//case PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Objects+Materials+Animations");
+		//case PRESET_MULTIPLE_SCENES: return TTR("Import as Multiple Scenes");
+		//case PRESET_MULTIPLE_SCENES_AND_MATERIALS: return TTR("Import as Multiple Scenes+Materials");
 	}
 
 	return "";
@@ -246,368 +235,6 @@ static void _gen_shape_list(const Ref<Mesh> &mesh, List<Ref<Shape> > &r_shape_li
 			}
 		}
 	}
-}
-
-Node *ResourceExporterScene::_fix_node(Node *p_node, Node *p_root, Map<Ref<Mesh>, List<Ref<Shape> > > &collision_map, LightBakeMode p_light_bake_mode) {
-
-	// children first
-	for (int i = 0; i < p_node->get_child_count(); i++) {
-
-		Node *r = _fix_node(p_node->get_child(i), p_root, collision_map, p_light_bake_mode);
-		if (!r) {
-			i--; //was erased
-		}
-	}
-
-	String name = p_node->get_name();
-
-	bool isroot = p_node == p_root;
-
-	if (!isroot && _teststr(name, "noimp")) {
-
-		memdelete(p_node);
-		return NULL;
-	}
-
-	if (Object::cast_to<MeshInstance>(p_node)) {
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-
-		Ref<ArrayMesh> m = mi->get_mesh();
-
-		if (m.is_valid()) {
-
-			for (int i = 0; i < m->get_surface_count(); i++) {
-
-				Ref<SpatialMaterial> mat = m->surface_get_material(i);
-				if (!mat.is_valid())
-					continue;
-
-				if (_teststr(mat->get_name(), "alpha")) {
-
-					mat->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
-					mat->set_name(_fixstr(mat->get_name(), "alpha"));
-				}
-				if (_teststr(mat->get_name(), "vcol")) {
-
-					mat->set_flag(SpatialMaterial::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
-					mat->set_flag(SpatialMaterial::FLAG_SRGB_VERTEX_COLOR, true);
-					mat->set_name(_fixstr(mat->get_name(), "vcol"));
-				}
-			}
-		}
-
-		if (p_light_bake_mode != LIGHT_BAKE_DISABLED) {
-
-			mi->set_flag(GeometryInstance::FLAG_USE_BAKED_LIGHT, true);
-		}
-	}
-
-	if (Object::cast_to<AnimationPlayer>(p_node)) {
-		//remove animations referencing non-importable nodes
-		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(p_node);
-
-		List<StringName> anims;
-		ap->get_animation_list(&anims);
-		for (List<StringName>::Element *E = anims.front(); E; E = E->next()) {
-
-			Ref<Animation> anim = ap->get_animation(E->get());
-			ERR_CONTINUE(anim.is_null());
-			for (int i = 0; i < anim->get_track_count(); i++) {
-				NodePath path = anim->track_get_path(i);
-
-				for (int j = 0; j < path.get_name_count(); j++) {
-					String node = path.get_name(j);
-					if (_teststr(node, "noimp")) {
-						anim->remove_track(i);
-						i--;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	if (_teststr(name, "colonly") || _teststr(name, "convcolonly")) {
-
-		if (isroot)
-			return p_node;
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-		if (mi) {
-			Ref<Mesh> mesh = mi->get_mesh();
-
-			if (mesh.is_valid()) {
-				List<Ref<Shape> > shapes;
-				String fixed_name;
-				if (collision_map.has(mesh)) {
-					shapes = collision_map[mesh];
-				} else if (_teststr(name, "colonly")) {
-					_gen_shape_list(mesh, shapes, false);
-					collision_map[mesh] = shapes;
-				} else if (_teststr(name, "convcolonly")) {
-					_gen_shape_list(mesh, shapes, true);
-					collision_map[mesh] = shapes;
-				}
-
-				if (_teststr(name, "colonly")) {
-					fixed_name = _fixstr(name, "colonly");
-				} else if (_teststr(name, "convcolonly")) {
-					fixed_name = _fixstr(name, "convcolonly");
-				}
-
-				ERR_FAIL_COND_V(fixed_name == String(), NULL);
-
-				if (shapes.size()) {
-
-					StaticBody *col = memnew(StaticBody);
-					col->set_transform(mi->get_transform());
-					col->set_name(fixed_name);
-					p_node->replace_by(col);
-					memdelete(p_node);
-					p_node = col;
-
-					int idx = 0;
-					for (List<Ref<Shape> >::Element *E = shapes.front(); E; E = E->next()) {
-
-						CollisionShape *cshape = memnew(CollisionShape);
-						cshape->set_shape(E->get());
-						col->add_child(cshape);
-
-						cshape->set_name("shape" + itos(idx));
-						cshape->set_owner(col->get_owner());
-						idx++;
-					}
-				}
-			}
-
-		} else if (p_node->has_meta("empty_draw_type")) {
-			String empty_draw_type = String(p_node->get_meta("empty_draw_type"));
-			StaticBody *sb = memnew(StaticBody);
-			sb->set_name(_fixstr(name, "colonly"));
-			Object::cast_to<Spatial>(sb)->set_transform(Object::cast_to<Spatial>(p_node)->get_transform());
-			p_node->replace_by(sb);
-			memdelete(p_node);
-			p_node = NULL;
-			CollisionShape *colshape = memnew(CollisionShape);
-			if (empty_draw_type == "CUBE") {
-				BoxShape *boxShape = memnew(BoxShape);
-				boxShape->set_extents(Vector3(1, 1, 1));
-				colshape->set_shape(boxShape);
-				colshape->set_name("BoxShape");
-			} else if (empty_draw_type == "SINGLE_ARROW") {
-				RayShape *rayShape = memnew(RayShape);
-				rayShape->set_length(1);
-				colshape->set_shape(rayShape);
-				colshape->set_name("RayShape");
-				Object::cast_to<Spatial>(sb)->rotate_x(Math_PI / 2);
-			} else if (empty_draw_type == "IMAGE") {
-				PlaneShape *planeShape = memnew(PlaneShape);
-				colshape->set_shape(planeShape);
-				colshape->set_name("PlaneShape");
-			} else {
-				SphereShape *sphereShape = memnew(SphereShape);
-				sphereShape->set_radius(1);
-				colshape->set_shape(sphereShape);
-				colshape->set_name("SphereShape");
-			}
-			sb->add_child(colshape);
-			colshape->set_owner(sb->get_owner());
-		}
-
-	} else if (_teststr(name, "rigid") && Object::cast_to<MeshInstance>(p_node)) {
-
-		if (isroot)
-			return p_node;
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-		Ref<Mesh> mesh = mi->get_mesh();
-
-		if (mesh.is_valid()) {
-			List<Ref<Shape> > shapes;
-			if (collision_map.has(mesh)) {
-				shapes = collision_map[mesh];
-			} else {
-				_gen_shape_list(mesh, shapes, true);
-			}
-
-			RigidBody *rigid_body = memnew(RigidBody);
-			rigid_body->set_name(_fixstr(name, "rigid"));
-			p_node->replace_by(rigid_body);
-			rigid_body->set_transform(mi->get_transform());
-			p_node = rigid_body;
-			mi->set_name("mesh");
-			mi->set_transform(Transform());
-			rigid_body->add_child(mi);
-			mi->set_owner(rigid_body->get_owner());
-
-			int idx = 0;
-			for (List<Ref<Shape> >::Element *E = shapes.front(); E; E = E->next()) {
-
-				CollisionShape *cshape = memnew(CollisionShape);
-				cshape->set_shape(E->get());
-				rigid_body->add_child(cshape);
-
-				cshape->set_name("shape" + itos(idx));
-				cshape->set_owner(p_node->get_owner());
-				idx++;
-			}
-		}
-
-	} else if ((_teststr(name, "col") || (_teststr(name, "convcol"))) && Object::cast_to<MeshInstance>(p_node)) {
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-
-		Ref<Mesh> mesh = mi->get_mesh();
-
-		if (mesh.is_valid()) {
-			List<Ref<Shape> > shapes;
-			String fixed_name;
-			if (collision_map.has(mesh)) {
-				shapes = collision_map[mesh];
-			} else if (_teststr(name, "col")) {
-				_gen_shape_list(mesh, shapes, false);
-				collision_map[mesh] = shapes;
-			} else if (_teststr(name, "convcol")) {
-				_gen_shape_list(mesh, shapes, true);
-				collision_map[mesh] = shapes;
-			}
-
-			if (_teststr(name, "col")) {
-				fixed_name = _fixstr(name, "col");
-			} else if (_teststr(name, "convcol")) {
-				fixed_name = _fixstr(name, "convcol");
-			}
-
-			if (fixed_name != String()) {
-				if (mi->get_parent() && !mi->get_parent()->has_node(fixed_name)) {
-					mi->set_name(fixed_name);
-				}
-			}
-
-			if (shapes.size()) {
-				StaticBody *col = memnew(StaticBody);
-				col->set_name("static_collision");
-				mi->add_child(col);
-				col->set_owner(mi->get_owner());
-
-				int idx = 0;
-				for (List<Ref<Shape> >::Element *E = shapes.front(); E; E = E->next()) {
-
-					CollisionShape *cshape = memnew(CollisionShape);
-					cshape->set_shape(E->get());
-					col->add_child(cshape);
-
-					cshape->set_name("shape" + itos(idx));
-					cshape->set_owner(p_node->get_owner());
-
-					idx++;
-				}
-			}
-		}
-
-	} else if (_teststr(name, "navmesh") && Object::cast_to<MeshInstance>(p_node)) {
-
-		if (isroot)
-			return p_node;
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-
-		Ref<ArrayMesh> mesh = mi->get_mesh();
-		ERR_FAIL_COND_V(mesh.is_null(), NULL);
-		NavigationMeshInstance *nmi = memnew(NavigationMeshInstance);
-
-		nmi->set_name(_fixstr(name, "navmesh"));
-		Ref<NavigationMesh> nmesh = memnew(NavigationMesh);
-		nmesh->create_from_mesh(mesh);
-		nmi->set_navigation_mesh(nmesh);
-		Object::cast_to<Spatial>(nmi)->set_transform(mi->get_transform());
-		p_node->replace_by(nmi);
-		memdelete(p_node);
-		p_node = nmi;
-	} else if (_teststr(name, "vehicle")) {
-
-		if (isroot)
-			return p_node;
-
-		Node *owner = p_node->get_owner();
-		Spatial *s = Object::cast_to<Spatial>(p_node);
-		VehicleBody *bv = memnew(VehicleBody);
-		String n = _fixstr(p_node->get_name(), "vehicle");
-		bv->set_name(n);
-		p_node->replace_by(bv);
-		p_node->set_name(n);
-		bv->add_child(p_node);
-		bv->set_owner(owner);
-		p_node->set_owner(owner);
-		bv->set_transform(s->get_transform());
-		s->set_transform(Transform());
-
-		p_node = bv;
-
-	} else if (_teststr(name, "wheel")) {
-
-		if (isroot)
-			return p_node;
-
-		Node *owner = p_node->get_owner();
-		Spatial *s = Object::cast_to<Spatial>(p_node);
-		VehicleWheel *bv = memnew(VehicleWheel);
-		String n = _fixstr(p_node->get_name(), "wheel");
-		bv->set_name(n);
-		p_node->replace_by(bv);
-		p_node->set_name(n);
-		bv->add_child(p_node);
-		bv->set_owner(owner);
-		p_node->set_owner(owner);
-		bv->set_transform(s->get_transform());
-		s->set_transform(Transform());
-
-		p_node = bv;
-
-	} else if (Object::cast_to<MeshInstance>(p_node)) {
-
-		//last attempt, maybe collision inside the mesh data
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-
-		Ref<ArrayMesh> mesh = mi->get_mesh();
-		if (!mesh.is_null()) {
-
-			List<Ref<Shape> > shapes;
-			if (collision_map.has(mesh)) {
-				shapes = collision_map[mesh];
-			} else if (_teststr(mesh->get_name(), "col")) {
-				_gen_shape_list(mesh, shapes, false);
-				collision_map[mesh] = shapes;
-				mesh->set_name(_fixstr(mesh->get_name(), "col"));
-			} else if (_teststr(mesh->get_name(), "convcol")) {
-				_gen_shape_list(mesh, shapes, true);
-				collision_map[mesh] = shapes;
-				mesh->set_name(_fixstr(mesh->get_name(), "convcol"));
-			}
-
-			if (shapes.size()) {
-				StaticBody *col = memnew(StaticBody);
-				col->set_name("static_collision");
-				p_node->add_child(col);
-				col->set_owner(p_node->get_owner());
-
-				int idx = 0;
-				for (List<Ref<Shape> >::Element *E = shapes.front(); E; E = E->next()) {
-
-					CollisionShape *cshape = memnew(CollisionShape);
-					cshape->set_shape(E->get());
-					col->add_child(cshape);
-
-					cshape->set_name("shape" + itos(idx));
-					cshape->set_owner(p_node->get_owner());
-					idx++;
-				}
-			}
-		}
-	}
-
-	return p_node;
 }
 
 void ResourceExporterScene::_create_clips(Node *scene, const Array &p_clips, bool p_bake_all) {
@@ -1094,7 +721,7 @@ void ResourceExporterScene::_make_external_resources(Node *p_node, const String 
 	}
 }
 
-void ResourceExporterScene::get_export_options(List<ImportOption> *r_options, int p_preset) const {
+void ResourceExporterScene::get_export_options(List<ExportOption> *r_options, int p_preset) const {
 
 	// r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "nodes/root_type", PROPERTY_HINT_TYPE_STRING, "Node"), "Spatial"));
 	// r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "nodes/root_name"), "Scene Root"));
@@ -1110,10 +737,10 @@ void ResourceExporterScene::get_export_options(List<ImportOption> *r_options, in
 		script_ext_hint += "*." + E->get();
 	}
 
-	bool materials_out = p_preset == PRESET_SEPARATE_MATERIALS || p_preset == PRESET_SEPARATE_MESHES_AND_MATERIALS || p_preset == PRESET_MULTIPLE_SCENES_AND_MATERIALS || p_preset == PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
-	bool meshes_out = p_preset == PRESET_SEPARATE_MESHES || p_preset == PRESET_SEPARATE_MESHES_AND_MATERIALS || p_preset == PRESET_SEPARATE_MESHES_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
-	bool scenes_out = p_preset == PRESET_MULTIPLE_SCENES || p_preset == PRESET_MULTIPLE_SCENES_AND_MATERIALS;
-	bool animations_out = p_preset == PRESET_SEPARATE_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
+	//bool materials_out = p_preset == PRESET_SEPARATE_MATERIALS || p_preset == PRESET_SEPARATE_MESHES_AND_MATERIALS || p_preset == PRESET_MULTIPLE_SCENES_AND_MATERIALS || p_preset == PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
+	//bool meshes_out = p_preset == PRESET_SEPARATE_MESHES || p_preset == PRESET_SEPARATE_MESHES_AND_MATERIALS || p_preset == PRESET_SEPARATE_MESHES_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
+	//bool scenes_out = p_preset == PRESET_MULTIPLE_SCENES || p_preset == PRESET_MULTIPLE_SCENES_AND_MATERIALS;
+	//bool animations_out = p_preset == PRESET_SEPARATE_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
 
 	// r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "nodes/root_scale", PROPERTY_HINT_RANGE, "0.001,1000,0.001"), 1.0));
 	// r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "nodes/custom_script", PROPERTY_HINT_FILE, script_ext_hint), ""));

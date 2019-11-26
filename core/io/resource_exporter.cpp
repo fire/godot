@@ -182,12 +182,12 @@ bool ResourceFormatExporter::recognize_path(const String &p_path, const String &
 	return FileAccess::exists(p_path + ".import");
 }
 
-bool ResourceFormatExporter::can_be_imported(const String &p_path) const {
+bool ResourceFormatExporter::can_be_exported(const String &p_path) const {
 
 	return ResourceFormatSaver::recognize_path(p_path);
 }
 
-int ResourceFormatExporter::get_import_order(const String &p_path) const {
+int ResourceFormatExporter::get_export_order(const String &p_path) const {
 
 	Ref<ResourceExporter> exporter;
 
@@ -205,7 +205,7 @@ int ResourceFormatExporter::get_import_order(const String &p_path) const {
 	}
 
 	if (exporter.is_valid())
-		return exporter->get_import_order();
+		return exporter->get_export_order();
 
 	return 0;
 }
@@ -283,7 +283,7 @@ void ResourceFormatExporter::get_internal_resource_path_list(const String &p_pat
 	memdelete(f);
 }
 
-String ResourceFormatExporter::get_import_group_file(const String &p_path) const {
+String ResourceFormatExporter::get_export_group_file(const String &p_path) const {
 
 	bool valid = true;
 	PathAndType pat;
@@ -381,7 +381,7 @@ Ref<ResourceExporter> ResourceFormatExporter::get_exporter_by_extension(const St
 	return exporter;
 }
 
-String ResourceFormatExporter::get_import_base_path(const String &p_for_file) const {
+String ResourceFormatExporter::get_export_base_path(const String &p_for_file) const {
 
 	return "res://.import/" + p_for_file.get_file() + "-" + p_for_file.md5_text();
 }
@@ -407,7 +407,7 @@ bool ResourceFormatExporter::are_export_settings_valid(const String &p_path) con
 	return true;
 }
 
-String ResourceFormatExporter::get_import_settings_hash() const {
+String ResourceFormatExporter::get_export_settings_hash() const {
 
 	Vector<Ref<ResourceExporter> > sorted_exporters = exporters;
 

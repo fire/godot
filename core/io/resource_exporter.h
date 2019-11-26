@@ -70,12 +70,12 @@ public:
 	virtual void get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types = false);
 	virtual bool is_exported(const String &p_path) const { return recognize_path(p_path); }
 	//TODO
-	virtual String get_import_group_file(const String &p_path) const;
+	virtual String get_export_group_file(const String &p_path) const;
 	virtual bool exists(const String &p_path) const;
 	//TODO
-	virtual bool can_be_imported(const String &p_path) const;
+	virtual bool can_be_exported(const String &p_path) const;
 	//TODO
-	virtual int get_import_order(const String &p_path) const;
+	virtual int get_export_order(const String &p_path) const;
 
 	String get_internal_resource_path(const String &p_path) const;
 	void get_internal_resource_path_list(const String &p_path, List<String> *r_paths);
@@ -90,9 +90,9 @@ public:
 
 	bool are_export_settings_valid(const String &p_path) const;
 	//TODO
-	String get_import_settings_hash() const;
+	String get_export_settings_hash() const;
 	//TODO
-	String get_import_base_path(const String &p_for_file) const;
+	String get_export_base_path(const String &p_for_file) const;
 	ResourceFormatExporter();
 	~ResourceFormatExporter() {}
 };
@@ -108,23 +108,23 @@ public:
 	virtual String get_save_extension() const = 0;
 	virtual String get_resource_type() const = 0;
 	virtual float get_priority() const { return 1.0; }
-	virtual int get_import_order() const { return 0; }
+	virtual int get_export_order() const { return 0; }
 
-	struct ImportOption {
+	struct ExportOption {
 		PropertyInfo option;
 		Variant default_value;
 
-		ImportOption(const PropertyInfo &p_info, const Variant &p_default) :
+		ExportOption(const PropertyInfo &p_info, const Variant &p_default) :
 				option(p_info),
 				default_value(p_default) {
 		}
-		ImportOption() {}
+		ExportOption() {}
 	};
 
 	virtual int get_preset_count() const { return 0; }
 	virtual String get_preset_name(int p_idx) const { return String(); }
 
-	virtual void get_export_options(List<ImportOption> *r_options, int p_preset = 0) const = 0;
+	virtual void get_export_options(List<ExportOption> *r_options, int p_preset = 0) const = 0;
 	virtual bool get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const = 0;
 	virtual String get_option_group_file() const { return String(); }
 

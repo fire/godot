@@ -31,10 +31,10 @@
 #ifndef ResourceSaverScene_H
 #define ResourceSaverScene_H
 
+#include "core/io/resource_exporter.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/shape.h"
-#include "core/io/resource_exporter.h"
 
 class Material;
 
@@ -46,20 +46,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	enum ImportFlags {
-		IMPORT_SCENE = 1,
-		IMPORT_ANIMATION = 2,
-		IMPORT_ANIMATION_DETECT_LOOP = 4,
-		IMPORT_ANIMATION_OPTIMIZE = 8,
-		IMPORT_ANIMATION_FORCE_ALL_TRACKS_IN_ALL_CLIPS = 16,
-		IMPORT_ANIMATION_KEEP_VALUE_TRACKS = 32,
-		IMPORT_GENERATE_TANGENT_ARRAYS = 256,
-		IMPORT_FAIL_ON_MISSING_DEPENDENCIES = 512,
-		IMPORT_MATERIALS_IN_INSTANCES = 1024,
-		IMPORT_USE_COMPRESSION = 2048
-
+	enum Exportflags {
 	};
-
 	virtual uint32_t get_save_flags() const;
 	virtual void get_extensions(List<String> *r_extensions) const;
 	virtual void save_scene(const Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
@@ -76,26 +64,7 @@ class ResourceExporterScene : public ResourceExporter {
 	static ResourceExporterScene *singleton;
 
 	enum Presets {
-		PRESET_SEPARATE_MATERIALS,
-		PRESET_SEPARATE_MESHES,
-		PRESET_SEPARATE_ANIMATIONS,
-
-		PRESET_SINGLE_SCENE,
-
-		PRESET_SEPARATE_MESHES_AND_MATERIALS,
-		PRESET_SEPARATE_MESHES_AND_ANIMATIONS,
-		PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS,
-		PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS,
-
-		PRESET_MULTIPLE_SCENES,
-		PRESET_MULTIPLE_SCENES_AND_MATERIALS,
 		PRESET_MAX
-	};
-
-	enum LightBakeMode {
-		LIGHT_BAKE_DISABLED,
-		LIGHT_BAKE_ENABLE,
-		LIGHT_BAKE_LIGHTMAPS
 	};
 
 	void _replace_owner(Node *p_node, Node *p_scene, Node *p_new_owner);
@@ -117,22 +86,20 @@ public:
 	virtual int get_preset_count() const;
 	virtual String get_preset_name(int p_idx) const;
 
-	virtual void get_export_options(List<ImportOption> *r_options, int p_preset = 0) const;
+	virtual void get_export_options(List<ExportOption> *r_options, int p_preset = 0) const;
 	virtual bool get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const;
-	virtual int get_import_order() const { return 100; } //after everything
+	virtual int get_export_order() const { return 100; } //after everything
 
 	void _find_meshes(Node *p_node, Map<Ref<ArrayMesh>, Transform> &meshes);
 
 	void _make_external_resources(Node *p_node, const String &p_base_path, bool p_make_animations, bool p_animations_as_text, bool p_keep_animations, bool p_make_materials, bool p_materials_as_text, bool p_keep_materials, bool p_make_meshes, bool p_meshes_as_text, Map<Ref<Animation>, Ref<Animation> > &p_animations, Map<Ref<Material>, Ref<Material> > &p_materials, Map<Ref<ArrayMesh>, Ref<ArrayMesh> > &p_meshes);
 
-	Node *_fix_node(Node *p_node, Node *p_root, Map<Ref<Mesh>, List<Ref<Shape> > > &collision_map, LightBakeMode p_light_bake_mode);
-
 	void _create_clips(Node *scene, const Array &p_clips, bool p_bake_all);
 	void _filter_anim_tracks(Ref<Animation> anim, Set<String> &keep);
 	void _filter_tracks(Node *scene, const String &p_text);
 	void _optimize_animations(Node *scene, float p_max_lin_error, float p_max_ang_error, float p_max_angle);
-	virtual Error export_(const Node* p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = NULL, Variant *r_metadata = NULL);
-	
+	virtual Error export_(const Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = NULL, Variant *r_metadata = NULL);
+
 	ResourceExporterScene();
 	~ResourceExporterScene() {}
 };
