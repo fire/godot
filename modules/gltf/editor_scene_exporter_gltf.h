@@ -28,7 +28,6 @@ public:
 		Vector<Ref<Material> > materials;
 		Node *original_node = NULL;
 	};
-	void _find_all_mesh_instances(Vector<MeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
 	// void _set_gltf_materials(Ref<SpatialMaterial> &mat, aiMaterial *assimp_mat);

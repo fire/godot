@@ -95,204 +95,33 @@ Error EditorSceneExporterGLTF::_generate_gltf_scene(const String p_path, Spatial
 	GLTFDocument::GLTFState state;
 
 	const GLTFDocument::GLTFNodeIndex scene_root = 0;
-	{
-		state.root_nodes.push_back(scene_root);
-		gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root, scene_root);
-		gltf_document->_convert_mesh_instances(state, p_root_node);
 
-		if (state.animations.size()) {
-			Node *node = p_root_node->find_node("AnimationPlayer");
-			AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
-			if (ap) {
-				for (int i = 0; i < state.animations.size(); i++) {
-					gltf_document->_convert_animation(state, ap, i);
-				}
+	state.root_nodes.push_back(scene_root);
+	gltf_document->_convert_scene_node(state, p_root_node, p_root_node, scene_root, scene_root);
+	gltf_document->_convert_mesh_instances(state, p_root_node);
+
+	if (state.animations.size()) {
+		Node *node = p_root_node->find_node("AnimationPlayer");
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
+		if (ap) {
+			for (int i = 0; i < state.animations.size(); i++) {
+				gltf_document->_convert_animation(state, ap, i);
 			}
 		}
 	}
-	{
-		state.scene_name = p_root_node->get_name();
-		state.root_nodes.push_back(scene_root);
-	}
-	{
-		if (p_path.to_lower().ends_with("glb")) {
-			//binary file
-			//text file
-			// Error err = _serialize_glb(p_path, *state);
-			// if (err)
-			// 	return FAILED;
-		} else {
-			//text file
-			Error err = gltf_document->_serialize_json(p_path, state);
-			if (err)
-				return FAILED;
-		}
-	}
-
-	// void EditorSceneExporterGLTF::_generate_node(Node *p_node, size_t &num_meshes, /*aiNode *&p_assimp_current_node, aiNode *&p_assimp_root, */Vector<aiMesh *> &assimp_meshes, Vector<aiMaterial *> &assimp_materials) {
-	// 	String node_name = p_node->get_name();
-	// 	// const std::wstring w_node_name = node_name.c_str();
-	// 	// const std::string s_node_name(w_node_name.begin(), w_node_name.end());
-	// 	// p_assimp_current_node = new aiNode();
-	// 	// p_assimp_current_node->mName = s_node_name;
-	// 	if (Object::cast_to<MeshInstance>(p_node)) {
-	// 		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-	// 		Ref<SurfaceTool> st;
-	// 		st.instance();
-	// 		st->begin(Mesh::PRIMITIVE_TRIANGLES);
-	// 		// p_assimp_current_node->mNumMeshes = mi->get_mesh()->get_surface_count();
-	// 		// p_assimp_current_node->mMeshes = new uint32_t[mi->get_mesh()->get_surface_count()];
-	// 		// p_assimp_current_node->mTransformation = _convert_assimp_transform(Object::cast_to<Spatial>(p_node)->get_transform());
-	// 		for (int32_t j = 0; j < mi->get_mesh()->get_surface_count(); j++) {
-	// 			// p_assimp_current_node->mMeshes[j] = num_meshes + j;
-	// 			st->create_from(mi->get_mesh(), j);
-	// 			st->index();
-	// 			Array mesh_arr = st->commit_to_arrays();
-
-	// 			PoolVector3Array vertices = mesh_arr[Mesh::ARRAY_VERTEX];
-	// 			PoolVector3Array normals = mesh_arr[Mesh::ARRAY_NORMAL];
-	// 			PoolVector2Array uv1s = mesh_arr[Mesh::ARRAY_TEX_UV];
-	// 			PoolVector2Array uv2s = mesh_arr[Mesh::ARRAY_TEX_UV2];
-	// 			PoolColorArray tangents = mesh_arr[Mesh::ARRAY_FORMAT_TANGENT];
-	// 			PoolIntArray indices = mesh_arr[Mesh::ARRAY_INDEX];
-	// 			PoolIntArray bones = mesh_arr[Mesh::ARRAY_BONES];
-	// 			PoolRealArray weights = mesh_arr[Mesh::ARRAY_WEIGHTS];
-
-	// 			// aiMesh *mesh = new aiMesh();
-	// 			// assimp_meshes.push_back(mesh);
-	// 			// // Todo remove wstring and string
-	// 			// String name = String(mi->get_name()) + itos(j);
-	// 			// const std::wstring w_name = name.c_str();
-	// 			// const std::string s_name(w_name.begin(), w_name.end());
-	// 			// mesh->mName = s_name;
-	// 			// mesh->mVertices = new aiVector3D[vertices.size()]();
-	// 			// mesh->mNormals = new aiVector3D[vertices.size()]();
-	// 			// mesh->mNumVertices = vertices.size();
-
-	// 			NodePath skeleton_path = mi->get_skeleton_path();
-	// 			Node *node = mi->get_node_or_null(skeleton_path);
-	// 			Skeleton *skeleton = Node::cast_to<Skeleton>(node);
-	// 			// TODO FIX Skinning
-	// 			skeleton = nullptr;
-	// 			if (skeleton) {
-	// 				struct VertexWeights {
-	// 					Vector<int32_t> vertex_idx;
-	// 					Vector<real_t> weights;
-	// 				};
-	// 				Map<String, VertexWeights>
-	// 						bone_weights;
-	// 				Ref<Skin> skin = mi->get_skin();
-	// 				Map<int32_t, String> idx_to_bone_name;
-
-	// 				for (int32_t i = 0; i < skin->get_bind_count(); i++) {
-	// 					int32_t skeleton_idx = skin->get_bind_bone(i);
-	// 					String bone_name = skeleton->get_bone_name(skeleton_idx);
-	// 					idx_to_bone_name.insert(skeleton_idx, bone_name);
-	// 				}
-	// 				int32_t vertex_idx = 0;
-	// 				for (int32_t k = 0; k < bones.size(); k += 4) {
-	// 					String bone_name = idx_to_bone_name[bones[k]];
-	// 					VertexWeights vertex_weights;
-	// 					vertex_weights.vertex_idx.push_back(bones[k + 0]);
-	// 					vertex_weights.vertex_idx.push_back(bones[k + 1]);
-	// 					vertex_weights.vertex_idx.push_back(bones[k + 2]);
-	// 					vertex_weights.vertex_idx.push_back(bones[k + 3]);
-	// 					vertex_weights.weights.push_back(weights[k + 0]);
-	// 					vertex_weights.weights.push_back(weights[k + 1]);
-	// 					vertex_weights.weights.push_back(weights[k + 2]);
-	// 					vertex_weights.weights.push_back(weights[k + 3]);
-	// 					bone_weights.insert(bone_name, vertex_weights);
-	// 					vertex_idx++;
-	// 				}
-
-	// 				// mesh->mBones = new aiBone *[bone_weights.size()]();
-	// 				for (int32_t i = 0; i < bone_weights.size(); i++) {
-	// 					int32_t skeleton_idx = skin->get_bind_bone(i);
-	// 					String bone_name = skeleton->get_bone_name(skeleton_idx);
-	// 					// std::wstring ws = bone_name.c_str();
-	// 					// std::string s(ws.begin(), ws.end());
-	// 					// aiString assimp_bone_name;
-	// 					// aiBone *bone = new aiBone();
-	// 					// mesh->mBones[i] = bone;
-	// 					// bone->mName.Set(s);
-	// 					// Map<String, VertexWeights>::Element *E = bone_weights.find(bone_name);
-	// 					// if (!E) {
-	// 					// 	continue;
-	// 					// }
-	// 					// bone->mOffsetMatrix = _convert_assimp_transform(skin->get_bind_pose(i));
-	// 					// mesh->mNumBones += 1;
-	// 					// bone->mNumWeights = E->get().vertex_idx.size();
-	// 					// bone->mWeights = new aiVertexWeight[bone->mNumWeights]();
-	// 					// for (int32_t j = 0; j < bone->mNumWeights; j++) {
-	// 					// 	bone->mWeights[j].mVertexId = bone_weights.find(bone_name)->get().vertex_idx[j];
-	// 					// 	bone->mWeights[j].mWeight = bone_weights.find(bone_name)->get().weights[j];
-	// 					// }
-	// 				}
-	// 			}
-
-	// 			if (uv1s.size()) {
-	// 				// mesh->mTextureCoords[0] = new aiVector3D[vertices.size()];
-	// 				// if (uv2s.size()) {
-	// 				// 	mesh->mTextureCoords[1] = new aiVector3D[vertices.size()];
-	// 				// }
-	// 				// mesh->mNumUVComponents[0] = 2;
-	// 			}
-
-	// 			if (mi->get_mesh()->get_faces().size()) {
-	// 				// mesh->mFaces = new aiFace[mi->get_mesh()->get_faces().size()]();
-	// 			}
-
-	// 			for (int32_t k = 0; k < indices.size() / 3; k++) {
-	// 				// aiFace face;
-	// 				// face.mNumIndices = 3;
-	// 				// face.mIndices = new unsigned int[3];
-	// 				// face.mIndices[0] = indices[k * 3 + 2];
-	// 				// face.mIndices[1] = indices[k * 3 + 1];
-	// 				// face.mIndices[2] = indices[k * 3 + 0];
-	// 				// mesh->mFaces[k] = face;
-	// 			}
-	// 			if (indices.size()) {
-	// 				// mesh->mNumFaces = indices.size() / 3;
-	// 			}
-
-	// 			for (int32_t k = 0; k < vertices.size(); k++) {
-	// 				// mesh->mVertices[k] = aiVector3D(vertices[k].x, vertices[k].y, vertices[k].z);
-	// 			}
-	// 			for (int32_t k = 0; k < normals.size(); k++) {
-	// 				// mesh->mNormals[k] = aiVector3D(normals[k].x, normals[k].y, normals[k].z);
-	// 			}
-	// 			for (int32_t k = 0; k < uv1s.size(); k++) {
-	// 				// mesh->mTextureCoords[0][k] = aiVector3D(uv1s[k].x, 1.0f - uv1s[k].y, 0);
-	// 			}
-	// 			for (int32_t k = 0; k < uv2s.size(); k++) {
-	// 				// mesh->mTextureCoords[1][k] = aiVector3D(uv2s[k].x, 1.0f - uv2s[k].y, 0);
-	// 			}
-	// 			// aiMaterial *assimp_mat = new aiMaterial();
-	// 			// mesh->mMaterialIndex = assimp_materials.size();
-	// 			// assimp_materials.push_back(assimp_mat);
-	// 			// mesh->mPrimitiveTypes |= aiPrimitiveType_TRIANGLE;
-	// 		}
-	// 		num_meshes += mi->get_mesh()->get_surface_count();
-	// 	} else if (Object::cast_to<Spatial>(p_node)) {
-	// 		// p_assimp_current_node->mTransformation = _convert_assimp_transform(Object::cast_to<Spatial>(p_node)->get_transform());
-	// 	}
-	// 	// aiNode **children = new aiNode *[p_node->get_child_count()]();
-	// 	// p_assimp_current_node->addChildren(p_node->get_child_count(), children);
-	// 	// for (int32_t i = 0; i < p_node->get_child_count(); i++) {
-	// 	// 	_generate_node(p_node->get_child(i), num_meshes, p_assimp_current_node->mChildren[i], p_assimp_root, assimp_meshes, assimp_materials);
-	// 	// }
-	// }
-
-	return OK;
-}
-
-void EditorSceneExporterGLTF::_find_all_mesh_instances(Vector<MeshInstance *> &r_items, Node *p_current_node, const Node *p_owner) {
-	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current_node);
-	if (mi != NULL) {
-		r_items.push_back(mi);
-	}
-	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
-		_find_all_mesh_instances(r_items, p_current_node->get_child(i), p_owner);
+	state.scene_name = p_root_node->get_name();
+	state.root_nodes.push_back(scene_root);
+	if (p_path.to_lower().ends_with("glb")) {
+		//binary file
+		//text file
+		// Error err = _serialize_glb(p_path, *state);
+		// if (err)
+		// 	return FAILED;
+	} else {
+		//text file
+		Error err = gltf_document->_serialize_json(p_path, state);
+		if (err)
+			return FAILED;
 	}
 }
 
@@ -300,7 +129,6 @@ void EditorSceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Nod
 	GridMap *gridmap = Object::cast_to<GridMap>(p_current_node);
 	if (gridmap != NULL) {
 		r_items.push_back(gridmap);
-		return;
 	}
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
 		_find_all_gridmaps(r_items, p_current_node->get_child(i), p_owner);
@@ -311,33 +139,11 @@ void EditorSceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, N
 	CSGShape *csg = Object::cast_to<CSGShape>(p_current_node);
 	if (csg != NULL && csg->is_root_shape()) {
 		r_items.push_back(csg);
-		return;
 	}
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
 		_find_all_csg_roots(r_items, p_current_node->get_child(i), p_owner);
 	}
 }
-
-// void EditorSceneExporterGLTF::_set_gltf_materials(Ref<SpatialMaterial> &mat, aiMaterial *assimp_mat) {
-// 	if (mat.is_null()) {
-// 		return;
-// 	}
-// 	Ref<Texture> tex = mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
-// 	if (tex.is_valid()) {
-// 		NodePath path = tex->get_path();
-// 		String global_path = ProjectSettings::get_singleton()->globalize_path(path);
-// 		// const std::wstring w_global_path = global_path.c_str();
-// 		// std::string s_global_path(w_global_path.begin(), w_global_path.end());
-// 		// aiString uri(s_global_path);
-// 		// assimp_mat->AddProperty(&uri, AI_MATKEY_TEXTURE_DIFFUSE(0));
-// 	}
-// 	// aiColor4D albedo_color;
-// 	// albedo_color.r = mat->get_albedo().r;
-// 	// albedo_color.g = mat->get_albedo().g;
-// 	// albedo_color.b = mat->get_albedo().b;
-// 	// albedo_color.a = mat->get_albedo().a;
-// 	// assimp_mat->AddProperty(&albedo_color, 1, AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR);
-// }
 
 void EditorSceneExporterGLTF::export_gltf2(const String p_file, Node *p_root_node) {
 	const String file = ProjectSettings::get_singleton()->globalize_path(p_file);
