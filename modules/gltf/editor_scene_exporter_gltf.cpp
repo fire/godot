@@ -49,8 +49,6 @@ void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions
 }
 
 void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-	Error err = OK;
-	r_err = &err;
 	Spatial *root_node = Object::cast_to<Spatial>(p_node);
 	Vector<CSGShape *> csg_items;
 	_find_all_csg_roots(csg_items, root_node, root_node);
@@ -127,8 +125,7 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 		// return;
 	} else {
 		//text file
-		err = gltf_document->_serialize_json(p_path, state);
-		r_err = &err;
+		gltf_document->_serialize_json(p_path, state);
 		return;
 	}
 }
