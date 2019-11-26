@@ -378,7 +378,6 @@ private:
 	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
 
-public:
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
 	Error _encode_buffer_views(GLTFState &state);
 	Error _encode_buffers(GLTFState &state, const String &p_base_path);
@@ -386,16 +385,18 @@ public:
 	Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
-	Error _serialize_json(const String &p_path, GLTFState &state);
+
+public:
+	void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
+	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
+	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
+	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
+	void _convert_mesh_instances(GLTFState &state, Spatial *scene_root);
 	GLTFCameraIndex _convert_camera(GLTFState &state, Camera *p_camera);
 	void _convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node);
 	void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
 	void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
-	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
-	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
-	void _convert_mesh_instances(GLTFState &state, Spatial *scene_root);
-	void _process_mesh_instances(GLTFState &state, Spatial *scene_root);
-	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
+	Error _serialize_json(const String &p_path, GLTFState &state);
 	Error parse(GLTFState *state, String p_path);
 };
 #endif
