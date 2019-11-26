@@ -52,6 +52,7 @@
 #include "scene/resources/packed_scene.h"
 #include "servers/physics_2d_server.h"
 
+#include "core/io/resource_exporter.h"
 #include "editor/editor_audio_buses.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_help.h"
@@ -129,9 +130,8 @@
 #include "editor/plugins/visual_shader_editor_plugin.h"
 #include "editor/pvrtc_compress.h"
 #include "editor/register_exporters.h"
-#include "editor/script_editor_debugger.h"
 #include "editor/saver/resource_saver_scene.h"
-#include "core/io/resource_exporter.h"
+#include "editor/script_editor_debugger.h"
 
 #include <stdio.h>
 
