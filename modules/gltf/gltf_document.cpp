@@ -2508,11 +2508,11 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			bool has_metalness = material->get_texture(SpatialMaterial::TEXTURE_METALLIC).is_valid() && material->get_texture(SpatialMaterial::TEXTURE_METALLIC)->get_data().is_valid();
 			if (has_ao || has_roughness || has_metalness) {
 				Dictionary mrt;
-				Ref<StreamTexture> roughness_texture = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
+				Ref<Texture> roughness_texture = material->get_texture(SpatialMaterial::TEXTURE_ROUGHNESS);
 				SpatialMaterial::TextureChannel roughness_channel = material->get_roughness_texture_channel();
-				Ref<StreamTexture> metallic_texture = material->get_texture(SpatialMaterial::TEXTURE_METALLIC);
+				Ref<Texture> metallic_texture = material->get_texture(SpatialMaterial::TEXTURE_METALLIC);
 				SpatialMaterial::TextureChannel metalness_channel = material->get_metallic_texture_channel();
-				Ref<StreamTexture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
+				Ref<Texture> ao_texture = material->get_texture(SpatialMaterial::TEXTURE_AMBIENT_OCCLUSION);
 				SpatialMaterial::TextureChannel ao_channel = material->get_ao_texture_channel();
 				Ref<ImageTexture> orm_texture;
 				orm_texture.instance();
