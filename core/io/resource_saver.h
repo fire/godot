@@ -31,9 +31,9 @@
 #ifndef RESOURCE_SAVER_H
 #define RESOURCE_SAVER_H
 
-#include "core/resource.h"
 #include "core/io/resource_saver.h"
 #include "core/os/file_access.h"
+#include "core/resource.h"
 
 class ResourceFormatSaver : public Reference {
 protected:

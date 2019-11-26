@@ -85,7 +85,7 @@ void EditorSceneExporter::save_animation(const Node *p_node, const String &p_pat
 	if (get_script_instance()) {
 		get_script_instance()->call("_save_animation", p_node, p_path, p_flags);
 		return;
-	} 
+	}
 	err = Error::FAILED;
 	return;
 }
@@ -785,7 +785,7 @@ void ResourceExporterScene::_replace_owner(Node *p_node, Node *p_scene, Node *p_
 	}
 }
 
-Error ResourceExporterScene::export_(const Node* p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+Error ResourceExporterScene::export_(const Node *p_node, const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	const String &src_path = p_source_file;
 
 	Ref<EditorSceneExporter> exporter;
@@ -816,7 +816,7 @@ Error ResourceExporterScene::export_(const Node* p_node, const String &p_source_
 
 	float fps = p_options["animation/fps"];
 
-		int import_flags = EditorSceneImporter::IMPORT_ANIMATION_DETECT_LOOP;
+	int import_flags = EditorSceneImporter::IMPORT_ANIMATION_DETECT_LOOP;
 	if (!bool(p_options["animation/optimizer/remove_unused_tracks"]))
 		import_flags |= EditorSceneImporter::IMPORT_ANIMATION_FORCE_ALL_TRACKS_IN_ALL_CLIPS;
 

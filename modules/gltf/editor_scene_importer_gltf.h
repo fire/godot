@@ -32,9 +32,9 @@
 #define EDITOR_SCENE_IMPORTER_GLTF_H
 
 #include "editor/import/resource_importer_scene.h"
+#include "gltf_document.h"
 #include "scene/3d/skeleton.h"
 #include "scene/3d/spatial.h"
-#include "gltf_document.h"
 
 class AnimationPlayer;
 class BoneAttachment;

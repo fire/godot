@@ -48,6 +48,7 @@ class EditorSceneExporter;
 class EditorSceneExporterGLTF : public EditorSceneExporter {
 
 	GDCLASS(EditorSceneExporterGLTF, EditorSceneExporter);
+
 public:
 	virtual void save_scene(const Node *p_node, const String &p_path, uint32_t p_flags, int p_bake_fps, Error *err = NULL) {}
 
