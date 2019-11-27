@@ -1579,6 +1579,71 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	return state.accessors.size() - 1;
 }
 
+GLTFDocument::GLTFAccessorIndex
+ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex) {
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int ret_size = p_attribs.size() * 16;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Transform attrib = p_attribs[i];
+			Basis basis = attrib.get_basis();
+			Vector3 axis_0 = basis.get_axis(0);
+			w[i * 16 + 0] = axis_0.x;
+			w[i * 16 + 1] = axis_0.y;
+			w[i * 16 + 2] = axis_0.z;
+			Vector3 axis_1 = basis.get_axis(1);
+			w[i * 16 + 4] = axis_1.x;
+			w[i * 16 + 5] = axis_1.y;
+			w[i * 16 + 6] = axis_1.z;
+			Vector3 axis_2 = basis.get_axis(2);
+			w[i * 16 + 8] = axis_2.x;
+			w[i * 16 + 9] = axis_2.y;
+			w[i * 16 + 10] = axis_2.z;
+			Vector3 origin = attrib.get_origin();
+			w[i * 16 + 12] = origin.x;
+			w[i * 16 + 13] = origin.x;
+			w[i * 16 + 14] = origin.z;
+		}
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 16 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_MAT4;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	// Array vec3_max;
+	// accessor.max = vec3_max;
+	// vec3_max.push_back(std::numeric_limits<float>::max());
+	// vec3_max.push_back(std::numeric_limits<float>::max());
+	// vec3_max.push_back(std::numeric_limits<float>::max());
+	// Array vec3_min;
+	// vec3_min.push_back(std::numeric_limits<float>::min());
+	// vec3_min.push_back(std::numeric_limits<float>::min());
+	// vec3_min.push_back(std::numeric_limits<float>::min());
+	// accessor.min = vec3_min;
+	accessor.normalized = true;
+	accessor.count = p_attribs.size();
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
 PoolVector<Vector3> GLTFDocument::_decode_accessor_as_vec3(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -3524,8 +3589,9 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			state.nodes[F->get()]->skeleton = skel_i;
 		}
 	}
-	Dictionary skins;
+	Array json_skins;
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
+		Dictionary json_skin;
 		Node *node = NULL;
 		if (state.nodes[node_i]->mesh == -1) {
 			continue;
@@ -3552,7 +3618,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			node_names.insert(state.nodes[node_i]->name, node_i);
 		}
 		GLTFSkin gltf_skin;
-		Array joints;
+		Array json_joints;		
 		for (int32_t i = 0; i < skin->get_bind_count(); i++) {
 			int32_t bone_index = skin->get_bind_bone(i);
 			String bone_name = skeleton->get_bone_name(bone_index);
@@ -3560,33 +3626,19 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			GLTFNodeIndex node_index = E->get();
 			gltf_skin.joints.push_back(node_index);
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(i));
+			json_joints.push_back(node_index);
 		}
-		skins["joints"] = joints;
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = skin->get_name();
+		state.nodes[node_i]->skin = json_skins.size();
 		state.skins.push_back(gltf_skin);
+
+		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
+		json_skin["joints"] = json_joints;
+
+		json_skins.push_back(json_skin);
 	}
-	state.json["skins"] = skins;
-	// for (GLTFSkinIndex skin_i = 0; skin_i < state.skins.size(); ++skin_i) {
-
-	// 	Ref<Skin> skin;
-	// 	skin.instance();
-
-	// 	// Some skins don't have IBM's! What absolute monsters!
-	// 	const bool has_ibms = !gltf_skin.inverse_binds.empty();
-
-	// 	for (int joint_i = 0; joint_i < gltf_skin.joints_original.size(); ++joint_i) {
-	// 		int bone_i = gltf_skin.joint_i_to_bone_i[joint_i];
-
-	// 		if (has_ibms) {
-	// 			skin->add_bind(bone_i, gltf_skin.inverse_binds[joint_i]);
-	// 		} else {
-	// 			skin->add_bind(bone_i, Transform());
-	// 		}
-	// 	}
-
-	// 	gltf_skin.godot_skin = skin;
-	// }
+	state.json["skins"] = json_skins;
 
 	// Purge the duplicates!
 	_remove_duplicate_skins(state);
@@ -3971,6 +4023,8 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
 		GLTFNode *node = memnew(GLTFNode);
 		node->name = p_skeleton->get_bone_name(i);
+		Transform global_xform;
+		Node *current_node = p_skeleton->get_parent();
 		node->xform = p_skeleton->get_bone_rest(i);
 		int32_t parent = p_skeleton->get_bone_parent(i);
 		String parent_name;

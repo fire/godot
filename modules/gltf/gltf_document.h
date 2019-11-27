@@ -405,7 +405,8 @@ private:
 	GLTFAccessorIndex _encode_accessor_as_floats(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
-	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
+	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);	
+	GLTFAccessorIndex _encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
 
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
