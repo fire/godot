@@ -3625,8 +3625,8 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			Map<String, GLTFNodeIndex>::Element *E = node_names.find(bone_name);
 			GLTFNodeIndex node_index = E->get();
 			gltf_skin.joints.push_back(node_index);
-			gltf_skin.joints_original.push_back(node_index);			
-			state.nodes[node_i]->joint = true;			
+			gltf_skin.joints_original.push_back(node_index);
+			state.nodes[node_i]->joint = true;
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(i));
 			json_joints.push_back(node_index);
 		}

@@ -405,7 +405,7 @@ private:
 	GLTFAccessorIndex _encode_accessor_as_floats(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
-	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);	
+	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
 
@@ -424,7 +424,7 @@ public:
 	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
 	void _convert_mesh_instances(GLTFState &state, Node *scene_root);
 	GLTFCameraIndex _convert_camera(GLTFState &state, Camera *p_camera);
-	GLTFSkeletonIndex _convert_skeleton(GLTFState &state, Skeleton *p_skeleton,  GLTFNode *p_node, GLTFNodeIndex p_node_index);
+	GLTFSkeletonIndex _convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index);
 	void _convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node);
 	void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
 	void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
