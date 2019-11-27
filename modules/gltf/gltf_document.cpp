@@ -4089,9 +4089,9 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 
 GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index) {
 	print_verbose("glTF: Converting skeleton: " + p_skeleton->get_name());
+	p_node->name = p_skeleton->get_name();
 	Map<String, GLTFNodeIndex> node_indices;
 	Map<GLTFNodeIndex, String> node_parent;
-	p_node->xform = p_skeleton->get_global_transform().affine_inverse();
 	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
 		GLTFNode *node = memnew(GLTFNode);
 		node->name = p_skeleton->get_bone_name(i);
@@ -4131,7 +4131,7 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 
 void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
 	print_verbose(String("glTF: Converting spatial: ") + p_spatial->get_name());
-	p_node->xform = p_spatial->get_transform() * p_node->xform;
+	p_node->xform = p_spatial->get_transform();
 }
 
 Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index) {
