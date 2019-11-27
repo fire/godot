@@ -89,10 +89,10 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// }
 
 	// /* STEP 12 CREATE SKINS */
-	// err = _serialize_skins(state);
-	// if (err != OK) {
-	// 	return Error::FAILED;
-	// }
+	err = _serialize_skins(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
 	/* STEP 7 PARSE TEXTURES */
 	err = _serialize_materials(state);
@@ -1827,19 +1827,19 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
-			// {
-			// 	Array a = array[Mesh::ARRAY_BONES];
-			// 	if (a.size()) {
+			{
+				Array a = array[Mesh::ARRAY_BONES];
+				if (a.size()) {
 
-			// 		attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
-			// 	}
-			// }
-			// {
-			// 	Array a = array[Mesh::ARRAY_WEIGHTS];
-			// 	if (a.size()) {
-			// 		attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
-			// 	}
-			// }
+					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_WEIGHTS];
+				if (a.size()) {
+					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+				}
+			}
 			{
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
@@ -3645,8 +3645,6 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = skin->get_name();
 		state.nodes.write[node_i]->skin = state.skins.size();
-		ERR_FAIL_COND_V(_expand_skin(state, gltf_skin), ERR_INVALID_DATA);
-		ERR_FAIL_COND_V(_verify_skin(state, gltf_skin), ERR_INVALID_DATA);
 		state.skins.push_back(gltf_skin);
 
 		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
