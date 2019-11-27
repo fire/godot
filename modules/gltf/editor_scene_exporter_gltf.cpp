@@ -50,12 +50,11 @@ void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions
 
 void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Error err = Error::FAILED;
-	Spatial *root_node = Object::cast_to<Spatial>(p_node);
 	Vector<CSGShape *> csg_items;
-	_find_all_csg_roots(csg_items, root_node, root_node);
+	_find_all_csg_roots(csg_items, p_node, p_node);
 
 	Vector<GridMap *> grid_map_items;
-	_find_all_gridmaps(grid_map_items, root_node, root_node);
+	_find_all_gridmaps(grid_map_items, p_node, p_node);
 
 	Vector<MeshInfo> meshes;
 	for (int32_t i = 0; i < csg_items.size(); i++) {
@@ -103,11 +102,11 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	state.json["scene"] = state.nodes.size();
 	const GLTFDocument::GLTFNodeIndex scene_root = state.nodes.size();
 	state.root_nodes.push_back(scene_root);
-	gltf_document->_convert_scene_node(state, root_node, root_node, scene_root, scene_root);
-	gltf_document->_convert_mesh_instances(state, root_node);
+	gltf_document->_convert_scene_node(state, p_node, p_node, scene_root, scene_root);
+	gltf_document->_convert_mesh_instances(state, p_node);
 	state.root_nodes.push_back(scene_root);
 	if (state.animations.size()) {
-		Node *node = root_node->find_node("AnimationPlayer");
+		Node *node = p_node->find_node("AnimationPlayer");
 		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(node);
 		if (ap) {
 			for (int i = 0; i < state.animations.size(); i++) {
@@ -115,7 +114,7 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 			}
 		}
 	}
-	state.scene_name = root_node->get_name();
+	state.scene_name = p_node->get_name();
 
 	if (p_path.to_lower().ends_with("glb")) {
 		//binary file
