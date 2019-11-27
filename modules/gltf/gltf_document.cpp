@@ -1775,8 +1775,8 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 		print_verbose("glTF: Serializing mesh: " + itos(i));
 		Ref<ArrayMesh> godot_mesh = state.meshes[i].mesh;
 		Array primitives;
+		Array targets;
 		Dictionary gltf_mesh;
-		gltf_mesh["primitives"] = primitives;
 		for (int j = 0; j < godot_mesh->get_surface_count(); j++) {
 			Dictionary primitive;
 
@@ -1844,7 +1844,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
 					if (primitive_type == Mesh::PRIMITIVE_TRIANGLES) {
-						//swap around indices, convert ccw to cw  for front face
+						//swap around indices, convert ccw to cw for front face
 						const int is = mesh_indices.size();
 						for (int k = 0; k < is; k += 3) {
 							SWAP(mesh_indices[k + 0], mesh_indices[k + 2]);
@@ -1871,150 +1871,49 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			}
 
 			primitive["attributes"] = attributes;
-			//TODO
-			// bool generated_tangents = false;
-			// Variant erased_indices;
 
-			// if (primitive == Mesh::PRIMITIVE_TRIANGLES && !a.has("TANGENT") && a.has("TEXCOORD_0") && a.has("NORMAL")) {
-			// 	//must generate mikktspace tangents.. ergh..
-			// 	Ref<SurfaceTool> st;
-			// 	st.instance();
-			// 	st->create_from_triangle_arrays(array);
-			// 	if (!p.has("targets")) {
-			// 		//morph targets should not be reindexed, as array size might differ
-			// 		//removing indices is the best bet here
-			// 		st->deindex();
-			// 		erased_indices = a[Mesh::ARRAY_INDEX];
-			// 		a[Mesh::ARRAY_INDEX] = Variant();
-			// 	}
-			// 	st->generate_tangents();
-			// 	array = st->commit_to_arrays();
-			// 	generated_tangents = true;
-			// }
+			//blend shapes
+			print_verbose("glTF: Mesh has targets");
 
-			// Array morphs;
-			// //blend shapes
-			// if (p.has("targets")) {
-			// 	print_verbose("glTF: Mesh has targets");
-			// 	const Array &targets = p["targets"];
+			//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
+			//but it could require a larger refactor?
+			ERR_FAIL_COND_V(godot_mesh->get_blend_shape_mode() != Mesh::BLEND_SHAPE_MODE_NORMALIZED, ERR_INVALID_DATA);
 
-			// 	//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
-			// 	//but it could require a larger refactor?
-			// 	mesh.mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
+			Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
+			for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
 
-			// 	if (j == 0) {
-			// 		const Array &target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();
-			// 		for (int k = 0; k < targets.size(); k++) {
-			// 			const String name = k < target_names.size() ? (String)target_names[k] : String("morph_") + itos(k);
-			// 			mesh.mesh->add_blend_shape(name);
-			// 		}
-			// 	}
+				Dictionary t;
+				Array array_morph = array_morphs[k];
 
-			// 	for (int k = 0; k < targets.size(); k++) {
+				Array varr = array_morph[Mesh::ARRAY_VERTEX];
+				if (varr.size()) {
+					{
+						Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+						const int max_idx = src_varr.size();
 
-			// 		const Dictionary &t = targets[k];
+						for (int l = 0; l < max_idx; l++) {
+							if (l < max_idx) {
+								varr[l] = Vector3(varr[l]) - src_varr[l];
+							} else {
+								varr[l] = src_varr[l];
+							}
+						}
+					}
 
-			// 		Array array_copy;
-			// 		array_copy.resize(Mesh::ARRAY_MAX);
+					t["POSITION"] = _encode_accessor_as_vec3(state, varr, true);
+				}
 
-			// 		for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
-			// 			array_copy[l] = array[l];
-			// 		}
-
-			// 		array_copy[Mesh::ARRAY_INDEX] = Variant();
-
-			// 		if (t.has("POSITION")) {
-			// 			PoolVector<Vector3> varr = _decode_accessor_as_vec3(state, t["POSITION"], true);
-			// 			const PoolVector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
-			// 			const int size = src_varr.size();
-			// 			ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
-			// 			{
-
-			// 				const int max_idx = varr.size();
-			// 				varr.resize(size);
-
-			// 				const PoolVector<Vector3>::Write w_varr = varr.write();
-			// 				const PoolVector<Vector3>::Read r_varr = varr.read();
-			// 				const PoolVector<Vector3>::Read r_src_varr = src_varr.read();
-			// 				for (int l = 0; l < size; l++) {
-			// 					if (l < max_idx) {
-			// 						w_varr[l] = r_varr[l] + r_src_varr[l];
-			// 					} else {
-			// 						w_varr[l] = r_src_varr[l];
-			// 					}
-			// 				}
-			// 			}
-			// 			array_copy[Mesh::ARRAY_VERTEX] = varr;
-			// 		}
-			// 		if (t.has("NORMAL")) {
-			// 			PoolVector<Vector3> narr = _decode_accessor_as_vec3(state, t["NORMAL"], true);
-			// 			const PoolVector<Vector3> src_narr = array[Mesh::ARRAY_NORMAL];
-			// 			int size = src_narr.size();
-			// 			ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
-			// 			{
-			// 				int max_idx = narr.size();
-			// 				narr.resize(size);
-
-			// 				const PoolVector<Vector3>::Write w_narr = narr.write();
-			// 				const PoolVector<Vector3>::Read r_narr = narr.read();
-			// 				const PoolVector<Vector3>::Read r_src_narr = src_narr.read();
-			// 				for (int l = 0; l < size; l++) {
-			// 					if (l < max_idx) {
-			// 						w_narr[l] = r_narr[l] + r_src_narr[l];
-			// 					} else {
-			// 						w_narr[l] = r_src_narr[l];
-			// 					}
-			// 				}
-			// 			}
-			// 			array_copy[Mesh::ARRAY_NORMAL] = narr;
-			// 		}
-			// 		if (t.has("TANGENT")) {
-			// 			const PoolVector<Vector3> tangents_v3 = _decode_accessor_as_vec3(state, t["TANGENT"], true);
-			// 			const PoolVector<float> src_tangents = array[Mesh::ARRAY_TANGENT];
-			// 			ERR_FAIL_COND_V(src_tangents.size() == 0, ERR_PARSE_ERROR);
-
-			// 			PoolVector<float> tangents_v4;
-
-			// 			{
-
-			// 				int max_idx = tangents_v3.size();
-
-			// 				int size4 = src_tangents.size();
-			// 				tangents_v4.resize(size4);
-			// 				const PoolVector<float>::Write w4 = tangents_v4.write();
-
-			// 				const PoolVector<Vector3>::Read r3 = tangents_v3.read();
-			// 				const PoolVector<float>::Read r4 = src_tangents.read();
-
-			// 				for (int l = 0; l < size4 / 4; l++) {
-
-			// 					if (l < max_idx) {
-			// 						w4[l * 4 + 0] = r3[l].x + r4[l * 4 + 0];
-			// 						w4[l * 4 + 1] = r3[l].y + r4[l * 4 + 1];
-			// 						w4[l * 4 + 2] = r3[l].z + r4[l * 4 + 2];
-			// 					} else {
-			// 						w4[l * 4 + 0] = r4[l * 4 + 0];
-			// 						w4[l * 4 + 1] = r4[l * 4 + 1];
-			// 						w4[l * 4 + 2] = r4[l * 4 + 2];
-			// 					}
-			// 					w4[l * 4 + 3] = r4[l * 4 + 3]; //copy flip value
-			// 				}
-			// 			}
-
-			// 			array_copy[Mesh::ARRAY_TANGENT] = tangents_v4;
-			// 		}
-
-			// 		if (generated_tangents) {
-			// 			Ref<SurfaceTool> st;
-			// 			st.instance();
-			// 			array_copy[Mesh::ARRAY_INDEX] = erased_indices; //needed for tangent generation, erased by deindex
-			// 			st->create_from_triangle_arrays(array_copy);
-			// 			st->deindex();
-			// 			st->generate_tangents();
-			// 			array_copy = st->commit_to_arrays();
-			// 		}
-
-			// 		morphs.push_back(array_copy);
+				Array narr = array_morph[Mesh::ARRAY_NORMAL];
+				if (varr.size()) {
+					t["NORMAL"] = _encode_accessor_as_vec3(state, narr, true);
+				}
+				Array tarr = array_morph[Mesh::ARRAY_TANGENT];
+				if (tarr.size()) {
+					// TODO code check?
+					t["TANGENT"] = _encode_accessor_as_vec3(state, tarr, true);
+				}
+				targets.push_back(t);
+			}
 
 			Ref<Material> mat = godot_mesh->surface_get_material(j);
 			if (mat.is_valid()) {
@@ -2022,23 +1921,36 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				primitive["material"] = state.materials.size() - 1;
 			}
 
+			if (targets.size()) {
+				primitive["targets"] = targets;
+			}
+
 			primitives.push_back(primitive);
 		}
 
+		Array weights;
+		ERR_FAIL_COND_V(state.meshes[i].blend_weights.size() != state.meshes[i].mesh->get_blend_shape_count(), FAILED);
+		for (int j = 0; j < state.meshes[i].blend_weights.size(); j++) {
+			real_t weight = state.meshes[i].blend_weights[j];
+			weights.push_back(weight);
+		}
+		if (weights.size()) {
+			gltf_mesh["weights"] = weights;
+		}
+
+		gltf_mesh["primitives"] = primitives;
+
+		Dictionary e;
+		Array target_names;
+		for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
+			target_names.push_back(godot_mesh->get_blend_shape_name(k));
+		}
+		e["targetNames"] = target_names;
+		gltf_mesh["extras"] = e;
+
 		meshes.push_back(gltf_mesh);
-		//just add it
-		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
-		// Array morphs;
-		// mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
 	}
-	// if (d.has("weights")) {
-	// 	const Array &weights = d["weights"];
-	// 	ERR_FAIL_COND_V(mesh.mesh->get_blend_shape_count() != weights.size(), ERR_PARSE_ERROR);
-	// 	mesh.blend_weights.resize(weights.size());
-	// 	for (int j = 0; j < weights.size(); j++) {
-	// 		mesh.blend_weights.write[j] = weights[j];
-	// 	}
-	// }
+
 	state.json["meshes"] = meshes;
 	print_verbose("glTF: Total meshes: " + itos(meshes.size()));
 
@@ -4160,11 +4072,11 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 	} else if (camera) {
 		gltf_node->camera = _convert_camera(state, camera);
 	}
-	
+
 	if (spatial) {
 		_convert_spatial(state, spatial, gltf_node);
 	}
-	
+
 	gltf_node->name = p_current_node->get_name();
 
 	for (int i = 0; i < p_current_node->get_child_count(); i++) {
