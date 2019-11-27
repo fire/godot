@@ -1580,7 +1580,7 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 }
 
 GLTFDocument::GLTFAccessorIndex
- GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex) {
+GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex) {
 	if (p_attribs.size() == 0) {
 		return -1;
 	}
@@ -3618,7 +3618,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			node_names.insert(state.nodes[node_i]->name, node_i);
 		}
 		GLTFSkin gltf_skin;
-		Array json_joints;		
+		Array json_joints;
 		for (int32_t i = 0; i < skin->get_bind_count(); i++) {
 			int32_t bone_index = skin->get_bind_bone(i);
 			String bone_name = skeleton->get_bone_name(bone_index);
@@ -3627,6 +3627,12 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			gltf_skin.joints.push_back(node_index);
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(i));
 			json_joints.push_back(node_index);
+		}
+		for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
+			if (E->get() == skeleton) {
+				gltf_skin.skin_root = E->key();
+				json_skin["skeleton"] = E->key();
+			}
 		}
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = skin->get_name();
