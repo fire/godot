@@ -46,18 +46,6 @@
 
 Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
-	/* STEP 1 PARSE NODES */
-	Error err = _serialize_nodes(state);
-	if (err != OK) {
-		return Error::FAILED;
-	}
-
-	/* STEP 0 PARSE SCENE */
-	err = _serialize_scenes(state);
-	if (err != OK) {
-		return Error::FAILED;
-	}
-
 	// /* STEP 16 ASSIGN SCENE NAMES */
 	// _assign_scene_names(*state);
 
@@ -76,7 +64,7 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	}
 
 	/* STEP 13 PARSE MESHES (we have enough info now) */
-	err = _serialize_meshes(state);
+	Error err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
@@ -141,6 +129,18 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
 	/* STEP 2 PARSE BUFFERS */
 	err = _encode_buffers(state, p_path);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 1 PARSE NODES */
+	err = _serialize_nodes(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 0 PARSE SCENE */
+	err = _serialize_scenes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
@@ -3630,7 +3630,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		}
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = skin->get_name();
-		state.nodes[node_i]->skin = json_skins.size();
+		state.nodes.write[node_i]->skin = state.skins.size();
 		state.skins.push_back(gltf_skin);
 
 		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
@@ -4015,7 +4015,7 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 	return state.cameras.size() - 1;
 }
 
-GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_gltf_node) {
+GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index) {
 	print_verbose("glTF: Converting skeleton: " + p_skeleton->get_name());
 	p_node->name = p_skeleton->get_name();
 	Map<String, GLTFNodeIndex> node_indices;
@@ -4032,10 +4032,9 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 		if (parent != -1) {
 			parent_name = p_skeleton->get_bone_name(parent);
 		} else {
-			node->parent = p_gltf_node;
-			GLTFNode *parent_node = state.nodes[p_gltf_node];
-			if (parent_node->children.find(node_index) == -1) {
-				parent_node->children.push_back(node_index);
+			node->parent = p_node_index;
+			if (p_node->children.find(node_index) == -1) {
+				p_node->children.push_back(node_index);
 			}
 		}
 		node_indices.insert(node->name, node_index);
