@@ -81,6 +81,30 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
+	// /* STEP 10 DETERMINE SKELETONS */
+	// err = _determine_skeletons(state);
+	// if (err != OK) {
+	// 	return Error::FAILED;
+	// }
+
+	// /* STEP 11 CREATE SKELETONS */
+	// err = _serialize_skeletons(state);
+	// if (err != OK) {
+	// 	return Error::FAILED;
+	// }
+
+	/* STEP 9 PARSE SKINS */
+	// err = _parse_skins(state);
+	// if (err != OK) {
+	// 	return Error::FAILED:;
+	// }
+
+	// /* STEP 12 CREATE SKINS */
+	err = _serialize_skins(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
 	/* STEP 7 PARSE TEXTURES */
 	err = _serialize_materials(state);
 	if (err != OK) {
@@ -120,26 +144,6 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	if (err != OK) {
 		return Error::FAILED;
 	}
-
-	// /* STEP 9 PARSE SKINS */
-	// err = _parse_skins(state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 10 DETERMINE SKELETONS */
-	// err = _determine_skeletons(state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 11 CREATE SKELETONS */
-	// err = _create_skeletons(state);
-	// if (err != OK)
-	// 	return Error::FAILED;
-
-	// /* STEP 12 CREATE SKINS */
-	// err = _create_skins(state);
-	// if (err != OK)
-	// 	return Error::FAILED;
 
 	String version = "2.0";
 	state.major_version = version.get_slice(".", 0).to_int();
@@ -1757,19 +1761,19 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
-			//{
-			//	Array a = array[Mesh::ARRAY_BONES];
-			//	if (a.size()) {
+			{
+				Array a = array[Mesh::ARRAY_BONES];
+				if (a.size()) {
 
-			//		attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
-			//	}
-			//}
-			//{
-			//	Array a = array[Mesh::ARRAY_WEIGHTS];
-			//	if (a.size()) {
-			//		attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
-			//	}
-			//}
+					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_WEIGHTS];
+				if (a.size()) {
+					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+				}
+			}
 			{
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
@@ -3500,6 +3504,96 @@ Error GLTFDocument::_map_skin_joints_indices_to_skeleton_bone_indices(GLTFState 
 	return OK;
 }
 
+Error GLTFDocument::_serialize_skins(GLTFState &state) {
+
+	for (GLTFSkeletonIndex skel_i = 0; skel_i < state.skeletons.size(); ++skel_i) {
+		GLTFSkeleton gltf_skeleton = state.skeletons[skel_i];
+		Skeleton *skeleton = gltf_skeleton.godot_skeleton;
+		ERR_FAIL_COND_V(!skeleton, ERR_INVALID_DATA);
+		Set<String> bone_names;
+		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
+			bone_names.insert(skeleton->get_bone_name(bone_i));
+		}
+		Map<String, GLTFNodeIndex> node_names;
+		for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
+			node_names.insert(state.nodes[node_i]->name, node_i);
+		}
+		for (Set<String>::Element *E = bone_names.front(); E; E = E->next()) {
+			Map<String, GLTFNodeIndex>::Element *F = node_names.find(E->get());
+			ERR_CONTINUE(!F);
+			state.nodes[F->get()]->skeleton = skel_i;
+		}
+	}
+	Dictionary skins;
+	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
+		Node *node = NULL;
+		if (state.nodes[node_i]->mesh == -1) {
+			continue;
+		}
+		node = state.scene_nodes[node_i];
+		if (!node) {
+			continue;
+		}
+		MeshInstance *mi = Object::cast_to<MeshInstance>(node);
+		if (!mi) {
+			continue;
+		}
+		Skeleton *skeleton = Object::cast_to<Skeleton>(mi->get_node(mi->get_skeleton_path()));
+		if (!skeleton) {
+			continue;
+		}
+		Ref<Skin> skin = mi->get_skin();
+		Set<String> bone_names;
+		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
+			bone_names.insert(skeleton->get_bone_name(bone_i));
+		}
+		Map<String, GLTFNodeIndex> node_names;
+		for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
+			node_names.insert(state.nodes[node_i]->name, node_i);
+		}
+		GLTFSkin gltf_skin;
+		Array joints;
+		for (int32_t i = 0; i < skin->get_bind_count(); i++) {
+			int32_t bone_index = skin->get_bind_bone(i);
+			String bone_name = skeleton->get_bone_name(bone_index);
+			Map<String, GLTFNodeIndex>::Element *E = node_names.find(bone_name);
+			GLTFNodeIndex node_index = E->get();
+			gltf_skin.joints.push_back(node_index);
+			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(i));
+		}
+		skins["joints"] = joints;
+		gltf_skin.godot_skin = skin;
+		gltf_skin.name = skin->get_name();
+		state.skins.push_back(gltf_skin);
+	}
+	state.json["skins"] = skins;
+	// for (GLTFSkinIndex skin_i = 0; skin_i < state.skins.size(); ++skin_i) {
+
+	// 	Ref<Skin> skin;
+	// 	skin.instance();
+
+	// 	// Some skins don't have IBM's! What absolute monsters!
+	// 	const bool has_ibms = !gltf_skin.inverse_binds.empty();
+
+	// 	for (int joint_i = 0; joint_i < gltf_skin.joints_original.size(); ++joint_i) {
+	// 		int bone_i = gltf_skin.joint_i_to_bone_i[joint_i];
+
+	// 		if (has_ibms) {
+	// 			skin->add_bind(bone_i, gltf_skin.inverse_binds[joint_i]);
+	// 		} else {
+	// 			skin->add_bind(bone_i, Transform());
+	// 		}
+	// 	}
+
+	// 	gltf_skin.godot_skin = skin;
+	// }
+
+	// Purge the duplicates!
+	_remove_duplicate_skins(state);
+
+	return OK;
+}
+
 Error GLTFDocument::_create_skins(GLTFState &state) {
 	for (GLTFSkinIndex skin_i = 0; skin_i < state.skins.size(); ++skin_i) {
 		GLTFSkin &gltf_skin = state.skins.write[skin_i];
@@ -3868,6 +3962,48 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 	state.cameras.push_back(c);
 	return state.cameras.size() - 1;
 }
+
+GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_gltf_node) {
+	print_verbose("glTF: Converting skeleton: " + p_skeleton->get_name());
+	p_node->name = p_skeleton->get_name();
+	Map<String, GLTFNodeIndex> node_indices;
+	Map<GLTFNodeIndex, String> node_parent;
+	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
+		GLTFNode *node = memnew(GLTFNode);
+		node->name = p_skeleton->get_bone_name(i);
+		node->xform = p_skeleton->get_bone_rest(i);
+		int32_t parent = p_skeleton->get_bone_parent(i);
+		String parent_name;
+		GLTFNodeIndex node_index = state.nodes.size();
+		if (parent != -1) {
+			parent_name = p_skeleton->get_bone_name(parent);
+		} else {
+			node->parent = p_gltf_node;
+			GLTFNode *parent_node = state.nodes[p_gltf_node];
+			if (parent_node->children.find(node_index) == -1) {
+				parent_node->children.push_back(node_index);
+			}
+		}
+		node_indices.insert(node->name, node_index);
+		node_parent.insert(state.nodes.size(), parent_name);
+		state.nodes.push_back(node);
+	}
+	for (Map<GLTFNodeIndex, String>::Element *N = node_parent.front(); N; N = N->next()) {
+		GLTFNodeIndex current_node = N->key();
+		GLTFNode *node = state.nodes[current_node];
+		if (!N->get().empty()) {
+			String parent_bone_name = N->get();
+			node->parent = node_indices.find(parent_bone_name)->get();
+			GLTFNode *parent_node = state.nodes[node->parent];
+			if (parent_node->children.find(current_node) == -1) {
+				parent_node->children.push_back(current_node);
+			}
+		}
+	}
+	// TODO GLTFSkeleton
+	return state.skeletons.size() - 1;
+}
+
 void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
 	print_verbose("glTF: Converting spatial: " + p_spatial->get_name());
 	p_node->name = p_spatial->get_name();
@@ -3892,60 +4028,27 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 	if (current_node) {
 		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
 		Camera *c = Object::cast_to<Camera>(current_node);
+		Skeleton *s = Object::cast_to<Skeleton>(current_node);
 		if (mi) {
 			GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 			if (gltf_mesh_index != -1) {
 				gltf_node->mesh = gltf_mesh_index;
 			}
+		} else if (s) {
+			_convert_skeleton(state, s, gltf_node, current_node_index);
 		} else if (c) {
 			// gltf_node->camera = _convert_camera(state, c);
 		} else {
 			_convert_spatial(state, current_node, gltf_node);
 		}
-
 		gltf_node->xform = current_node->get_transform();
 		gltf_node->name = current_node->get_name();
 	}
+
 	for (int i = 0; i < p_current_node->get_child_count(); i++) {
 		state.nodes[current_node_index]->children.push_back(state.nodes.size());
 		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_index);
 	}
-	/*
-	// Is our parent a skeleton
-	Skeleton *active_skeleton = Object::cast_to<Skeleton>(scene_parent);
-
-	if (gltf_node->skeleton >= 0) {
-		Skeleton *skeleton = state.skeletons[gltf_node->skeleton].godot_skeleton;
-
-		if (active_skeleton != skeleton) {
-			ERR_FAIL_COND_MSG(active_skeleton != nullptr, "glTF: Generating scene detected direct parented Skeletons");
-
-			// Add it to the scene if it has not already been added
-			if (skeleton->get_parent() == nullptr) {
-				scene_parent->add_child(skeleton);
-				skeleton->set_owner(scene_root);
-			}
-		}
-
-		active_skeleton = skeleton;
-		current_node = skeleton;
-	}
-
-	// If we have an active skeleton, and the node is node skinned, we need to create a bone attachment
-	if (current_node == nullptr && active_skeleton != nullptr && gltf_node->skin < 0) {
-		BoneAttachment *bone_attachment = _generate_bone_attachment(state, active_skeleton, node_index);
-
-		scene_parent->add_child(bone_attachment);
-		bone_attachment->set_owner(scene_root);
-
-		// There is no gltf_node that represent this, so just directly create a unique name
-		bone_attachment->set_name(_gen_unique_name(state, "BoneAttachment"));
-
-		// We change the scene_parent to our bone attachment now. We do not set current_node because we want to make the node
-		// and attach it to the bone_attachment
-		scene_parent = bone_attachment;
-	}
-*/
 }
 
 void GLTFDocument::_generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index) {

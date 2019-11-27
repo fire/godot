@@ -383,7 +383,7 @@ private:
 
 	Error _create_skeletons(GLTFState &state);
 	Error _map_skin_joints_indices_to_skeleton_bone_indices(GLTFState &state);
-
+	Error _serialize_skins(GLTFState &state);
 	Error _create_skins(GLTFState &state);
 	bool _skins_are_same(const Ref<Skin> &skin_a, const Ref<Skin> &skin_b);
 	void _remove_duplicate_skins(GLTFState &state);
@@ -423,6 +423,7 @@ public:
 	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
 	void _convert_mesh_instances(GLTFState &state, Node *scene_root);
 	GLTFCameraIndex _convert_camera(GLTFState &state, Camera *p_camera);
+	GLTFSkeletonIndex _convert_skeleton(GLTFState &state, Skeleton *p_skeleton,  GLTFNode *p_node, GLTFNodeIndex p_gltf_node);
 	void _convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node);
 	void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
 	void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
