@@ -54,17 +54,18 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// if (err != OK)
 	// 	return Error::FAILED;
 
-	// /* STEP 14 PARSE CAMERAS */
-	// err = _parse_cameras(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	/* STEP 14 PARSE CAMERAS */
+	Error err = _serialize_cameras(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
 	if (!state.buffers.size()) {
 		state.buffers.push_back(Vector<uint8_t>());
 	}
 
 	/* STEP 13 PARSE MESHES (we have enough info now) */
-	Error err = _serialize_meshes(state);
+	err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
@@ -88,10 +89,10 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	// }
 
 	// /* STEP 12 CREATE SKINS */
-	// err = _serialize_skins(state);
-	// if (err != OK) {
-	// 	return Error::FAILED;
-	// }
+	err = _serialize_skins(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
 
 	/* STEP 7 PARSE TEXTURES */
 	err = _serialize_materials(state);
@@ -1826,19 +1827,19 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			// if (a.has("COLOR_0")) {
 			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 			// }
-			// {
-			// 	Array a = array[Mesh::ARRAY_BONES];
-			// 	if (a.size()) {
+			{
+				Array a = array[Mesh::ARRAY_BONES];
+				if (a.size()) {
 
-			// 		attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
-			// 	}
-			// }
-			// {
-			// 	Array a = array[Mesh::ARRAY_WEIGHTS];
-			// 	if (a.size()) {
-			// 		attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
-			// 	}
-			// }
+					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+				}
+			}
+			{
+				Array a = array[Mesh::ARRAY_WEIGHTS];
+				if (a.size()) {
+					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+				}
+			}
 			{
 				Array mesh_indices = array[Mesh::ARRAY_INDEX];
 				if (mesh_indices.size()) {
@@ -2382,8 +2383,8 @@ Error GLTFDocument::_serialize_images(GLTFState &state, const String &p_path) {
 	}
 
 	print_verbose("Total images: " + itos(state.images.size()));
-	
-	if(!images.size()) {
+
+	if (!images.size()) {
 		return OK;
 	}
 	state.json["images"] = images;
@@ -3644,8 +3645,6 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = skin->get_name();
 		state.nodes.write[node_i]->skin = state.skins.size();
-		ERR_FAIL_COND_V(_expand_skin(state, gltf_skin), ERR_INVALID_DATA);
-		ERR_FAIL_COND_V(_verify_skin(state, gltf_skin), ERR_INVALID_DATA);
 		state.skins.push_back(gltf_skin);
 
 		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
@@ -3733,6 +3732,48 @@ void GLTFDocument::_remove_duplicate_skins(GLTFState &state) {
 			}
 		}
 	}
+}
+
+Error GLTFDocument::_serialize_cameras(GLTFState &state) {
+
+	Array cameras;
+	for (GLTFCameraIndex i = 0; i < state.cameras.size(); i++) {
+
+		Dictionary d;
+
+		GLTFCamera camera = state.cameras[i];
+
+		if (camera.perspective == false) {
+			Dictionary og;
+			og["ymag"] = camera.fov_size;
+			og["zfar"] = camera.zfar;
+			og["znear"] = camera.znear;
+			d["orthographic"] = og;
+			d["type"] = "orthographic";
+
+		} else if (camera.perspective) {
+			Dictionary ppt;
+			// GLTF spec is in radians, Godot's camera is in degrees.
+			ppt["yfov"] = Math::deg2rad(camera.fov_size);
+			ppt["yfov"] = Math::deg2rad(camera.fov_size);
+			ppt["zfar"] = camera.zfar;
+			ppt["znear"] = camera.znear;
+			d["perspective"] = ppt;
+			d["type"] = "perspective";
+		}
+
+		cameras.push_back(d);
+	}
+
+	if (!state.cameras.size()) {
+		return OK;
+	}
+
+	state.json["cameras"] = cameras;
+
+	print_verbose("glTF: Total cameras: " + itos(state.cameras.size()));
+
+	return OK;
 }
 
 Error GLTFDocument::_parse_cameras(GLTFState &state) {
@@ -4087,8 +4128,8 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 }
 
 void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
-	print_verbose("glTF: Converting spatial: " + p_spatial->get_name());
-	p_node->name = p_spatial->get_name();
+	print_verbose(String("glTF: Converting spatial: ") + p_spatial->get_name());
+	p_node->xform = p_spatial->get_transform();
 }
 
 Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index) {
@@ -4101,31 +4142,30 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 }
 void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_current_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
 
-	Spatial *current_node = Object::cast_to<Spatial>(p_current_node);
-
 	GLTFNode *gltf_node = memnew(GLTFNode);
 	GLTFNodeIndex current_node_index = state.nodes.size();
 	state.nodes.push_back(gltf_node);
 	state.scene_nodes.insert(current_node_index, p_current_node);
-	if (current_node) {
-		MeshInstance *mi = Object::cast_to<MeshInstance>(current_node);
-		Camera *c = Object::cast_to<Camera>(current_node);
-		Skeleton *s = Object::cast_to<Skeleton>(current_node);
-		if (mi) {
-			GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
-			if (gltf_mesh_index != -1) {
-				gltf_node->mesh = gltf_mesh_index;
-			}
-		} else if (s) {
-			_convert_skeleton(state, s, gltf_node, current_node_index);
-		} else if (c) {
-			// gltf_node->camera = _convert_camera(state, c);
-		} else {
-			_convert_spatial(state, current_node, gltf_node);
+	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current_node);
+	Camera *camera = Object::cast_to<Camera>(p_current_node);
+	Skeleton *skeleton = Object::cast_to<Skeleton>(p_current_node);
+	Spatial *spatial = Object::cast_to<Spatial>(p_current_node);
+	if (mi) {
+		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
+		if (gltf_mesh_index != -1) {
+			gltf_node->mesh = gltf_mesh_index;
 		}
-		gltf_node->xform = current_node->get_transform();
-		gltf_node->name = current_node->get_name();
+	} else if (skeleton) {
+		_convert_skeleton(state, skeleton, gltf_node, current_node_index);
+	} else if (camera) {
+		gltf_node->camera = _convert_camera(state, camera);
 	}
+	
+	if (spatial) {
+		_convert_spatial(state, spatial, gltf_node);
+	}
+	
+	gltf_node->name = p_current_node->get_name();
 
 	for (int i = 0; i < p_current_node->get_child_count(); i++) {
 		state.nodes[current_node_index]->children.push_back(state.nodes.size());

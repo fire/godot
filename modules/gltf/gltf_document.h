@@ -388,6 +388,8 @@ private:
 	bool _skins_are_same(const Ref<Skin> &skin_a, const Ref<Skin> &skin_b);
 	void _remove_duplicate_skins(GLTFState &state);
 
+	Error _serialize_cameras(GLTFState &state);
+
 	Error _parse_cameras(GLTFState &state);
 
 	Error _parse_animations(GLTFState &state);
