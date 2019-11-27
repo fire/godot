@@ -2380,8 +2380,13 @@ Error GLTFDocument::_serialize_images(GLTFState &state, const String &p_path) {
 		}
 		images.push_back(d);
 	}
-	state.json["images"] = images;
+
 	print_verbose("Total images: " + itos(state.images.size()));
+	
+	if(!images.size()) {
+		return OK;
+	}
+	state.json["images"] = images;
 
 	return OK;
 }
