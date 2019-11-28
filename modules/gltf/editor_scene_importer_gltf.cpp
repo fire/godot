@@ -40,6 +40,7 @@
 #include "scene/3d/camera.h"
 #include "scene/3d/mesh_instance.h"
 #include "scene/animation/animation_player.h"
+#include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 
 uint32_t EditorSceneImporterGLTF::get_import_flags() const {
@@ -68,15 +69,17 @@ Spatial *EditorSceneImporterGLTF::_generate_scene(GLTFDocument::GLTFState &state
 	if (state.animations.size()) {
 		AnimationPlayer *ap = memnew(AnimationPlayer);
 		ap->set_name("AnimationPlayer");
-		root->add_child(ap);
+		root->get_child(0)->add_child(ap);
 		ap->set_owner(root);
 
 		for (int i = 0; i < state.animations.size(); i++) {
 			gltf_document->_import_animation(state, ap, i, p_bake_fps);
 		}
 	}
-
-	return root;
+	Map<Node *, Node *> reown;
+	Node *base = root->get_child(0);
+	reown[root] = base;
+	return Object::cast_to<Spatial>(base->duplicate_and_reown(reown));
 }
 
 Node *EditorSceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
