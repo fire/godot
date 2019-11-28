@@ -99,12 +99,7 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	gltf_document.instance();
 
 	GLTFDocument::GLTFState state;
-	const GLTFDocument::GLTFNodeIndex scene_root = state.nodes.size();
-
-	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
-	GLTFDocument::GLTFNodeIndex current_node_i = state.nodes.size();
-	state.nodes.push_back(gltf_node);
-	state.scene_nodes.insert(current_node_i, p_node);
+	const GLTFDocument::GLTFNodeIndex scene_root = 0;
 	gltf_document->_convert_scene_node(state, p_node, p_node, scene_root, scene_root);
 	gltf_document->_convert_mesh_instances(state, p_node);
 	state.scene_name = p_node->get_name();
