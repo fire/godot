@@ -423,7 +423,7 @@ private:
 	String interpolation_to_string(const GLTFAnimation::Interpolation p_interp);
 	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
 
-	public:
+public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
