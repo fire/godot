@@ -1902,6 +1902,8 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 									varr[l] = src_varr[l];
 								}
 							}
+						} else if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_NORMALIZED) {
+							print_error("glTF: The blend shape mode normalized is not supported.");
 						}
 
 						t["POSITION"] = _encode_accessor_as_vec3(state, varr, true);
