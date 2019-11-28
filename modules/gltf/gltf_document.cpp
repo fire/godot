@@ -1781,6 +1781,8 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 		Array primitives;
 		Array targets;
 		Dictionary gltf_mesh;
+		Array target_names;
+		Array weights;
 		for (int j = 0; j < godot_mesh->get_surface_count(); j++) {
 			Dictionary primitive;
 
@@ -1878,21 +1880,18 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 
 			//blend shapes
 			print_verbose("glTF: Mesh has targets");
-
 			if (godot_mesh->get_blend_shape_count()) {
-				//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
-				//but it could require a larger refactor?
-				ERR_FAIL_COND_V(godot_mesh->get_blend_shape_mode() != Mesh::BLEND_SHAPE_MODE_NORMALIZED, ERR_INVALID_DATA);
 
 				Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
 				for (int k = 0; k < array_morphs.size(); k++) {
-
+					target_names.push_back(godot_mesh->get_blend_shape_name(k));
 					Dictionary t;
 					Array array_morph = array_morphs[k];
 
 					Array varr = array_morph[Mesh::ARRAY_VERTEX];
 					if (varr.size()) {
-						{
+						ArrayMesh::BlendShapeMode shape_mode = godot_mesh->get_blend_shape_mode();
+						if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_RELATIVE) {
 							Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
 							const int max_idx = src_varr.size();
 
@@ -1934,25 +1933,25 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			primitives.push_back(primitive);
 		}
 
-		Array weights;
-		ERR_FAIL_COND_V(state.meshes[i].blend_weights.size() != state.meshes[i].mesh->get_blend_shape_count(), FAILED);
-		for (int j = 0; j < state.meshes[i].blend_weights.size(); j++) {
-			real_t weight = state.meshes[i].blend_weights[j];
+		Dictionary e;
+		e["targetNames"] = target_names;
+
+		for (int j = 0; j < target_names.size(); j++) {
+			real_t weight = 0;
+			if (j < state.meshes[i].blend_weights.size()) {
+				weight = state.meshes[i].blend_weights[j];
+			}
 			weights.push_back(weight);
 		}
 		if (weights.size()) {
 			gltf_mesh["weights"] = weights;
 		}
 
-		gltf_mesh["primitives"] = primitives;
+		ERR_FAIL_COND_V(target_names.size() != weights.size(), FAILED);
 
-		Dictionary e;
-		Array target_names;
-		for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
-			target_names.push_back(godot_mesh->get_blend_shape_name(k));
-		}
-		e["targetNames"] = target_names;
 		gltf_mesh["extras"] = e;
+
+		gltf_mesh["primitives"] = primitives;
 
 		meshes.push_back(gltf_mesh);
 	}
@@ -4057,9 +4056,9 @@ GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &stat
 		mesh.mesh->surface_set_material(i, material);
 	}
 	print_verbose("glTF: Converting mesh: " + p_mesh_instance->get_name());
-	Ref<ArrayMesh> array_mesh = mesh.mesh;
-	for (int i = 0; i < array_mesh->get_blend_shape_count(); i++) {
-		mesh.blend_weights.push_back(p_mesh_instance->get("blend_shapes/" + array_mesh->get_blend_shape_name(i)));
+	for (int i = 0; i < mesh.mesh->get_blend_shape_count(); i++) {
+		float weight = p_mesh_instance->get("blend_shapes/" + mesh.mesh->get_blend_shape_name(i));
+		mesh.blend_weights.push_back(weight);
 	}
 	state.meshes.push_back(mesh);
 	return state.meshes.size() - 1;
@@ -4739,7 +4738,7 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			}
 		}
 	}
-	if(!tracks.size()) {
+	if (!tracks.size()) {
 		gltf_animation.tracks = tracks;
 		state.animations.push_back(gltf_animation);
 	}
