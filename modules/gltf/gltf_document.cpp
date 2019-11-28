@@ -2472,7 +2472,7 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			Dictionary mr;
 			{
 				Array arr;
-				const Color c = material->get_albedo().to_linear();
+				const Color c = material->get_albedo();
 				arr.push_back(c.r);
 				arr.push_back(c.g);
 				arr.push_back(c.b);
@@ -2551,57 +2551,57 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 						if (has_ao) {
 							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == ao_channel) {
 								ao_image->lock();
-								c.r = ao_image->get_pixel(w, h).r;
+								c.r = ao_image->get_pixel(w, h).to_srgb().r;
 								ao_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == ao_channel) {
 								ao_image->lock();
-								c.r = ao_image->get_pixel(w, h).g;
+								c.r = ao_image->get_pixel(w, h).to_srgb().g;
 								ao_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == ao_channel) {
 								ao_image->lock();
-								c.r = ao_image->get_pixel(w, h).b;
+								c.r = ao_image->get_pixel(w, h).to_srgb().b;
 								ao_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == ao_channel) {
 								ao_image->lock();
-								c.r = ao_image->get_pixel(w, h).a;
+								c.r = ao_image->get_pixel(w, h).to_srgb().a;
 								ao_image->unlock();
 							}
 						}
 						if (has_roughness) {
 							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == roughness_channel) {
 								roughness_image->lock();
-								c.g = roughness_image->get_pixel(w, h).r;
+								c.g = roughness_image->get_pixel(w, h).to_srgb().r;
 								roughness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == roughness_channel) {
 								roughness_image->lock();
-								c.g = roughness_image->get_pixel(w, h).g;
+								c.g = roughness_image->get_pixel(w, h).to_srgb().g;
 								roughness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == roughness_channel) {
 								roughness_image->lock();
-								c.g = roughness_image->get_pixel(w, h).b;
+								c.g = roughness_image->get_pixel(w, h).to_srgb().b;
 								roughness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == roughness_channel) {
 								roughness_image->lock();
-								c.g = roughness_image->get_pixel(w, h).a;
+								c.g = roughness_image->get_pixel(w, h).to_srgb().a;
 								roughness_image->unlock();
 							}
 						}
 						if (has_metalness) {
 							if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_RED == metalness_channel) {
 								metallness_image->lock();
-								c.b = metallness_image->get_pixel(w, h).r;
+								c.b = metallness_image->get_pixel(w, h).to_srgb().r;
 								metallness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_GREEN == metalness_channel) {
 								metallness_image->lock();
-								c.b = metallness_image->get_pixel(w, h).g;
+								c.b = metallness_image->get_pixel(w, h).to_srgb().g;
 								metallness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_BLUE == metalness_channel) {
 								metallness_image->lock();
-								c.b = metallness_image->get_pixel(w, h).b;
+								c.b = metallness_image->get_pixel(w, h).to_srgb().b;
 								metallness_image->unlock();
 							} else if (SpatialMaterial::TextureChannel::TEXTURE_CHANNEL_ALPHA == metalness_channel) {
 								metallness_image->lock();
-								c.b = metallness_image->get_pixel(w, h).a;
+								c.b = metallness_image->get_pixel(w, h).to_srgb().a;
 								metallness_image->unlock();
 							}
 						}
@@ -2644,7 +2644,7 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		}
 
 		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
-			const Color c = material->get_emission().to_linear();
+			const Color c = material->get_emission().to_srgb();
 			Array arr;
 			arr.push_back(c.r);
 			arr.push_back(c.g);
