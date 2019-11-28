@@ -4166,7 +4166,11 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 
 void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node) {
 	print_verbose(String("glTF: Converting spatial: ") + p_spatial->get_name());
-	p_node->xform = p_spatial->get_transform();
+
+	Transform xform = p_spatial->get_transform();
+	p_node->scale = xform.basis.get_scale();
+	p_node->rotation = xform.basis.get_rotation();
+	p_node->translation = xform.origin;
 }
 
 Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index) {
