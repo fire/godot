@@ -1885,7 +1885,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				ERR_FAIL_COND_V(godot_mesh->get_blend_shape_mode() != Mesh::BLEND_SHAPE_MODE_NORMALIZED, ERR_INVALID_DATA);
 
 				Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
-				for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
+				for (int k = 0; k < array_morphs.size(); k++) {
 
 					Dictionary t;
 					Array array_morph = array_morphs[k];
@@ -3791,7 +3791,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
 		for (Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.front(); E; E = E->next()) {
 			Dictionary t;
-			GLTFNodeIndex node = E->key();
+			// GLTFNodeIndex node = E->key();
 			GLTFAnimation::Track track = E->get();
 			{
 				t["sampler"] = samplers.size();
@@ -4133,7 +4133,7 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 		GLTFNode *node = memnew(GLTFNode);
 		node->name = p_skeleton->get_bone_name(i);
 		Transform global_xform;
-		Node *current_node = p_skeleton->get_parent();
+		// Node *current_node = p_skeleton->get_parent();
 		Transform xform = p_skeleton->get_bone_rest(i);
 		node->scale = xform.basis.get_scale();
 		node->rotation = xform.basis.get_rotation();
@@ -4739,8 +4739,10 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			}
 		}
 	}
-	gltf_animation.tracks = tracks;
-	state.animations.push_back(gltf_animation);
+	if(!tracks.size()) {
+		gltf_animation.tracks = tracks;
+		state.animations.push_back(gltf_animation);
+	}
 }
 
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {
