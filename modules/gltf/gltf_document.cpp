@@ -3552,7 +3552,10 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
 			if (E->get() == skeleton) {
 				gltf_skin.skin_root = E->key();
-				json_skin["skeleton"] = E->key();
+				// if the skeleton property is set, correction is done to fix the rest poses to scene local
+				// but if you try and export scene local rests with a skeleton property again
+				// it will break
+				// json_skin["skeleton"] = E->key();
 			}
 		}
 		gltf_skin.godot_skin = skin;
