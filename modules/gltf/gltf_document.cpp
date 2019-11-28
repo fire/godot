@@ -3493,6 +3493,11 @@ Error GLTFDocument::_map_skin_joints_indices_to_skeleton_bone_indices(GLTFState 
 
 Error GLTFDocument::_serialize_skins(GLTFState &state) {
 
+	Map<String, GLTFNodeIndex> node_names;
+	for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
+		node_names.insert(state.nodes[node_i]->name, node_i);
+	}
+
 	for (GLTFSkeletonIndex skel_i = 0; skel_i < state.skeletons.size(); ++skel_i) {
 		GLTFSkeleton gltf_skeleton = state.skeletons[skel_i];
 		Skeleton *skeleton = gltf_skeleton.godot_skeleton;
@@ -3500,10 +3505,6 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		Set<String> bone_names;
 		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
 			bone_names.insert(skeleton->get_bone_name(bone_i));
-		}
-		Map<String, GLTFNodeIndex> node_names;
-		for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
-			node_names.insert(state.nodes[node_i]->name, node_i);
 		}
 		for (Set<String>::Element *E = bone_names.front(); E; E = E->next()) {
 			Map<String, GLTFNodeIndex>::Element *F = node_names.find(E->get());
@@ -3534,10 +3535,6 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		Set<String> bone_names;
 		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
 			bone_names.insert(skeleton->get_bone_name(bone_i));
-		}
-		Map<String, GLTFNodeIndex> node_names;
-		for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
-			node_names.insert(state.nodes[node_i]->name, node_i);
 		}
 		GLTFSkin gltf_skin;
 		Array json_joints;
@@ -3759,24 +3756,24 @@ String GLTFDocument::interpolation_to_string(const GLTFAnimation::Interpolation 
 
 Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
-	for (int32_t i = 0; i < state.scene_nodes.size(); i++) {
-		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(state.scene_nodes[i]);
+	for (int32_t nodes_i = 0; nodes_i < state.scene_nodes.size(); nodes_i++) {
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(state.scene_nodes[nodes_i]);
 		if (!ap) {
 			continue;
 		}
 		List<StringName> animation_names;
 		ap->get_animation_list(&animation_names);
 		if (animation_names.size()) {
-			for (int i = 0; i < animation_names.size(); i++) {
-				_convert_animation(state, ap, animation_names[i]);
+			for (int animation_name_i = 0; animation_name_i < animation_names.size(); animation_name_i++) {
+				_convert_animation(state, ap, animation_names[animation_name_i]);
 			}
 		}
 	}
 
 	Array animations;
-	for (GLTFAnimationIndex i = 0; i < state.animations.size(); i++) {
+	for (GLTFAnimationIndex animation_i = 0; animation_i < state.animations.size(); animation_i++) {
 		Dictionary d;
-		GLTFAnimation gltf_animation = state.animations[i];
+		GLTFAnimation gltf_animation = state.animations[animation_i];
 		if (!gltf_animation.tracks.size()) {
 			continue;
 		}
@@ -4203,13 +4200,13 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 
 	state.nodes[current_node_i]->name = p_current_node->get_name();
 
-	for (int i = 0; i < p_current_node->get_child_count(); i++) {
+	for (int node_i = 0; node_i < p_current_node->get_child_count(); node_i++) {
 		state.nodes[current_node_i]->children.push_back(state.nodes.size());
 		GLTFDocument::GLTFNodeIndex current_node_i = state.nodes.size();
 		GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
 		state.nodes.push_back(gltf_node);
-		state.scene_nodes.insert(current_node_i, p_current_node->get_child(i));
-		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_i);
+		state.scene_nodes.insert(current_node_i, p_current_node->get_child(node_i));
+		_convert_scene_node(state, _root_node, p_current_node->get_child(node_i), p_root_node_index, current_node_i);
 	}
 }
 
