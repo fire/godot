@@ -394,6 +394,8 @@ private:
 
 	Error _parse_animations(GLTFState &state);
 
+	Error _serialize_animations(GLTFState &state);
+
 	BoneAttachment *_generate_bone_attachment(GLTFState &state, Skeleton *skeleton, const GLTFNodeIndex node_index);
 	MeshInstance *_generate_mesh_instance(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Camera *_generate_camera(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
@@ -418,8 +420,10 @@ private:
 	Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
+	String interpolation_to_string(const GLTFAnimation::Interpolation p_interp);
+	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
 
-public:
+	public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
@@ -429,7 +433,7 @@ public:
 	GLTFSkeletonIndex _convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index);
 	void _convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node);
 	void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
-	void _convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i);
+	void _convert_animation(GLTFState &state, AnimationPlayer *ap, String p_animation_track_name);
 	Error _serialize_json(const String &p_path, GLTFState &state);
 	Error parse(GLTFState *state, String p_path);
 };

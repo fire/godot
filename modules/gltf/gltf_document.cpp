@@ -46,13 +46,9 @@
 
 Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 
-	// /* STEP 16 ASSIGN SCENE NAMES */
-	// _assign_scene_names(*state);
-
-	// /* STEP 15 PARSE ANIMATIONS */
-	// err = _parse_animations(*state);
-	// if (err != OK)
-	// 	return Error::FAILED;
+	if (!state.buffers.size()) {
+		state.buffers.push_back(Vector<uint8_t>());
+	}
 
 	/* STEP 14 PARSE CAMERAS */
 	Error err = _serialize_cameras(state);
@@ -60,33 +56,11 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	if (!state.buffers.size()) {
-		state.buffers.push_back(Vector<uint8_t>());
-	}
-
 	/* STEP 13 PARSE MESHES (we have enough info now) */
 	err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
-
-	// /* STEP 10 DETERMINE SKELETONS */
-	// err = _determine_skeletons(state);
-	// if (err != OK) {
-	// 	return Error::FAILED;
-	// }
-
-	// /* STEP 11 CREATE SKELETONS */
-	// err = _serialize_skeletons(state);
-	// if (err != OK) {
-	// 	return Error::FAILED;
-	// }
-
-	/* STEP 9 PARSE SKINS */
-	// err = _parse_skins(state);
-	// if (err != OK) {
-	// 	return Error::FAILED:;
-	// }
 
 	// /* STEP 12 CREATE SKINS */
 	err = _serialize_skins(state);
@@ -140,6 +114,12 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
+	// /* STEP 15 PARSE ANIMATIONS */
+	err = _serialize_animations(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
 	/* STEP 0 PARSE SCENE */
 	err = _serialize_scenes(state);
 	if (err != OK) {
@@ -173,17 +153,12 @@ Error GLTFDocument::_serialize_scenes(GLTFState &state) {
 
 	if (state.nodes.size()) {
 		Dictionary s;
-		Array nodes;
-		for (int j = 0; j < state.nodes.size(); j++) {
-			if (state.nodes[j]->parent == -1) {
-				nodes.push_back(j);
-			}
-		}
 		if (!state.scene_name.empty()) {
-			s["name"] = _gen_unique_name(state, state.scene_name);
-		} else {
-			s["name"] = _gen_unique_name(state, "Scene");
+			s["name"] = state.scene_name;
 		}
+
+		Array nodes;
+		nodes.push_back(0);
 		s["nodes"] = nodes;
 		scenes.push_back(s);
 	}
@@ -273,9 +248,28 @@ Error GLTFDocument::_parse_glb(const String &p_path, GLTFState &state) {
 	return OK;
 }
 
+static Array _vec3_to_arr(const Vector3 &p_vec3) {
+	Array array;
+	array.resize(3);
+	array[0] = p_vec3.x;
+	array[1] = p_vec3.y;
+	array[2] = p_vec3.z;
+	return array;
+}
+
 static Vector3 _arr_to_vec3(const Array &p_array) {
 	ERR_FAIL_COND_V(p_array.size() != 3, Vector3());
 	return Vector3(p_array[0], p_array[1], p_array[2]);
+}
+
+static Array _quat_to_array(const Quat &p_quat) {
+	Array array;
+	array.resize(4);
+	array[0] = p_quat.x;
+	array[1] = p_quat.y;
+	array[2] = p_quat.z;
+	array[3] = p_quat.w;
+	return array;
 }
 
 static Quat _arr_to_quat(const Array &p_array) {
@@ -332,7 +326,6 @@ Error GLTFDocument::_serialize_nodes(GLTFState &state) {
 		if (n->camera != -1) {
 			GLTFCamera cam = state.cameras[n->camera];
 			Dictionary json_camera;
-			;
 			if (cam.perspective) {
 				Dictionary og;
 				og["ymag"] = cam.fov_size;
@@ -342,7 +335,6 @@ Error GLTFDocument::_serialize_nodes(GLTFState &state) {
 				json_camera["orthographic"] = og;
 			} else {
 				Dictionary ppt;
-				;
 				ppt["yfov"] = cam.fov_size;
 				ppt["zfar"] = cam.zfar;
 				ppt["znear"] = cam.znear;
@@ -358,6 +350,18 @@ Error GLTFDocument::_serialize_nodes(GLTFState &state) {
 		}
 		if (n->xform != Transform()) {
 			node["matrix"] = _xform_to_array(n->xform);
+		}
+
+		if (!n->rotation.is_equal_approx(Quat())) {
+			node["rotation"] = _quat_to_array(n->rotation);
+		}
+
+		if (!n->scale.is_equal_approx(Vector3(1.0f, 1.0f, 1.0f))) {
+			node["scale"] = _vec3_to_arr(n->scale);
+		}
+
+		if (!n->translation.is_equal_approx(Vector3())) {
+			node["translation"] = _vec3_to_arr(n->translation);
 		}
 		if (n->children.size()) {
 			Array children;
@@ -1875,44 +1879,46 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			//blend shapes
 			print_verbose("glTF: Mesh has targets");
 
-			//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
-			//but it could require a larger refactor?
-			ERR_FAIL_COND_V(godot_mesh->get_blend_shape_mode() != Mesh::BLEND_SHAPE_MODE_NORMALIZED, ERR_INVALID_DATA);
+			if (godot_mesh->get_blend_shape_count()) {
+				//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
+				//but it could require a larger refactor?
+				ERR_FAIL_COND_V(godot_mesh->get_blend_shape_mode() != Mesh::BLEND_SHAPE_MODE_NORMALIZED, ERR_INVALID_DATA);
 
-			Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
-			for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
+				Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
+				for (int k = 0; k < godot_mesh->get_blend_shape_count(); k++) {
 
-				Dictionary t;
-				Array array_morph = array_morphs[k];
+					Dictionary t;
+					Array array_morph = array_morphs[k];
 
-				Array varr = array_morph[Mesh::ARRAY_VERTEX];
-				if (varr.size()) {
-					{
-						Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
-						const int max_idx = src_varr.size();
+					Array varr = array_morph[Mesh::ARRAY_VERTEX];
+					if (varr.size()) {
+						{
+							Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+							const int max_idx = src_varr.size();
 
-						for (int l = 0; l < max_idx; l++) {
-							if (l < max_idx) {
-								varr[l] = Vector3(varr[l]) - src_varr[l];
-							} else {
-								varr[l] = src_varr[l];
+							for (int l = 0; l < max_idx; l++) {
+								if (l < max_idx) {
+									varr[l] = Vector3(varr[l]) - src_varr[l];
+								} else {
+									varr[l] = src_varr[l];
+								}
 							}
 						}
+
+						t["POSITION"] = _encode_accessor_as_vec3(state, varr, true);
 					}
 
-					t["POSITION"] = _encode_accessor_as_vec3(state, varr, true);
+					Array narr = array_morph[Mesh::ARRAY_NORMAL];
+					if (varr.size()) {
+						t["NORMAL"] = _encode_accessor_as_vec3(state, narr, true);
+					}
+					Array tarr = array_morph[Mesh::ARRAY_TANGENT];
+					if (tarr.size()) {
+						// TODO code check?
+						t["TANGENT"] = _encode_accessor_as_vec3(state, tarr, true);
+					}
+					targets.push_back(t);
 				}
-
-				Array narr = array_morph[Mesh::ARRAY_NORMAL];
-				if (varr.size()) {
-					t["NORMAL"] = _encode_accessor_as_vec3(state, narr, true);
-				}
-				Array tarr = array_morph[Mesh::ARRAY_TANGENT];
-				if (tarr.size()) {
-					// TODO code check?
-					t["TANGENT"] = _encode_accessor_as_vec3(state, tarr, true);
-				}
-				targets.push_back(t);
 			}
 
 			Ref<Material> mat = godot_mesh->surface_get_material(j);
@@ -3738,6 +3744,127 @@ Error GLTFDocument::_parse_cameras(GLTFState &state) {
 	return OK;
 }
 
+String GLTFDocument::interpolation_to_string(const GLTFAnimation::Interpolation p_interp) {
+	String interp = "LINEAR";
+	if (p_interp == GLTFAnimation::INTERP_STEP) {
+		interp = "STEP";
+	} else if (p_interp == GLTFAnimation::INTERP_LINEAR) {
+		interp = "LINEAR";
+	} else if (p_interp == GLTFAnimation::INTERP_CATMULLROMSPLINE) {
+		interp = "CATMULLROMSPLINE";
+	} else if (p_interp == GLTFAnimation::INTERP_CUBIC_SPLINE) {
+		interp = "CUBICSPLINE";
+	}
+
+	return interp;
+}
+
+Error GLTFDocument::_serialize_animations(GLTFState &state) {
+
+	for (int32_t i = 0; i < state.scene_nodes.size(); i++) {
+		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(state.scene_nodes[i]);
+		if (!ap) {
+			continue;
+		}
+		List<StringName> animation_names;
+		ap->get_animation_list(&animation_names);
+		if (animation_names.size()) {
+			for (int i = 0; i < animation_names.size(); i++) {
+				_convert_animation(state, ap, animation_names[i]);
+			}
+		}
+	}
+
+	Array animations;
+	for (GLTFAnimationIndex i = 0; i < state.animations.size(); i++) {
+		Dictionary d;
+		GLTFAnimation gltf_animation = state.animations[i];
+		if (!gltf_animation.tracks.size()) {
+			continue;
+		}
+
+		if (!gltf_animation.name.empty()) {
+			d["name"] = gltf_animation.name;
+		}
+		Array channels;
+		Array samplers;
+
+		for (Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.front(); E; E = E->next()) {
+			Dictionary t;
+			GLTFNodeIndex node = E->key();
+			GLTFAnimation::Track track = E->get();
+			{
+				t["sampler"] = samplers.size();
+				Dictionary s;
+
+				s["interpolation"] = interpolation_to_string(track.translation_track.interpolation);
+				Array times = Variant(track.translation_track.times);
+				s["input"] = _encode_accessor_as_floats(state, times, false);
+				Array values = Variant(track.translation_track.values);
+				s["output"] = _encode_accessor_as_vec3(state, values, false);
+
+				samplers.push_back(s);
+
+				Dictionary target;
+				target["path"] = "translation";
+				target["node"] = E->key();
+
+				t["target"] = target;
+				channels.push_back(t);
+			}
+			{
+				// TODO Rotation
+			} {
+				t["sampler"] = samplers.size();
+				Dictionary s;
+
+				s["interpolation"] = interpolation_to_string(track.scale_track.interpolation);
+				Array times = Variant(track.scale_track.times);
+				s["input"] = _encode_accessor_as_floats(state, times, false);
+				Array values = Variant(track.scale_track.values);
+				s["output"] = _encode_accessor_as_vec3(state, values, false);
+
+				samplers.push_back(s);
+
+				Dictionary target;
+				target["path"] = "scale";
+				target["node"] = E->key();
+
+				t["target"] = target;
+				channels.push_back(t);
+			}
+			//{
+			//	Dictionary t;
+			//	c["sampler"] = samplers.size();
+			//	Dictionary s;
+
+			//	Array times = Variant(track.weight_tracks.times);
+			//	s["input"] = _encode_accessor_as_floats(state, times, false);
+			//	Array values = Variant(track.weight_tracks.values);
+			//	s["output"] = _encode_accessor_as_floats(state, values, false);
+
+			//	samplers.push_back(s);
+			//	t["path"] = "weights";
+			//	t["node"] = E->key();
+			//	c["target"] = t;
+			//	channels.push_back(c);
+			//}
+		}
+		if (channels.size() && samplers.size()) {
+
+			d["channels"] = channels;
+			d["samplers"] = samplers;
+			animations.push_back(d);
+		}
+	}
+
+	state.json["animations"] = animations;
+
+	print_verbose("glTF: Total animations '" + itos(state.animations.size()) + "'.");
+
+	return OK;
+}
+
 Error GLTFDocument::_parse_animations(GLTFState &state) {
 
 	if (!state.json.has("animations"))
@@ -4007,7 +4134,10 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 		node->name = p_skeleton->get_bone_name(i);
 		Transform global_xform;
 		Node *current_node = p_skeleton->get_parent();
-		node->xform = p_skeleton->get_bone_rest(i);
+		Transform xform = p_skeleton->get_bone_rest(i);
+		node->scale = xform.basis.get_scale();
+		node->rotation = xform.basis.get_rotation();
+		node->translation = xform.origin;
 		int32_t parent = p_skeleton->get_bone_parent(i);
 		String parent_name;
 		GLTFNodeIndex node_index = state.nodes.size();
@@ -4053,35 +4183,35 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 	return spatial;
 }
 void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node *p_current_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
-
-	GLTFNode *gltf_node = memnew(GLTFNode);
-	GLTFNodeIndex current_node_index = state.nodes.size();
-	state.nodes.push_back(gltf_node);
-	state.scene_nodes.insert(current_node_index, p_current_node);
 	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current_node);
 	Camera *camera = Object::cast_to<Camera>(p_current_node);
 	Skeleton *skeleton = Object::cast_to<Skeleton>(p_current_node);
 	Spatial *spatial = Object::cast_to<Spatial>(p_current_node);
+	GLTFNodeIndex current_node_i = state.nodes.size() - 1;
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 		if (gltf_mesh_index != -1) {
-			gltf_node->mesh = gltf_mesh_index;
+			state.nodes[current_node_i]->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		_convert_skeleton(state, skeleton, gltf_node, current_node_index);
+		_convert_skeleton(state, skeleton, state.nodes[current_node_i], current_node_i);
 	} else if (camera) {
-		gltf_node->camera = _convert_camera(state, camera);
+		state.nodes[current_node_i]->camera = _convert_camera(state, camera);
 	}
 
 	if (spatial) {
-		_convert_spatial(state, spatial, gltf_node);
+		_convert_spatial(state, spatial, state.nodes[current_node_i]);
 	}
 
-	gltf_node->name = p_current_node->get_name();
+	state.nodes[current_node_i]->name = p_current_node->get_name();
 
 	for (int i = 0; i < p_current_node->get_child_count(); i++) {
-		state.nodes[current_node_index]->children.push_back(state.nodes.size());
-		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_index);
+		state.nodes[current_node_i]->children.push_back(state.nodes.size());
+		GLTFDocument::GLTFNodeIndex current_node_i = state.nodes.size();
+		GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
+		state.nodes.push_back(gltf_node);
+		state.scene_nodes.insert(current_node_i, p_current_node->get_child(i));
+		_convert_scene_node(state, _root_node, p_current_node->get_child(i), p_root_node_index, current_node_i);
 	}
 }
 
@@ -4507,7 +4637,110 @@ void GLTFDocument::_process_mesh_instances(GLTFState &state, Node *scene_root) {
 	}
 }
 
-void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, GLTFAnimationIndex i) {
+GLTFDocument::GLTFAnimation::Track GLTFDocument::_convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i) {
+	GLTFDocument::GLTFAnimation::Track track;
+	Animation::InterpolationType interpolation = p_animation->track_get_interpolation_type(p_track_i);
+	GLTFAnimation::Interpolation gltf_interpolation = GLTFAnimation::INTERP_STEP;
+	if (interpolation == Animation::InterpolationType::INTERPOLATION_LINEAR) {
+		gltf_interpolation = GLTFAnimation::INTERP_LINEAR;
+	} else if (interpolation == Animation::InterpolationType::INTERPOLATION_NEAREST) {
+		gltf_interpolation = GLTFAnimation::INTERP_STEP;
+	} else if (interpolation == Animation::InterpolationType::INTERPOLATION_CUBIC) {
+		gltf_interpolation = GLTFAnimation::INTERP_CUBIC_SPLINE;
+	}
+	Animation::TrackType track_type = p_animation->track_get_type(p_track_i);
+	if (track_type == Animation::TYPE_VALUE) {
+		// Vector<float> times;
+		// for (int32_t key_i = 0; key_i < animation->track_get_key_count(track_i); key_i++) {
+		// 	times.write[key_i] = animation->track_get_key_time(track_i, key_i);
+		// }
+		// Vector<GLTFAnimation::Channel<float>> blend_weights;
+		// for (int32_t key_i = 0; key_i < animation->track_get_key_count(track_i); key_i++) {
+		// 	GLTFAnimation::Channel<float> weight;
+		// 	Vector<float> weights;
+		// 	weights.resize();
+		// 	weight.interpolation = gltf_interpolation;
+		// 	for (int32_t value_i = 0; value_i < animation->value_track_get_key_indices(track_i, key_i); value_i++) {
+		// 		weights.write[key_i] = animation->track_get_key_value(track_i, key_i);
+		// 	}
+		// 	weight.times = times;
+		// 	weight.values = weights;
+		// 	blend_weights.push_back(weight);
+		// }
+		// track.weight_tracks = blend_weights;
+	} else if (track_type == Animation::TYPE_TRANSFORM) {
+		GLTFAnimation::Channel<Vector3> channel;
+		channel.interpolation = gltf_interpolation;
+		Vector<float> times;
+		times.resize(p_animation->track_get_key_count(p_track_i));
+		for (int32_t key_i = 0; key_i < p_animation->track_get_key_count(p_track_i); key_i++) {
+			times.write[key_i] = p_animation->track_get_key_time(p_track_i, key_i);
+		}
+		track.translation_track.times = times;
+		track.scale_track.times = times;
+		Vector<Vector3> translation_values;
+		translation_values.resize(p_animation->track_get_key_count(p_track_i));
+		Vector<Vector3> scale_values;
+		scale_values.resize(p_animation->track_get_key_count(p_track_i));
+		Vector<Quat> rot_values;
+		rot_values.resize(p_animation->track_get_key_count(p_track_i));
+		for (int32_t key_i = 0; key_i < p_animation->track_get_key_count(p_track_i); key_i++) {
+			Vector3 translation;
+			Quat rotation;
+			Vector3 scale;
+			p_animation->transform_track_get_key(p_track_i, key_i, &translation, &rotation, &scale);
+			scale_values.write[key_i] = scale;
+			rot_values.write[key_i] = rotation;
+			translation_values.write[key_i] = translation;
+		}
+		track.rotation_track.values = rot_values;
+		track.translation_track.values = translation_values;
+		track.scale_track.values = scale_values;
+	}
+
+	return track;
+}
+
+void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, String p_animation_track_name) {
+
+	Ref<Animation> animation = ap->get_animation(p_animation_track_name);
+	GLTFAnimation gltf_animation;
+	gltf_animation.name = p_animation_track_name;
+	Map<int, GLTFAnimation::Track> tracks;
+	Map<String, GLTFNodeIndex> node_node_index;
+	for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
+		ERR_CONTINUE(!E->get());
+		node_node_index.insert(E->get()->get_name(), E->key());
+	}
+
+	for (int32_t track_i = 0; track_i < animation->get_track_count(); track_i++) {
+		String orig_track_path = animation->track_get_path(track_i);
+		NodePath path = orig_track_path;
+		if (String(path).find(":") != -1) {
+			path = String(path).split(":")[1];
+		}
+		Map<String, GLTFNodeIndex>::Element *E = node_node_index.find(path.get_name(path.get_name_count() - 1));
+
+		path.get_name(path.get_name_count() - 1);
+		if (E) {
+			GLTFAnimation::Track track = _convert_animation_track(state, animation, animation->track_get_type(track_i), track_i);
+			tracks.insert(E->get(), track);
+		} else if (String(orig_track_path).find(":") != -1) {
+			Vector<String> node_joint = String(orig_track_path).split(":");
+			String node = node_joint[0];
+			String joint = node_joint[1];
+			Node *skeleton_node = ap->get_node(node);
+			ERR_CONTINUE(!skeleton_node);
+			for (int32_t skel_i = 0; skel_i < ap->cast_to<Skeleton>(skeleton_node)->get_bone_count(); skel_i++) {
+				for (int32_t joints_i = 0; joints_i < state.skeletons[skel_i].joints.size(); joints_i++) {
+					GLTFAnimation::Track track = _convert_animation_track(state, animation, animation->track_get_type(track_i), track_i);
+					tracks.insert(E->get(), track);
+				}
+			}
+		}
+	}
+	gltf_animation.tracks = tracks;
+	state.animations.push_back(gltf_animation);
 }
 
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {
