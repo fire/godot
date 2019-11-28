@@ -1774,19 +1774,19 @@ Vector<Transform> GLTFDocument::_decode_accessor_as_xform(GLTFState &state, cons
 
 Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 	Array meshes;
-	for (GLTFMeshIndex i = 0; i < state.meshes.size(); i++) {
+	for (GLTFMeshIndex gltf_mesh_i = 0; gltf_mesh_i < state.meshes.size(); gltf_mesh_i++) {
 
-		print_verbose("glTF: Serializing mesh: " + itos(i));
-		Ref<ArrayMesh> godot_mesh = state.meshes[i].mesh;
+		print_verbose("glTF: Serializing mesh: " + itos(gltf_mesh_i));
+		Ref<ArrayMesh> godot_mesh = state.meshes[gltf_mesh_i].mesh;
 		Array primitives;
 		Array targets;
 		Dictionary gltf_mesh;
 		Array target_names;
 		Array weights;
-		for (int j = 0; j < godot_mesh->get_surface_count(); j++) {
+		for (int surface_i = 0; surface_i < godot_mesh->get_surface_count(); surface_i++) {
 			Dictionary primitive;
 
-			Mesh::PrimitiveType primitive_type = godot_mesh->surface_get_primitive_type(j);
+			Mesh::PrimitiveType primitive_type = godot_mesh->surface_get_primitive_type(surface_i);
 			static const Mesh::PrimitiveType primitives2[7] = {
 				Mesh::PRIMITIVE_POINTS,
 				Mesh::PRIMITIVE_LINES,
@@ -1798,7 +1798,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			};
 			primitive["mode"] = primitives2[primitive_type];
 
-			Array array = godot_mesh->surface_get_arrays(j);
+			Array array = godot_mesh->surface_get_arrays(surface_i);
 			Dictionary attributes;
 			{
 				Array a = array[Mesh::ARRAY_VERTEX];
@@ -1882,28 +1882,25 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			print_verbose("glTF: Mesh has targets");
 			if (godot_mesh->get_blend_shape_count()) {
 
-				Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(i);
-				for (int k = 0; k < array_morphs.size(); k++) {
-					target_names.push_back(godot_mesh->get_blend_shape_name(k));
+				Array array_morphs = godot_mesh->surface_get_blend_shape_arrays(surface_i);
+				for (int morph_i = 0; morph_i < array_morphs.size(); morph_i++) {
+					target_names.push_back(godot_mesh->get_blend_shape_name(morph_i));
 					Dictionary t;
-					Array array_morph = array_morphs[k];
+					Array array_morph = array_morphs[morph_i];
 
 					Array varr = array_morph[Mesh::ARRAY_VERTEX];
 					if (varr.size()) {
 						ArrayMesh::BlendShapeMode shape_mode = godot_mesh->get_blend_shape_mode();
-						if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_RELATIVE) {
-							Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+						Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+						if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_NORMALIZED) {
 							const int max_idx = src_varr.size();
-
-							for (int l = 0; l < max_idx; l++) {
-								if (l < max_idx) {
-									varr[l] = Vector3(varr[l]) - src_varr[l];
+							for (int blend_i = 0; blend_i < max_idx; blend_i++) {
+								if (blend_i < max_idx) {
+									varr[blend_i] = Vector3(varr[blend_i]) - src_varr[blend_i];
 								} else {
-									varr[l] = src_varr[l];
+									varr[blend_i] = src_varr[blend_i];
 								}
 							}
-						} else if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_NORMALIZED) {
-							print_error("glTF: The blend shape mode normalized is not supported.");
 						}
 
 						t["POSITION"] = _encode_accessor_as_vec3(state, varr, true);
@@ -1922,7 +1919,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 				}
 			}
 
-			Ref<Material> mat = godot_mesh->surface_get_material(j);
+			Ref<Material> mat = godot_mesh->surface_get_material(surface_i);
 			if (mat.is_valid()) {
 				state.materials.push_back(mat);
 				primitive["material"] = state.materials.size() - 1;
@@ -1940,8 +1937,8 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 
 		for (int j = 0; j < target_names.size(); j++) {
 			real_t weight = 0;
-			if (j < state.meshes[i].blend_weights.size()) {
-				weight = state.meshes[i].blend_weights[j];
+			if (j < state.meshes[gltf_mesh_i].blend_weights.size()) {
+				weight = state.meshes[gltf_mesh_i].blend_weights[j];
 			}
 			weights.push_back(weight);
 		}
