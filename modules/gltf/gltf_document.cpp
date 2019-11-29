@@ -114,11 +114,11 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 15 PARSE ANIMATIONS */
-	err = _serialize_animations(state);
-	if (err != OK) {
-		return Error::FAILED;
-	}
+	//// /* STEP 15 PARSE ANIMATIONS */
+	//err = _serialize_animations(state);
+	//if (err != OK) {
+	//	return Error::FAILED;
+	//}
 
 	/* STEP 0 PARSE SCENE */
 	err = _serialize_scenes(state);
