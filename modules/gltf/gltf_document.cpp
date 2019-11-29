@@ -1616,15 +1616,15 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 	}
 	Array ivec4_max;
 	accessor.max = ivec4_max;
-	ivec4_max.push_back(std::numeric_limits<ushort>::max());
-	ivec4_max.push_back(std::numeric_limits<ushort>::max());
-	ivec4_max.push_back(std::numeric_limits<ushort>::max());
-	ivec4_max.push_back(std::numeric_limits<ushort>::max());
+	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
+	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
+	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
+	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
 	Array ivec4_min;
-	ivec4_min.push_back(std::numeric_limits<ushort>::min());
-	ivec4_min.push_back(std::numeric_limits<ushort>::min());
-	ivec4_min.push_back(std::numeric_limits<ushort>::min());
-	ivec4_min.push_back(std::numeric_limits<ushort>::min());
+	ivec4_min.push_back(std::numeric_limits<uint16_t>::min());
+	ivec4_min.push_back(std::numeric_limits<uint16_t>::min());
+	ivec4_min.push_back(std::numeric_limits<uint16_t>::min());
+	ivec4_min.push_back(std::numeric_limits<uint16_t>::min());
 	accessor.min = ivec4_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
