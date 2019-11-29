@@ -1598,22 +1598,26 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Transform attrib = p_attribs[i];
 			Basis basis = attrib.get_basis();
-			Vector3 axis_0 = basis.get_axis(0);
+			Vector3 axis_0 = basis.get_axis(Vector3::AXIS_X);
 			w[i * 16 + 0] = axis_0.x;
 			w[i * 16 + 1] = axis_0.y;
 			w[i * 16 + 2] = axis_0.z;
-			Vector3 axis_1 = basis.get_axis(1);
+			w[i * 16 + 3] = 0.0f;
+			Vector3 axis_1 = basis.get_axis(Vector3::AXIS_Y);
 			w[i * 16 + 4] = axis_1.x;
 			w[i * 16 + 5] = axis_1.y;
 			w[i * 16 + 6] = axis_1.z;
-			Vector3 axis_2 = basis.get_axis(2);
+			w[i * 16 + 7] = 0.0f;
+			Vector3 axis_2 = basis.get_axis(Vector3::AXIS_Z);
 			w[i * 16 + 8] = axis_2.x;
 			w[i * 16 + 9] = axis_2.y;
 			w[i * 16 + 10] = axis_2.z;
+			w[i * 16 + 11] = 0.0f;
 			Vector3 origin = attrib.get_origin();
 			w[i * 16 + 12] = origin.x;
-			w[i * 16 + 13] = origin.x;
+			w[i * 16 + 13] = origin.y;
 			w[i * 16 + 14] = origin.z;
+			w[i * 16 + 15] = 1.0f;
 		}
 	}
 
@@ -3538,16 +3542,18 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		}
 		GLTFSkin gltf_skin;
 		Array json_joints;
-		for (int32_t i = 0; i < skin->get_bind_count(); i++) {
-			int32_t bone_index = skin->get_bind_bone(i);
+		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
+			int32_t bone_index = skin->get_bind_bone(bind_i);
 			String bone_name = skeleton->get_bone_name(bone_index);
 			Map<String, GLTFNodeIndex>::Element *E = node_names.find(bone_name);
 			GLTFNodeIndex node_index = E->get();
 			gltf_skin.joints.push_back(node_index);
 			gltf_skin.joints_original.push_back(node_index);
-			state.nodes[node_i]->joint = true;
-			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(i));
-			json_joints.push_back(node_index);
+			state.nodes[node_index]->joint = true;
+			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(bind_i));
+			json_joints.push_back(node_index);			
+			// print_verbose("glTF: bind pose " + itos(bind_i) + " " + skin->get_bind_pose(bind_i));
+			// print_verbose("glTF: bone rest " + itos(bone_index) + " " + skeleton->get_bone_rest(bone_index));
 		}
 		for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
 			if (E->get() == skeleton) {
@@ -3565,7 +3571,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 
 		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
 		json_skin["joints"] = json_joints;
-
+		json_skin["name"] = gltf_skin.name;
 		json_skins.push_back(json_skin);
 	}
 	state.json["skins"] = json_skins;
