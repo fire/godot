@@ -2744,6 +2744,10 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		Dictionary d;
 
 		Ref<SpatialMaterial> material = state.materials[i];
+		if (material.is_null()) {
+			materials.push_back(d);
+			continue;
+		}
 		if (!material->get_name().empty()) {
 			d["name"] = material->get_name();
 		}
