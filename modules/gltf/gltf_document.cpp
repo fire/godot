@@ -1368,18 +1368,18 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_SCALAR;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_INT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = ret_size;
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1461,18 +1461,18 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC2;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1523,18 +1523,18 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1584,18 +1584,18 @@ GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attrib
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1645,18 +1645,18 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_UNSIGNED_SHORT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1710,18 +1710,18 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_SCALAR;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = ret_size;
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1768,18 +1768,18 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC3;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
@@ -1877,18 +1877,18 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_MAT4;
 	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
 
-	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
-	if (err != OK) {
-		return -1;
-	}
 	accessor.max = type_max;
 	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
-	accessor.buffer_view = buffer_view_i;
 	accessor.byte_offset = 0;
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, accessor.normalized, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	accessor.buffer_view = buffer_view_i;
 	state.accessors.push_back(accessor);
 	return state.accessors.size() - 1;
 }
