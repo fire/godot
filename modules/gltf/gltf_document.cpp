@@ -1350,8 +1350,14 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
 	PoolVector<double>::Write w = attribs.write();
+	Array type_max;
+	type_max.resize(1);
+	Array type_min;
+	type_min.resize(1);
 	for (int i = 0; i < p_attribs.size(); i++) {
 		w[i] = p_attribs[i];
+		type_max[0] = MAX(double(w[i]), double(p_attribs[i]));
+		type_min[0] = MIN(double(w[i]), double(p_attribs[i]));
 	}
 
 	ERR_FAIL_COND_V(attribs.size() == 0, -1);
@@ -1366,12 +1372,8 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 	if (err != OK) {
 		return -1;
 	}
-	Array int_max;
-	int_max.push_back(std::numeric_limits<uint32_t>::max());
-	Array int_min;
-	int_min.push_back(0);
-	accessor.max = int_max;
-	accessor.min = int_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = ret_size;
 	accessor.type = type;
@@ -1432,12 +1434,22 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 	const int ret_size = p_attribs.size() * 2;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+	Array type_max;
+	type_max.resize(2);
+	Array type_min;
+	type_min.resize(2);
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Vector2 attrib = p_attribs[i];
 			w[(i * 2) + 0] = attrib.x;
 			w[(i * 2) + 1] = attrib.y;
+
+			type_max[0] = MAX(w[0], w[i * 2 + 0]);
+			type_min[0] = MIN(w[0], w[i * 2 + 0]);
+
+			type_max[1] = MAX(w[1], w[i * 2 + 1]);
+			type_min[1] = MIN(w[1], w[i * 2 + 1]);
 		}
 	}
 
@@ -1453,14 +1465,8 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 	if (err != OK) {
 		return -1;
 	}
-	Array vec2_max;
-	accessor.max = vec2_max;
-	vec2_max.push_back(std::numeric_limits<float>::max());
-	vec2_max.push_back(std::numeric_limits<float>::max());
-	Array vec2_min;
-	vec2_min.push_back(std::numeric_limits<float>::lowest());
-	vec2_min.push_back(std::numeric_limits<float>::lowest());
-	accessor.min = vec2_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
@@ -1481,14 +1487,31 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 	const int ret_size = p_attribs.size() * 4;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+
+	Array type_max;
+	type_max.resize(4);
+	Array type_min;
+	type_min.resize(4);
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
-			w[(i * 2) + 0] = attrib.r;
-			w[(i * 2) + 1] = attrib.g;
-			w[(i * 2) + 3] = attrib.b;
-			w[(i * 2) + 4] = attrib.a;
+			w[(i * 4) + 0] = attrib.r;
+			w[(i * 4) + 1] = attrib.g;
+			w[(i * 4) + 2] = attrib.b;
+			w[(i * 4) + 3] = attrib.a;
+
+			type_max[0] = MAX(w[0], w[i * 4 + 0]);
+			type_min[0] = MIN(w[0], w[i * 4 + 0]);
+
+			type_max[1] = MAX(w[1], w[i * 4 + 1]);
+			type_min[1] = MIN(w[1], w[i * 4 + 1]);
+
+			type_max[2] = MAX(w[2], w[i * 4 + 2]);
+			type_min[2] = MIN(w[2], w[i * 4 + 2]);
+
+			type_max[3] = MAX(w[3], w[i * 4 + 3]);
+			type_min[3] = MIN(w[3], w[i * 4 + 3]);
 		}
 	}
 
@@ -1504,18 +1527,8 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 	if (err != OK) {
 		return -1;
 	}
-	Array vec4_max;
-	accessor.max = vec4_max;
-	vec4_max.push_back(std::numeric_limits<float>::max());
-	vec4_max.push_back(std::numeric_limits<float>::max());
-	vec4_max.push_back(std::numeric_limits<float>::max());
-	vec4_max.push_back(std::numeric_limits<float>::max());
-	Array vec4_min;
-	vec4_min.push_back(std::numeric_limits<float>::lowest());
-	vec4_min.push_back(std::numeric_limits<float>::lowest());
-	vec4_min.push_back(std::numeric_limits<float>::lowest());
-	vec4_min.push_back(std::numeric_limits<float>::lowest());
-	accessor.min = vec4_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
@@ -1536,14 +1549,30 @@ GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attrib
 	const int ret_size = p_attribs.size() * 4;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+
+	Array type_max;
+	type_max.resize(4);
+	Array type_min;
+	type_min.resize(4);
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
 			w[(i * 4) + 0] = attrib.r;
+			type_max[0] = MAX(double(type_max[0]), w[(i * 4) + 0]);
+			type_min[0] = MIN(double(type_min[0]), w[(i * 4) + 0]);
+
 			w[(i * 4) + 1] = attrib.g;
+			type_max[1] = MAX(double(type_max[1]), w[(i * 4) + 1]);
+			type_min[1] = MIN(double(type_min[1]), w[(i * 4) + 1]);
+
 			w[(i * 4) + 2] = attrib.b;
-			w[(i * 4) + 4] = attrib.a;
+			type_max[2] = MAX(double(type_max[2]), w[(i * 4) + 2]);
+			type_min[2] = MIN(double(type_min[2]), w[(i * 4) + 2]);
+
+			w[(i * 4) + 3] = attrib.a;
+			type_max[3] = MAX(double(type_max[3]), w[(i * 4) + 3]);
+			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
 	}
 
@@ -1559,18 +1588,8 @@ GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attrib
 	if (err != OK) {
 		return -1;
 	}
-	Array vec4_max;
-	accessor.max = vec4_max;
-	vec4_max.push_back(1.0f);
-	vec4_max.push_back(1.0f);
-	vec4_max.push_back(1.0f);
-	vec4_max.push_back(1.0f);
-	Array vec4_min;
-	vec4_min.push_back(0.0f);
-	vec4_min.push_back(0.0f);
-	vec4_min.push_back(0.0f);
-	vec4_min.push_back(0.0f);
-	accessor.min = vec4_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
@@ -1591,17 +1610,33 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 	const int ret_size = p_attribs.size() * 4;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+	
+	Array type_max;
+	type_max.resize(4);
+	Array type_min;
+	type_min.resize(4);
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
 			w[(i * 4) + 0] = attrib.r;
+			type_max[0] = MAX(double(type_max[0]), w[(i * 4) + 0]);
+			type_min[0] = MIN(double(type_min[0]), w[(i * 4) + 0]);
+
 			w[(i * 4) + 1] = attrib.g;
+			type_max[1] = MAX(double(type_max[1]), w[(i * 4) + 1]);
+			type_min[1] = MIN(double(type_min[1]), w[(i * 4) + 1]);
+
 			w[(i * 4) + 2] = attrib.b;
+			type_max[2] = MAX(double(type_max[2]), w[(i * 4) + 2]);
+			type_min[2] = MIN(double(type_min[2]), w[(i * 4) + 2]);
+
 			w[(i * 4) + 3] = attrib.a;
+			type_max[3] = MAX(double(type_max[3]), w[(i * 4) + 3]);
+			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
 	}
-
+	
 	ERR_FAIL_COND_V(attribs.size() % 4 != 0, -1);
 
 	GLTFAccessor accessor;
@@ -1614,18 +1649,8 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 	if (err != OK) {
 		return -1;
 	}
-	Array ivec4_max;
-	accessor.max = ivec4_max;
-	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
-	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
-	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
-	ivec4_max.push_back(std::numeric_limits<uint16_t>::max());
-	Array ivec4_min;
-	ivec4_min.push_back(std::numeric_limits<uint16_t>::lowest());
-	ivec4_min.push_back(std::numeric_limits<uint16_t>::lowest());
-	ivec4_min.push_back(std::numeric_limits<uint16_t>::lowest());
-	ivec4_min.push_back(std::numeric_limits<uint16_t>::lowest());
-	accessor.min = ivec4_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
@@ -1665,8 +1690,16 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
 	PoolVector<double>::Write w = attribs.write();
+
+	Array type_max;
+	type_max.resize(1);
+	Array type_min;
+	type_min.resize(1);
+
 	for (int i = 0; i < p_attribs.size(); i++) {
 		w[i] = p_attribs[i];
+		type_max[0] = MAX(double(type_max[0]), w[i]);
+		type_min[0] = MIN(double(type_min[0]), w[i]);
 	}
 
 	ERR_FAIL_COND_V(!attribs.size(), -1);
@@ -1681,12 +1714,8 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 	if (err != OK) {
 		return -1;
 	}
-	Array float_max;
-	float_max.push_back(std::numeric_limits<float>::max());
-	Array float_min;
-	float_min.push_back(std::numeric_limits<float>::lowest());
-	accessor.max = float_max;
-	accessor.min = float_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = ret_size;
 	accessor.type = type;
@@ -1707,13 +1736,27 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	const int ret_size = p_attribs.size() * 3;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+
+	Array type_max;
+	type_max.resize(3);
+	Array type_min;
+	type_min.resize(3);
+
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Vector3 attrib = p_attribs[i];
 			w[(i * 3) + 0] = attrib.x;
+			type_max[0] = MAX(double(type_max[0]), w[(i * 3) + 0]);
+			type_min[0] = MIN(double(type_min[0]), w[(i * 3) + 0]);
+
 			w[(i * 3) + 1] = attrib.y;
+			type_max[1] = MAX(double(type_max[1]), w[(i * 3) + 1]);
+			type_min[1] = MIN(double(type_min[1]), w[(i * 3) + 1]);
+
 			w[(i * 3) + 2] = attrib.z;
+			type_max[2] = MAX(double(type_max[2]), w[(i * 3) + 2]);
+			type_min[2] = MIN(double(type_min[2]), w[(i * 3) + 2]);
 		}
 	}
 
@@ -1729,16 +1772,8 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 	if (err != OK) {
 		return -1;
 	}
-	Array vec3_max;
-	accessor.max = vec3_max;
-	vec3_max.push_back(std::numeric_limits<float>::max());
-	vec3_max.push_back(std::numeric_limits<float>::max());
-	vec3_max.push_back(std::numeric_limits<float>::max());
-	Array vec3_min;
-	vec3_min.push_back(std::numeric_limits<float>::lowest());
-	vec3_min.push_back(std::numeric_limits<float>::lowest());
-	vec3_min.push_back(std::numeric_limits<float>::lowest());
-	accessor.min = vec3_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
@@ -1758,6 +1793,11 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 	const int ret_size = p_attribs.size() * 16;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
+
+	Array type_max;
+	type_max.resize(16);
+	Array type_min;
+	type_min.resize(16);
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
@@ -1768,21 +1808,64 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			w[i * 16 + 1] = axis_0.y;
 			w[i * 16 + 2] = axis_0.z;
 			w[i * 16 + 3] = 0.0f;
+			
+			type_max[0] = MAX(double(type_max[0]), w[i * 16 + 0]);
+			type_max[1] = MAX(double(type_max[1]), w[i * 16 + 1]);
+			type_max[2] = MAX(double(type_max[2]), w[i * 16 + 2]);
+			type_max[3] = MAX(double(type_max[3]), w[i * 16 + 3]);
+			
+			type_min[0] = MIN(double(type_min[0]), w[i * 16 + 0]);
+			type_min[1] = MIN(double(type_min[1]), w[i * 16 + 1]);
+			type_min[2] = MIN(double(type_min[2]), w[i * 16 + 2]);
+			type_min[3] = MIN(double(type_min[3]), w[i * 16 + 3]);
+
 			Vector3 axis_1 = basis.get_axis(Vector3::AXIS_Y);
 			w[i * 16 + 4] = axis_1.x;
 			w[i * 16 + 5] = axis_1.y;
 			w[i * 16 + 6] = axis_1.z;
 			w[i * 16 + 7] = 0.0f;
+
+			type_max[4] = MAX(double(type_max[4]), w[i * 16 + 4]);
+			type_max[5] = MAX(double(type_max[5]), w[i * 16 + 5]);
+			type_max[6] = MAX(double(type_max[6]), w[i * 16 + 6]);
+			type_max[7] = MAX(double(type_max[7]), w[i * 16 + 7]);
+
+			type_min[4] = MIN(double(type_min[4]), w[i * 16 + 4]);
+			type_min[5] = MIN(double(type_min[5]), w[i * 16 + 5]);
+			type_min[6] = MIN(double(type_min[6]), w[i * 16 + 6]);
+			type_min[7] = MIN(double(type_min[7]), w[i * 16 + 7]);
+
 			Vector3 axis_2 = basis.get_axis(Vector3::AXIS_Z);
 			w[i * 16 + 8] = axis_2.x;
 			w[i * 16 + 9] = axis_2.y;
 			w[i * 16 + 10] = axis_2.z;
 			w[i * 16 + 11] = 0.0f;
+
+			type_max[8] = MAX(double(type_max[8]), w[i * 16 + 8]);
+			type_max[9] = MAX(double(type_max[9]), w[i * 16 + 9]);
+			type_max[10] = MAX(double(type_max[10]), w[i * 16 + 10]);
+			type_max[11] = MAX(double(type_max[11]), w[i * 16 + 11]);
+
+			type_min[8] = MIN(double(type_min[8]), w[i * 16 + 8]);
+			type_min[9] = MIN(double(type_min[9]), w[i * 16 + 9]);
+			type_min[10] = MIN(double(type_min[10]), w[i * 16 + 10]);
+			type_min[11] = MIN(double(type_min[11]), w[i * 16 + 11]);
+
 			Vector3 origin = attrib.get_origin();
 			w[i * 16 + 12] = origin.x;
 			w[i * 16 + 13] = origin.y;
 			w[i * 16 + 14] = origin.z;
 			w[i * 16 + 15] = 1.0f;
+			
+			type_max[12] = MAX(double(type_max[12]), w[i * 16 + 12]);
+			type_max[13] = MAX(double(type_max[13]), w[i * 16 + 13]);
+			type_max[14] = MAX(double(type_max[14]), w[i * 16 + 14]);
+			type_max[15] = MAX(double(type_max[15]), w[i * 16 + 15]);
+
+			type_min[12] = MIN(double(type_min[12]), w[i * 16 + 12]);
+			type_min[13] = MIN(double(type_min[13]), w[i * 16 + 13]);
+			type_min[14] = MIN(double(type_min[14]), w[i * 16 + 14]);
+			type_min[15] = MIN(double(type_min[15]), w[i * 16 + 15]);
 		}
 	}
 
@@ -1798,18 +1881,8 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 	if (err != OK) {
 		return -1;
 	}
-	 Array vec4_max;
-	 accessor.max = vec4_max;
-	 vec4_max.push_back(std::numeric_limits<float>::max());
-	 vec4_max.push_back(std::numeric_limits<float>::max());
-	 vec4_max.push_back(std::numeric_limits<float>::max());
-	 vec4_max.push_back(std::numeric_limits<float>::max());
-	 Array vec4_min;
-	 vec4_min.push_back(std::numeric_limits<float>::lowest());
-	 vec4_min.push_back(std::numeric_limits<float>::lowest());
-	 vec4_min.push_back(std::numeric_limits<float>::lowest());
-	 vec4_min.push_back(std::numeric_limits<float>::lowest());
-	 accessor.min = vec4_min;
+	accessor.max = type_max;
+	accessor.min = type_min;
 	accessor.normalized = true;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
