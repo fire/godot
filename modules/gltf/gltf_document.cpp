@@ -4443,11 +4443,9 @@ GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state
 	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
 		GLTFNode *node = memnew(GLTFNode);
 		node->name = p_skeleton->get_bone_name(i);
-		Transform global_xform;
-		// Node *current_node = p_skeleton->get_parent();
 		Transform xform = p_skeleton->get_bone_rest(i);
 		node->scale = xform.basis.get_scale();
-		node->rotation = xform.basis.get_rotation();
+		node->rotation = xform.basis.get_rotation_quat();
 		node->translation = xform.origin;
 		int32_t parent = p_skeleton->get_bone_parent(i);
 		String parent_name;
@@ -4485,7 +4483,7 @@ void GLTFDocument::_convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNo
 
 	Transform xform = p_spatial->get_transform();
 	p_node->scale = xform.basis.get_scale();
-	p_node->rotation = xform.basis.get_rotation();
+	p_node->rotation = xform.basis.get_rotation_quat();
 	p_node->translation = xform.origin;
 }
 
@@ -4906,7 +4904,10 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Node *scene_root) {
 			MeshInstance *mi = Object::cast_to<MeshInstance>(mi_element->get());
 			ERR_FAIL_COND(mi == nullptr);
 
-			node->xform = mi->get_transform();
+			Transform xform = mi->get_transform();
+			node->scale = xform.basis.get_scale();
+			node->rotation = xform.basis.get_rotation_quat();
+			node->translation = xform.origin;
 
 			GLTFSkeleton gltf_skeleton;
 			GLTFSkin gltf_skin;
