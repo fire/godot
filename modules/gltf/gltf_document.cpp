@@ -2116,36 +2116,11 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			if (joint_i_to_bone_i.size()) {
 				Array a = array[Mesh::ARRAY_WEIGHTS];
 				if (a.size()) {
-					PoolRealArray mesh_weights;
-					{ //gltf does not seem to normalize the weights for some reason..
-						int wc = a.size();
-						mesh_weights.resize(wc);
-						for (int k = 0; k < wc; k += 4) {
-							float total = 0.0;
-							float weight_0 = a[k + 0];
-							total += weight_0;
-							float real_1 = a[k + 1];
-							total += real_1;
-							float real_2 = a[k + 2];
-							total += real_2;
-							float real_3 = a[k + 3];
-							total += real_3;
-							if (total > 0.0) {
-								mesh_weights.write()[k + 0] /= total;
-								mesh_weights.write()[k + 1] /= total;
-								mesh_weights.write()[k + 2] /= total;
-								mesh_weights.write()[k + 3] /= total;
-							}
-						}
-					}
-
 					const int ret_size = a.size() / 4;
 					Array attribs;
 					attribs.resize(ret_size);
-					{
-						for (int i = 0; i < ret_size; i++) {
-							attribs[i] = Color(a[(i * 4) + 0], a[(i * 4) + 1], a[(i * 4) + 2], a[(i * 4) + 3]);
-						}
+					for (int i = 0; i < ret_size; i++) {
+						attribs[i] = Color(a[(i * 4) + 0], a[(i * 4) + 1], a[(i * 4) + 2], a[(i * 4) + 3]);
 					}
 					attributes["WEIGHTS_0"] = _encode_accessor_as_weights(state, attribs, true);
 				}
