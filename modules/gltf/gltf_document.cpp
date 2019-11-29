@@ -2116,10 +2116,10 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			if (joint_i_to_bone_i.size()) {
 				Array a = array[Mesh::ARRAY_WEIGHTS];
 				if (a.size()) {
-					PoolRealArray weights;
+					PoolRealArray mesh_weights;
 					{ //gltf does not seem to normalize the weights for some reason..
 						int wc = a.size();
-						weights.resize(wc);
+						mesh_weights.resize(wc);
 						for (int k = 0; k < wc; k += 4) {
 							float total = 0.0;
 							float weight_0 = a[k + 0];
@@ -2131,10 +2131,10 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 							float real_3 = a[k + 3];
 							total += real_3;
 							if (total > 0.0) {
-								weights.write()[k + 0] /= total;
-								weights.write()[k + 1] /= total;
-								weights.write()[k + 2] /= total;
-								weights.write()[k + 3] /= total;
+								mesh_weights.write()[k + 0] /= total;
+								mesh_weights.write()[k + 1] /= total;
+								mesh_weights.write()[k + 2] /= total;
+								mesh_weights.write()[k + 3] /= total;
 							}
 						}
 					}
