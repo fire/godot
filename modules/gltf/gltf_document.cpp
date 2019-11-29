@@ -1471,6 +1471,171 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 	return state.accessors.size() - 1;
 }
 
+GLTFDocument::GLTFAccessorIndex
+GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int ret_size = p_attribs.size() * 4;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Color attrib = p_attribs[i];
+			w[(i * 2) + 0] = attrib.r;
+			w[(i * 2) + 1] = attrib.g;
+			w[(i * 2) + 3] = attrib.b;
+			w[(i * 2) + 4] = attrib.a;
+		}
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 4 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array vec4_max;
+	accessor.max = vec4_max;
+	vec4_max.push_back(std::numeric_limits<float>::max());
+	vec4_max.push_back(std::numeric_limits<float>::max());
+	vec4_max.push_back(std::numeric_limits<float>::max());
+	vec4_max.push_back(std::numeric_limits<float>::max());
+	Array vec4_min;
+	vec4_min.push_back(std::numeric_limits<float>::min());
+	vec4_min.push_back(std::numeric_limits<float>::min());
+	vec4_min.push_back(std::numeric_limits<float>::min());
+	vec4_min.push_back(std::numeric_limits<float>::min());
+	accessor.min = vec4_min;
+	accessor.normalized = true;
+	accessor.count = p_attribs.size();
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
+GLTFDocument::GLTFAccessorIndex
+GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int ret_size = p_attribs.size() * 4;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Color attrib = p_attribs[i];
+			w[(i * 4) + 0] = attrib.r;
+			w[(i * 4) + 1] = attrib.g;
+			w[(i * 4) + 2] = attrib.b;
+			w[(i * 4) + 4] = attrib.a;
+		}
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 4 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array vec4_max;
+	accessor.max = vec4_max;
+	vec4_max.push_back(1.0f);
+	vec4_max.push_back(1.0f);
+	vec4_max.push_back(1.0f);
+	vec4_max.push_back(1.0f);
+	Array vec4_min;
+	vec4_min.push_back(0.0f);
+	vec4_min.push_back(0.0f);
+	vec4_min.push_back(0.0f);
+	vec4_min.push_back(0.0f);
+	accessor.min = vec4_min;
+	accessor.normalized = true;
+	accessor.count = p_attribs.size();
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
+GLTFDocument::GLTFAccessorIndex
+GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs, const bool p_for_vertex) {
+
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int ret_size = p_attribs.size() * 4;
+	PoolVector<double> attribs;
+	attribs.resize(ret_size);
+	{
+		PoolVector<double>::Write w = attribs.write();
+		for (int i = 0; i < p_attribs.size(); i++) {
+			Color attrib = p_attribs[i];
+			w[(i * 4) + 0] = attrib.r;
+			w[(i * 4) + 1] = attrib.g;
+			w[(i * 4) + 2] = attrib.b;
+			w[(i * 4) + 3] = attrib.a;
+		}
+	}
+
+	ERR_FAIL_COND_V(attribs.size() % 4 != 0, -1);
+
+	GLTFAccessor accessor;
+	GLTFBufferIndex buffer_view_i;
+	int64_t size = state.buffers[0].size();
+	const GLTFDocument::GLTFType type = GLTFDocument::TYPE_VEC4;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_UNSIGNED_SHORT;
+
+	Error err = _encode_buffer_view(state, attribs.read().ptr(), p_attribs.size(), type, component_type, true, size, p_for_vertex, buffer_view_i);
+	if (err != OK) {
+		return -1;
+	}
+	Array ivec4_max;
+	accessor.max = ivec4_max;
+	ivec4_max.push_back(std::numeric_limits<ushort>::max());
+	ivec4_max.push_back(std::numeric_limits<ushort>::max());
+	ivec4_max.push_back(std::numeric_limits<ushort>::max());
+	ivec4_max.push_back(std::numeric_limits<ushort>::max());
+	Array ivec4_min;
+	ivec4_min.push_back(std::numeric_limits<ushort>::min());
+	ivec4_min.push_back(std::numeric_limits<ushort>::min());
+	ivec4_min.push_back(std::numeric_limits<ushort>::min());
+	ivec4_min.push_back(std::numeric_limits<ushort>::min());
+	accessor.min = ivec4_min;
+	accessor.normalized = true;
+	accessor.count = p_attribs.size();
+	accessor.type = type;
+	accessor.component_type = component_type;
+	accessor.buffer_view = buffer_view_i;
+	accessor.byte_offset = 0;
+	state.accessors.push_back(accessor);
+	return state.accessors.size() - 1;
+}
+
 PoolVector<Vector2> GLTFDocument::_decode_accessor_as_vec2(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex) {
 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
@@ -1834,20 +1999,53 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
 				}
 			}
-			// if (a.has("COLOR_0")) {
-			// 	array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
-			// }
+			{
+				Array a = array[Mesh::ARRAY_COLOR];
+				if (a.size()) {
+					attributes["COLOR_0"] = _encode_accessor_as_color(state, a, true);
+				}
+			}
 			{
 				Array a = array[Mesh::ARRAY_BONES];
 				if (a.size()) {
-
-					attributes["JOINTS_0"] = _encode_accessor_as_ints(state, a, true);
+					const int ret_size = a.size() / 4;
+					Array attribs;
+					attribs.resize(ret_size);
+					{
+						Map<int, int> joint_i_to_bone_i;
+						for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
+							if (state.nodes[node_i]->mesh == gltf_mesh_i && state.nodes[node_i]->skin != -1) {
+								joint_i_to_bone_i = state.skins[state.nodes[node_i]->skin].joint_i_to_bone_i;
+								break;
+							}
+						}
+						Map<int, int> bone_i_to_joint_i;
+						for (Map<int, int>::Element *E = joint_i_to_bone_i.front(); E; E = E->next()) {
+							bone_i_to_joint_i.insert(E->get(), E->key());
+						}
+						for (int i = 0; i < ret_size; i++) {
+							int32_t joint_0 = bone_i_to_joint_i[a[(i * 4) + 0]];
+							int32_t joint_1 = bone_i_to_joint_i[a[(i * 4) + 1]];
+							int32_t joint_2 = bone_i_to_joint_i[a[(i * 4) + 2]];
+							int32_t joint_3 = bone_i_to_joint_i[a[(i * 4) + 3]];
+							attribs[i] = Color(joint_0, joint_1, joint_2, joint_3);
+						}
+					}
+					attributes["JOINTS_0"] = _encode_accessor_as_joints(state, attribs, true);
 				}
 			}
 			{
 				Array a = array[Mesh::ARRAY_WEIGHTS];
 				if (a.size()) {
-					attributes["WEIGHTS_0"] = _encode_accessor_as_floats(state, a, true);
+					const int ret_size = a.size() / 4;
+					Array attribs;
+					attribs.resize(ret_size);
+					{
+						for (int i = 0; i < ret_size; i++) {
+							attribs[i] = Color(a[(i * 4) + 0], a[(i * 4) + 1], a[(i * 4) + 2], a[(i * 4) + 3]);
+						}
+					}
+					attributes["WEIGHTS_0"] = _encode_accessor_as_weights(state, attribs, true);
 				}
 			}
 			{
@@ -3546,8 +3744,12 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			int32_t bone_index = skin->get_bind_bone(bind_i);
 			String bone_name = skeleton->get_bone_name(bone_index);
 			Map<String, GLTFNodeIndex>::Element *E = node_names.find(bone_name);
+			ERR_CONTINUE(E == NULL);
 			GLTFNodeIndex node_index = E->get();
 			gltf_skin.joints.push_back(node_index);
+			Map<String, GLTFNodeIndex>::Element *F = node_names.find(bone_name);
+			ERR_CONTINUE(F == NULL);
+			gltf_skin.joint_i_to_bone_i.insert(F->get(), bone_index);
 			gltf_skin.joints_original.push_back(node_index);
 			state.nodes[node_index]->joint = true;
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(bind_i));
@@ -4215,7 +4417,6 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 	}
 
 	gltf_node->name = p_current_node->get_name();
-	;
 	for (int node_i = 0; node_i < p_current_node->get_child_count(); node_i++) {
 		gltf_node->children.push_back(state.nodes.size());
 		_convert_scene_node(state, _root_node, p_current_node->get_child(node_i), p_root_node_index, current_node_i);

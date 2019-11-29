@@ -405,10 +405,12 @@ private:
 
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
-
+	GLTFAccessorIndex _encode_accessor_as_weights(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
+	GLTFAccessorIndex _encode_accessor_as_joints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_floats(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
+	GLTFAccessorIndex _encode_accessor_as_color(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
