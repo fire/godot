@@ -56,14 +56,14 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	/* STEP 13 PARSE MESHES (we have enough info now) */
-	err = _serialize_meshes(state);
+	// /* STEP 12 CREATE SKINS */
+	err = _serialize_skins(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 12 CREATE SKINS */
-	err = _serialize_skins(state);
+	/* STEP 13 PARSE MESHES (we have enough info now) */
+	err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
@@ -1610,7 +1610,7 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 	const int ret_size = p_attribs.size() * 4;
 	PoolVector<double> attribs;
 	attribs.resize(ret_size);
-	
+
 	Array type_max;
 	type_max.resize(4);
 	Array type_min;
@@ -1636,7 +1636,7 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
 	}
-	
+
 	ERR_FAIL_COND_V(attribs.size() % 4 != 0, -1);
 
 	GLTFAccessor accessor;
@@ -1808,12 +1808,12 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			w[i * 16 + 1] = axis_0.y;
 			w[i * 16 + 2] = axis_0.z;
 			w[i * 16 + 3] = 0.0f;
-			
+
 			type_max[0] = MAX(double(type_max[0]), w[i * 16 + 0]);
 			type_max[1] = MAX(double(type_max[1]), w[i * 16 + 1]);
 			type_max[2] = MAX(double(type_max[2]), w[i * 16 + 2]);
 			type_max[3] = MAX(double(type_max[3]), w[i * 16 + 3]);
-			
+
 			type_min[0] = MIN(double(type_min[0]), w[i * 16 + 0]);
 			type_min[1] = MIN(double(type_min[1]), w[i * 16 + 1]);
 			type_min[2] = MIN(double(type_min[2]), w[i * 16 + 2]);
@@ -1856,7 +1856,7 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			w[i * 16 + 13] = origin.y;
 			w[i * 16 + 14] = origin.z;
 			w[i * 16 + 15] = 1.0f;
-			
+
 			type_max[12] = MAX(double(type_max[12]), w[i * 16 + 12]);
 			type_max[13] = MAX(double(type_max[13]), w[i * 16 + 13]);
 			type_max[14] = MAX(double(type_max[14]), w[i * 16 + 14]);
@@ -2080,25 +2080,29 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					attributes["COLOR_0"] = _encode_accessor_as_color(state, a, true);
 				}
 			}
-			{
+			Map<int, int> joint_i_to_bone_i;
+			for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
+				GLTFSkinIndex skin_i = -1;
+				if (state.nodes[node_i]->mesh == gltf_mesh_i) {
+					skin_i = state.nodes[node_i]->skin;
+				}
+				if (skin_i != -1) {
+					joint_i_to_bone_i = state.skins[skin_i].joint_i_to_bone_i;
+					break;
+				}
+			}
+			if (joint_i_to_bone_i.size()) {
 				Array a = array[Mesh::ARRAY_BONES];
 				if (a.size()) {
 					const int ret_size = a.size() / 4;
 					Array attribs;
 					attribs.resize(ret_size);
 					{
-						Map<int, int> joint_i_to_bone_i;
-						for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
-							if (state.nodes[node_i]->mesh == gltf_mesh_i && state.nodes[node_i]->skin != -1) {
-								joint_i_to_bone_i = state.skins[state.nodes[node_i]->skin].joint_i_to_bone_i;
-								break;
-							}
-						}
 						Map<int, int> bone_i_to_joint_i;
 						for (Map<int, int>::Element *E = joint_i_to_bone_i.front(); E; E = E->next()) {
 							bone_i_to_joint_i.insert(E->get(), E->key());
 						}
-						for (int i = 0; i < ret_size; i++) {
+						for (int i = 0; i < attribs.size(); i++) {
 							int32_t joint_0 = bone_i_to_joint_i[a[(i * 4) + 0]];
 							int32_t joint_1 = bone_i_to_joint_i[a[(i * 4) + 1]];
 							int32_t joint_2 = bone_i_to_joint_i[a[(i * 4) + 2]];
@@ -2109,9 +2113,32 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					attributes["JOINTS_0"] = _encode_accessor_as_joints(state, attribs, true);
 				}
 			}
-			{
+			if (joint_i_to_bone_i.size()) {
 				Array a = array[Mesh::ARRAY_WEIGHTS];
 				if (a.size()) {
+					PoolRealArray weights;
+					{ //gltf does not seem to normalize the weights for some reason..
+						int wc = a.size();
+						weights.resize(wc);
+						for (int k = 0; k < wc; k += 4) {
+							float total = 0.0;
+							float weight_0 = a[k + 0];
+							total += weight_0;
+							float real_1 = a[k + 1];
+							total += real_1;
+							float real_2 = a[k + 2];
+							total += real_2;
+							float real_3 = a[k + 3];
+							total += real_3;
+							if (total > 0.0) {
+								weights.write()[k + 0] /= total;
+								weights.write()[k + 1] /= total;
+								weights.write()[k + 2] /= total;
+								weights.write()[k + 3] /= total;
+							}
+						}
+					}
+
 					const int ret_size = a.size() / 4;
 					Array attribs;
 					attribs.resize(ret_size);
@@ -3809,10 +3836,6 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			continue;
 		}
 		Ref<Skin> skin = mi->get_skin();
-		Set<String> bone_names;
-		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
-			bone_names.insert(skeleton->get_bone_name(bone_i));
-		}
 		GLTFSkin gltf_skin;
 		Array json_joints;
 		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
@@ -3822,15 +3845,22 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			ERR_CONTINUE(E == NULL);
 			GLTFNodeIndex node_index = E->get();
 			gltf_skin.joints.push_back(node_index);
-			Map<String, GLTFNodeIndex>::Element *F = node_names.find(bone_name);
-			ERR_CONTINUE(F == NULL);
-			gltf_skin.joint_i_to_bone_i.insert(F->get(), bone_index);
 			gltf_skin.joints_original.push_back(node_index);
 			state.nodes[node_index]->joint = true;
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(bind_i));
 			json_joints.push_back(node_index);
 			// print_verbose("glTF: bind pose " + itos(bind_i) + " " + skin->get_bind_pose(bind_i));
 			// print_verbose("glTF: bone rest " + itos(bone_index) + " " + skeleton->get_bone_rest(bone_index));
+		}
+
+		for (int32_t bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
+			String bone_name = skeleton->get_bone_name(bone_i);
+			for (int32_t joint_i = 0; joint_i < gltf_skin.joints.size(); joint_i++) {
+				if (bone_name == state.nodes[gltf_skin.joints[joint_i]]->name) {
+					gltf_skin.joint_i_to_bone_i.insert(joint_i, bone_i);
+					continue;
+				}
+			}
 		}
 		for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
 			if (E->get() == skeleton) {
