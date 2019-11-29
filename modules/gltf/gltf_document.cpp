@@ -1006,7 +1006,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[dst_i] = d / 128.0;
+						buffer.write[dst_i] = d * 128.0;
 					} else {
 						buffer.write[dst_i] = d;
 					}
@@ -1030,7 +1030,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[dst_i] = d / 255.0;
+						buffer.write[dst_i] = d * 255.0;
 					} else {
 						buffer.write[dst_i] = d;
 					}
@@ -1052,7 +1052,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[dst_i] = d / 32768.0;
+						buffer.write[dst_i] = d * 32768.0;
 					} else {
 						buffer.write[dst_i] = d;
 					}
@@ -1076,7 +1076,7 @@ Error GLTFDocument::_encode_buffer_view(GLTFState &state, const double *src, con
 					}
 					double d = *src;
 					if (normalized) {
-						buffer.write[dst_i] = d / 65535.0;
+						buffer.write[dst_i] = d * 65535.0;
 					} else {
 						buffer.write[dst_i] = d;
 					}
@@ -1370,7 +1370,7 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = ret_size;
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1463,7 +1463,7 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1525,7 +1525,7 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1586,7 +1586,7 @@ GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attrib
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1712,7 +1712,7 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = ret_size;
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1770,7 +1770,7 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
@@ -1879,7 +1879,7 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 
 	accessor.max = type_max;
 	accessor.min = type_min;
-	accessor.normalized = true;
+	accessor.normalized = false;
 	accessor.count = p_attribs.size();
 	accessor.type = type;
 	accessor.component_type = component_type;
