@@ -3551,7 +3551,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			gltf_skin.joints_original.push_back(node_index);
 			state.nodes[node_index]->joint = true;
 			gltf_skin.inverse_binds.push_back(skin->get_bind_pose(bind_i));
-			json_joints.push_back(node_index);			
+			json_joints.push_back(node_index);
 			// print_verbose("glTF: bind pose " + itos(bind_i) + " " + skin->get_bind_pose(bind_i));
 			// print_verbose("glTF: bone rest " + itos(bone_index) + " " + skeleton->get_bone_rest(bone_index));
 		}
