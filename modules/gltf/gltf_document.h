@@ -107,7 +107,7 @@ public:
 		int byte_offset;
 		int byte_length;
 		int byte_stride;
-		int indices;
+		bool indices;
 		//matrices need to be transformed to this
 
 		GLTFBufferView() :
@@ -115,7 +115,7 @@ public:
 				byte_offset(0),
 				byte_length(0),
 				byte_stride(-1),
-				indices(-1) {
+				indices(false) {
 		}
 	};
 
