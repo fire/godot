@@ -50,25 +50,25 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		state.buffers.push_back(Vector<uint8_t>());
 	}
 
-	/* STEP 14 PARSE CAMERAS */
+	/* STEP 1 PARSE CAMERAS */
 	Error err = _serialize_cameras(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 12 CREATE SKINS */
+	// /* STEP 2 CREATE SKINS */
 	err = _serialize_skins(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 13 PARSE MESHES (we have enough info now) */
+	/* STEP 3 PARSE MESHES (we have enough info now) */
 	err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 7 PARSE TEXTURES */
+	/* STEP 4 PARSE TEXTURES */
 	err = _serialize_materials(state);
 	if (err != OK) {
 		return Error::FAILED;
@@ -86,7 +86,7 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	/* STEP 4 PARSE ACCESSORS */
+	/* STEP 7 PARSE ACCESSORS */
 	err = _encode_accessors(state);
 	if (err != OK) {
 		return Error::FAILED;
@@ -96,31 +96,31 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		state.buffer_views.write[i].buffer = 0;
 	}
 
-	/* STEP 3 PARSE BUFFER VIEWS */
+	/* STEP 8 PARSE BUFFER VIEWS */
 	err = _encode_buffer_views(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 2 PARSE BUFFERS */
+	/* STEP 9 PARSE BUFFERS */
 	err = _encode_buffers(state, p_path);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 1 PARSE NODES */
+	/* STEP 10 PARSE NODES */
 	err = _serialize_nodes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	//// /* STEP 15 PARSE ANIMATIONS */
+	//// /* STEP 11 PARSE ANIMATIONS */
 	//err = _serialize_animations(state);
 	//if (err != OK) {
 	//	return Error::FAILED;
 	//}
 
-	/* STEP 0 PARSE SCENE */
+	/* STEP 12 PARSE SCENE */
 	err = _serialize_scenes(state);
 	if (err != OK) {
 		return Error::FAILED;
