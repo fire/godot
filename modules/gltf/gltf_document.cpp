@@ -2052,7 +2052,13 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 			{
 				Array a = array[Mesh::ARRAY_TANGENT];
 				if (a.size()) {
-					attributes["TANGENT"] = _encode_accessor_as_floats(state, a, true);
+					const int ret_size = a.size() / 4;
+					Array attribs;
+					attribs.resize(ret_size);
+					for (int i = 0; i < ret_size; i++) {
+						attribs[i] = Color(a[(i * 4) + 0], a[(i * 4) + 1], a[(i * 4) + 2], a[(i * 4) + 3]);
+					}
+					attributes["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
 				}
 			}
 			{
@@ -2191,8 +2197,13 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					}
 					Array tarr = array_morph[Mesh::ARRAY_TANGENT];
 					if (tarr.size()) {
-						// TODO code check?
-						t["TANGENT"] = _encode_accessor_as_vec3(state, tarr, true);
+						const int ret_size = tarr.size() / 4;
+						Array attribs;
+						attribs.resize(ret_size);
+						for (int i = 0; i < ret_size; i++) {
+							attribs[i] = Color(tarr[(i * 4) + 0], tarr[(i * 4) + 1], tarr[(i * 4) + 2], tarr[(i * 4) + 3]);
+						}
+						t["TANGENT"] = _encode_accessor_as_joints(state, attribs, true);
 					}
 					targets.push_back(t);
 				}
