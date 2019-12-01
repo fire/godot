@@ -324,23 +324,7 @@ Error GLTFDocument::_serialize_nodes(GLTFState &state) {
 			node["name"] = n->name;
 		}
 		if (n->camera != -1) {
-			GLTFCamera cam = state.cameras[n->camera];
-			Dictionary json_camera;
-			if (cam.perspective) {
-				Dictionary og;
-				og["ymag"] = cam.fov_size;
-				og["zfar"] = cam.zfar;
-				og["znear"] = cam.znear;
-
-				json_camera["orthographic"] = og;
-			} else {
-				Dictionary ppt;
-				ppt["yfov"] = cam.fov_size;
-				ppt["zfar"] = cam.zfar;
-				ppt["znear"] = cam.znear;
-				json_camera["perspective"] = ppt;
-			}
-			node["camera"] = json_camera;
+			node["camera"] = n->camera;
 		}
 		if (n->mesh != -1) {
 			node["mesh"] = n->mesh;
@@ -3963,7 +3947,8 @@ Error GLTFDocument::_serialize_cameras(GLTFState &state) {
 
 		if (camera.perspective == false) {
 			Dictionary og;
-			og["ymag"] = camera.fov_size;
+			og["ymag"] = Math::deg2rad(camera.fov_size);
+			og["xmag"] = Math::deg2rad(camera.fov_size);
 			og["zfar"] = camera.zfar;
 			og["znear"] = camera.znear;
 			d["orthographic"] = og;
@@ -3972,7 +3957,6 @@ Error GLTFDocument::_serialize_cameras(GLTFState &state) {
 		} else if (camera.perspective) {
 			Dictionary ppt;
 			// GLTF spec is in radians, Godot's camera is in degrees.
-			ppt["yfov"] = Math::deg2rad(camera.fov_size);
 			ppt["yfov"] = Math::deg2rad(camera.fov_size);
 			ppt["zfar"] = camera.zfar;
 			ppt["znear"] = camera.znear;
@@ -4013,7 +3997,8 @@ Error GLTFDocument::_parse_cameras(GLTFState &state) {
 			camera.perspective = false;
 			if (d.has("orthographic")) {
 				const Dictionary &og = d["orthographic"];
-				camera.fov_size = og["ymag"];
+				// GLTF spec is in radians, Godot's camera is in degrees.
+				camera.fov_size = Math::rad2deg(real_t(og["ymag"]));
 				camera.zfar = og["zfar"];
 				camera.znear = og["znear"];
 			} else {
@@ -4026,7 +4011,7 @@ Error GLTFDocument::_parse_cameras(GLTFState &state) {
 			if (d.has("perspective")) {
 				const Dictionary &ppt = d["perspective"];
 				// GLTF spec is in radians, Godot's camera is in degrees.
-				camera.fov_size = (double)ppt["yfov"] * 180.0 / Math_PI;
+				camera.fov_size = Math::rad2deg(real_t(ppt["yfov"]));
 				camera.zfar = ppt["zfar"];
 				camera.znear = ppt["znear"];
 			} else {
