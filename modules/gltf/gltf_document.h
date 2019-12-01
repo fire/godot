@@ -167,6 +167,10 @@ public:
 		// Set of unique bone names for the skeleton
 		Set<String> unique_names;
 
+		Map<int32_t, GLTFNodeIndex> godot_bone_node;
+
+		Map<int32_t, int32_t> node_godot_parent;
+
 		GLTFSkeleton() :
 				godot_skeleton(nullptr) {
 		}

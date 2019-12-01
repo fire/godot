@@ -3789,25 +3789,6 @@ Error GLTFDocument::_map_skin_joints_indices_to_skeleton_bone_indices(GLTFState 
 
 Error GLTFDocument::_serialize_skins(GLTFState &state) {
 
-	Map<String, GLTFNodeIndex> node_names;
-	for (int node_i = 0; node_i < state.nodes.size(); node_i++) {
-		node_names.insert(state.nodes[node_i]->name, node_i);
-	}
-
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < state.skeletons.size(); ++skel_i) {
-		GLTFSkeleton gltf_skeleton = state.skeletons[skel_i];
-		Skeleton *skeleton = gltf_skeleton.godot_skeleton;
-		ERR_FAIL_COND_V(!skeleton, ERR_INVALID_DATA);
-		Set<String> bone_names;
-		for (int bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
-			bone_names.insert(skeleton->get_bone_name(bone_i));
-		}
-		for (Set<String>::Element *E = bone_names.front(); E; E = E->next()) {
-			Map<String, GLTFNodeIndex>::Element *F = node_names.find(E->get());
-			ERR_CONTINUE(!F);
-			state.nodes[F->get()]->skeleton = skel_i;
-		}
-	}
 	Array json_skins;
 	for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
 		Dictionary json_skin;
@@ -3830,12 +3811,17 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		Ref<Skin> skin = mi->get_skin();
 		GLTFSkin gltf_skin;
 		Array json_joints;
+
+		GLTFSkeletonIndex found_skel_i = -1;
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < state.skeletons.size(); skel_i++) {
+			if (state.skeletons[skel_i].godot_skeleton == skeleton) {
+				found_skel_i = skel_i;
+				break;
+			}
+		}
 		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
 			int32_t bone_index = skin->get_bind_bone(bind_i);
-			String bone_name = skeleton->get_bone_name(bone_index);
-			Map<String, GLTFNodeIndex>::Element *E = node_names.find(bone_name);
-			ERR_CONTINUE(E == NULL);
-			GLTFNodeIndex node_index = E->get();
+			GLTFNodeIndex node_index = state.skeletons[found_skel_i].godot_bone_node[bone_index];
 			gltf_skin.joints.push_back(node_index);
 			gltf_skin.joints_original.push_back(node_index);
 			state.nodes[node_index]->joint = true;
@@ -4431,46 +4417,43 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 	return state.cameras.size() - 1;
 }
 
-GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index) {
+GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_parent_node, GLTFNodeIndex p_parent_node_index) {
 	print_verbose("glTF: Converting skeleton: " + p_skeleton->get_name());
-	p_node->name = p_skeleton->get_name();
-	Map<String, GLTFNodeIndex> node_indices;
-	Map<GLTFNodeIndex, String> node_parent;
-	for (int32_t i = 0; i < p_skeleton->get_bone_count(); i++) {
+	p_parent_node->name = _gen_unique_name(state, p_skeleton->get_name());
+	GLTFSkeleton gltf_skeleton;
+	gltf_skeleton.godot_skeleton = p_skeleton;
+	state.skeletons.push_back(gltf_skeleton);
+	for (int32_t bone_i = 0; bone_i < p_skeleton->get_bone_count(); bone_i++) {
 		GLTFNode *node = memnew(GLTFNode);
-		node->name = p_skeleton->get_bone_name(i);
-		Transform xform = p_skeleton->get_bone_rest(i);
+		node->name = _gen_unique_bone_name(state, state.skeletons.size() - 1, p_skeleton->get_bone_name(bone_i));
+		Transform xform = p_skeleton->get_bone_rest(bone_i);
 		node->scale = xform.basis.get_scale();
 		node->rotation = xform.basis.get_rotation_quat();
 		node->translation = xform.origin;
-		int32_t parent = p_skeleton->get_bone_parent(i);
-		String parent_name;
-		GLTFNodeIndex node_index = state.nodes.size();
-		if (parent != -1) {
-			parent_name = p_skeleton->get_bone_name(parent);
-		} else {
-			node->parent = p_node_index;
-			if (p_node->children.find(node_index) == -1) {
-				p_node->children.push_back(node_index);
+		int32_t parent = p_skeleton->get_bone_parent(bone_i);
+		if (parent == -1) {
+			node->parent = p_parent_node_index;
+			if (p_parent_node->children.find(state.nodes.size()) == -1) {
+				p_parent_node->children.push_back(state.nodes.size());
 			}
+		} else {
+			state.skeletons.write[state.skeletons.size() - 1].node_godot_parent.insert(bone_i, parent);
 		}
-		node_indices.insert(node->name, node_index);
-		node_parent.insert(state.nodes.size(), parent_name);
+		state.skeletons.write[state.skeletons.size() - 1].godot_bone_node.insert(bone_i, state.nodes.size());
 		state.nodes.push_back(node);
 	}
-	for (Map<GLTFNodeIndex, String>::Element *N = node_parent.front(); N; N = N->next()) {
-		GLTFNodeIndex current_node = N->key();
-		GLTFNode *node = state.nodes[current_node];
-		if (!N->get().empty()) {
-			String parent_bone_name = N->get();
-			node->parent = node_indices.find(parent_bone_name)->get();
-			GLTFNode *parent_node = state.nodes[node->parent];
-			if (parent_node->children.find(current_node) == -1) {
-				parent_node->children.push_back(current_node);
-			}
+	for (Map<int32_t, GLTFNodeIndex>::Element *E = state.skeletons.write[state.skeletons.size() - 1].godot_bone_node.front(); E; E = E->next()) {
+		int32_t parent = p_skeleton->get_bone_parent(E->key());
+		if (parent == -1) {
+			continue;
+		}
+		GLTFNodeIndex node_i = state.skeletons[state.skeletons.size() - 1].godot_bone_node[E->key()];
+		GLTFNodeIndex parent_i = state.skeletons[state.skeletons.size() - 1].godot_bone_node[parent];
+		state.nodes[node_i]->parent = parent_i;
+		if (state.nodes[parent_i]->children.find(node_i) == -1) {
+			state.nodes[parent_i]->children.push_back(node_i);
 		}
 	}
-	// TODO GLTFSkeleton
 	return state.skeletons.size() - 1;
 }
 
@@ -4500,6 +4483,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
 	state.nodes.push_back(gltf_node);
 	state.scene_nodes.insert(current_node_i, p_current_node);
+	gltf_node->name = _gen_unique_name(state, p_current_node->get_name());
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 		if (gltf_mesh_index != -1) {
@@ -4515,7 +4499,6 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *_root_node, Node 
 		_convert_spatial(state, spatial, state.nodes[current_node_i]);
 	}
 
-	gltf_node->name = p_current_node->get_name();
 	for (int node_i = 0; node_i < p_current_node->get_child_count(); node_i++) {
 		gltf_node->children.push_back(state.nodes.size());
 		_convert_scene_node(state, _root_node, p_current_node->get_child(node_i), p_root_node_index, current_node_i);
@@ -4904,18 +4887,6 @@ void GLTFDocument::_convert_mesh_instances(GLTFState &state, Node *scene_root) {
 			node->scale = xform.basis.get_scale();
 			node->rotation = xform.basis.get_rotation_quat();
 			node->translation = xform.origin;
-
-			GLTFSkeleton gltf_skeleton;
-			GLTFSkin gltf_skin;
-			NodePath skeleton_path = mi->get_skeleton_path();
-			Skeleton *skeleton = Object::cast_to<Skeleton>(scene_root->get_node(skeleton_path));
-			if (skeleton) {
-				gltf_skeleton.godot_skeleton = skeleton;
-				gltf_skin.skeleton = state.skeletons.size();
-				state.skeletons.push_back(gltf_skeleton);
-				gltf_skin.godot_skin = mi->get_skin();
-				state.skins.push_back(gltf_skin);
-			}
 		}
 	}
 }
