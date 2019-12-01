@@ -1780,18 +1780,26 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 
 	Array type_max;
 	type_max.resize(16);
+	type_max[3] = 0.0;
+	type_max[7] = 0.0;
+	type_max[11] = 0.0;
+	type_max[15] = 1.0;
 	Array type_min;
 	type_min.resize(16);
+	type_min[3] = 0.0;
+	type_min[7] = 0.0;
+	type_min[11] = 0.0;
+	type_min[15] = 1.0;
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Transform attrib = p_attribs[i];
 			Basis basis = attrib.get_basis();
 			Vector3 axis_0 = basis.get_axis(Vector3::AXIS_X);
-			w[i * 16 + 0] = axis_0.x;
-			w[i * 16 + 1] = axis_0.y;
-			w[i * 16 + 2] = axis_0.z;
-			w[i * 16 + 3] = 0.0f;
+			w[i * 16 + 0] = Math::stepify(axis_0.x, 0.000001);
+			w[i * 16 + 1] = Math::stepify(axis_0.y, 0.000001);
+			w[i * 16 + 2] = Math::stepify(axis_0.z, 0.000001);
+			w[i * 16 + 3] = 0.0;
 
 			type_max[0] = MAX(double(type_max[0]), w[i * 16 + 0]);
 			type_max[1] = MAX(double(type_max[1]), w[i * 16 + 1]);
@@ -1804,10 +1812,10 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			type_min[3] = MIN(double(type_min[3]), w[i * 16 + 3]);
 
 			Vector3 axis_1 = basis.get_axis(Vector3::AXIS_Y);
-			w[i * 16 + 4] = axis_1.x;
-			w[i * 16 + 5] = axis_1.y;
-			w[i * 16 + 6] = axis_1.z;
-			w[i * 16 + 7] = 0.0f;
+			w[i * 16 + 4] = Math::stepify(axis_1.x, 0.000001);
+			w[i * 16 + 5] = Math::stepify(axis_1.y, 0.000001);
+			w[i * 16 + 6] = Math::stepify(axis_1.z, 0.000001);
+			w[i * 16 + 7] = 0.0;
 
 			type_max[4] = MAX(double(type_max[4]), w[i * 16 + 4]);
 			type_max[5] = MAX(double(type_max[5]), w[i * 16 + 5]);
@@ -1820,10 +1828,10 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			type_min[7] = MIN(double(type_min[7]), w[i * 16 + 7]);
 
 			Vector3 axis_2 = basis.get_axis(Vector3::AXIS_Z);
-			w[i * 16 + 8] = axis_2.x;
-			w[i * 16 + 9] = axis_2.y;
-			w[i * 16 + 10] = axis_2.z;
-			w[i * 16 + 11] = 0.0f;
+			w[i * 16 + 8] = Math::stepify(axis_2.x, 0.000001);
+			w[i * 16 + 9] = Math::stepify(axis_2.y, 0.000001);
+			w[i * 16 + 10] = Math::stepify(axis_2.z, 0.000001);
+			w[i * 16 + 11] = 0.0;
 
 			type_max[8] = MAX(double(type_max[8]), w[i * 16 + 8]);
 			type_max[9] = MAX(double(type_max[9]), w[i * 16 + 9]);
@@ -1836,10 +1844,10 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 			type_min[11] = MIN(double(type_min[11]), w[i * 16 + 11]);
 
 			Vector3 origin = attrib.get_origin();
-			w[i * 16 + 12] = origin.x;
-			w[i * 16 + 13] = origin.y;
-			w[i * 16 + 14] = origin.z;
-			w[i * 16 + 15] = 1.0f;
+			w[i * 16 + 12] = Math::stepify(origin.x, 0.000001);
+			w[i * 16 + 13] = Math::stepify(origin.y, 0.000001);
+			w[i * 16 + 14] = Math::stepify(origin.z, 0.000001);
+			w[i * 16 + 15] = 1.0;
 
 			type_max[12] = MAX(double(type_max[12]), w[i * 16 + 12]);
 			type_max[13] = MAX(double(type_max[13]), w[i * 16 + 13]);
@@ -2039,15 +2047,26 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					Array attribs;
 					attribs.resize(ret_size);
 					for (int i = 0; i < ret_size; i++) {
-						attribs[i] = Color(a[(i * 4) + 0], a[(i * 4) + 1], a[(i * 4) + 2], a[(i * 4) + 3]);
+						Vector3 tangent;
+						tangent.x = a[(i * 4) + 0];
+						tangent.y = a[(i * 4) + 1];
+						tangent.z = a[(i * 4) + 2];
+						tangent.normalize();
+						attribs[i] = Color(tangent.x, tangent.y, tangent.z, a[(i * 4) + 3]);
 					}
 					attributes["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
 				}
 			}
 			{
-				Array a = array[Mesh::ARRAY_NORMAL];
+				PoolVector3Array a = array[Mesh::ARRAY_NORMAL];
 				if (a.size()) {
-					attributes["NORMAL"] = _encode_accessor_as_vec3(state, a, true);
+					const int ret_size = a.size();
+					Array attribs;
+					attribs.resize(ret_size);
+					for (int i = 0; i < ret_size; i++) {
+						attribs[i] = Vector3(a[i]).normalized();
+					}
+					attributes["NORMAL"] = _encode_accessor_as_vec3(state, attribs, true);
 				}
 			}
 			{
