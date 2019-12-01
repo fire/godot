@@ -2029,7 +2029,6 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 		Array weights;
 		for (int surface_i = 0; surface_i < godot_mesh->get_surface_count(); surface_i++) {
 			Dictionary primitive;
-
 			Mesh::PrimitiveType primitive_type = godot_mesh->surface_get_primitive_type(surface_i);
 			static const Mesh::PrimitiveType primitives2[7] = {
 				Mesh::PRIMITIVE_POINTS,
@@ -4339,10 +4338,13 @@ BoneAttachment *GLTFDocument::_generate_bone_attachment(GLTFState &state, Skelet
 
 GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance) {
 	GLTFMesh mesh;
-	mesh.mesh = p_mesh_instance->get_mesh();
-	if (mesh.mesh.is_null()) {
+	if (p_mesh_instance->get_mesh().is_null()) {
 		return -1;
 	}
+	if (!p_mesh_instance->get_mesh()->get_surface_count()) {
+		return -1;
+	}
+	mesh.mesh = p_mesh_instance->get_mesh();
 	for (int i = 0; i < mesh.mesh->get_surface_count(); i++) {
 		Ref<Material> material = p_mesh_instance->get_surface_material(i);
 		if (material.is_null()) {
