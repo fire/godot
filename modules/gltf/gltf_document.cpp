@@ -2213,8 +2213,14 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 
 			Ref<Material> mat = godot_mesh->surface_get_material(surface_i);
 			if (mat.is_valid()) {
-				state.materials.push_back(mat);
-				primitive["material"] = state.materials.size() - 1;
+				Map<Ref<Material>, GLTFMaterialIndex>::Element *E = state.material_cache.find(mat);
+				if (E) {
+					primitive["material"] = E->get();
+				} else {
+					state.material_cache.insert(mat, state.materials.size());
+					primitive["material"] = state.materials.size();
+					state.materials.push_back(mat);
+				}
 			}
 
 			if (targets.size()) {
