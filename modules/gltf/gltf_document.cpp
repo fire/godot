@@ -4341,6 +4341,9 @@ GLTFDocument::GLTFMeshIndex GLTFDocument::_convert_mesh_instance(GLTFState &stat
 		return -1;
 	}
 	mesh.mesh = p_mesh_instance->get_mesh();
+	if (mesh.mesh.is_null()) {
+		return -1;
+	}
 	for (int i = 0; i < mesh.mesh->get_surface_count(); i++) {
 		Ref<Material> material = p_mesh_instance->get_surface_material(i);
 		if (material.is_null()) {
