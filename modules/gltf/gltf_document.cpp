@@ -2013,7 +2013,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 	for (GLTFMeshIndex gltf_mesh_i = 0; gltf_mesh_i < state.meshes.size(); gltf_mesh_i++) {
 
 		print_verbose("glTF: Serializing mesh: " + itos(gltf_mesh_i));
-		Ref<ArrayMesh> godot_mesh = state.meshes[gltf_mesh_i].mesh;
+		Ref<Mesh> godot_mesh = state.meshes[gltf_mesh_i].mesh;
 		Array primitives;
 		Array targets;
 		Dictionary gltf_mesh;
@@ -2176,8 +2176,9 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					Array array_morph = array_morphs[morph_i];
 
 					Array varr = array_morph[Mesh::ARRAY_VERTEX];
-					if (varr.size()) {
-						ArrayMesh::BlendShapeMode shape_mode = godot_mesh->get_blend_shape_mode();
+					Ref<ArrayMesh> array_mesh = godot_mesh;
+					if (varr.size() && array_mesh.is_valid()) {
+						ArrayMesh::BlendShapeMode shape_mode = array_mesh->get_blend_shape_mode();
 						Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
 						if (shape_mode == ArrayMesh::BlendShapeMode::BLEND_SHAPE_MODE_NORMALIZED) {
 							const int max_idx = src_varr.size();
@@ -2194,11 +2195,11 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					}
 
 					Array narr = array_morph[Mesh::ARRAY_NORMAL];
-					if (varr.size()) {
+					if (varr.size() && array_mesh.is_valid()) {
 						t["NORMAL"] = _encode_accessor_as_vec3(state, narr, true);
 					}
 					Array tarr = array_morph[Mesh::ARRAY_TANGENT];
-					if (tarr.size()) {
+					if (tarr.size() && array_mesh.is_valid()) {
 						const int ret_size = tarr.size() / 4;
 						Array attribs;
 						attribs.resize(ret_size);
@@ -2269,9 +2270,8 @@ Error GLTFDocument::_parse_meshes(GLTFState &state) {
 		print_verbose("glTF: Parsing mesh: " + itos(i));
 		Dictionary d = meshes[i];
 
-		GLTFMesh mesh;
-		mesh.mesh.instance();
-
+		Ref<ArrayMesh> array_mesh;
+		array_mesh.instance();
 		ERR_FAIL_COND_V(!d.has("primitives"), ERR_PARSE_ERROR);
 
 		Array primitives = d["primitives"];
@@ -2410,13 +2410,13 @@ Error GLTFDocument::_parse_meshes(GLTFState &state) {
 
 				//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
 				//but it could require a larger refactor?
-				mesh.mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
+				array_mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
 
 				if (j == 0) {
 					const Array &target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();
 					for (int k = 0; k < targets.size(); k++) {
 						const String name = k < target_names.size() ? (String)target_names[k] : String("morph_") + itos(k);
-						mesh.mesh->add_blend_shape(name);
+						array_mesh->add_blend_shape(name);
 					}
 				}
 
@@ -2529,20 +2529,23 @@ Error GLTFDocument::_parse_meshes(GLTFState &state) {
 			}
 
 			//just add it
-			mesh.mesh->add_surface_from_arrays(primitive, array, morphs);
+			array_mesh->add_surface_from_arrays(primitive, array, morphs);
 
 			if (p.has("material")) {
 				const int material = p["material"];
 				ERR_FAIL_INDEX_V(material, state.materials.size(), ERR_FILE_CORRUPT);
 				const Ref<Material> &mat = state.materials[material];
 
-				mesh.mesh->surface_set_material(mesh.mesh->get_surface_count() - 1, mat);
+				array_mesh->surface_set_material(array_mesh->get_surface_count() - 1, mat);
 			}
 		}
 
+		GLTFMesh mesh;
+		mesh.mesh = array_mesh;
+
 		if (d.has("weights")) {
 			const Array &weights = d["weights"];
-			ERR_FAIL_COND_V(mesh.mesh->get_blend_shape_count() != weights.size(), ERR_PARSE_ERROR);
+			ERR_FAIL_COND_V(array_mesh->get_blend_shape_count() != weights.size(), ERR_PARSE_ERROR);
 			mesh.blend_weights.resize(weights.size());
 			for (int j = 0; j < weights.size(); j++) {
 				mesh.blend_weights.write[j] = weights[j];

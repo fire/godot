@@ -216,7 +216,7 @@ public:
 	};
 
 	struct GLTFMesh {
-		Ref<ArrayMesh> mesh;
+		Ref<Mesh> mesh;
 		Vector<float> blend_weights;
 	};
 
