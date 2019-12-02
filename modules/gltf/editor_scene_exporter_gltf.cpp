@@ -60,6 +60,9 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	for (int32_t i = 0; i < csg_items.size(); i++) {
 		Ref<Mesh> mesh = csg_items[i]->get_calculated_mesh();
 		MeshInfo mesh_info;
+		for (int32_t material_i = 0; material_i < mesh->get_surface_count(); material_i++) {
+			mesh_info.materials.push_back(mesh->surface_get_material(material_i));
+		}
 		mesh_info.mesh = mesh;
 		mesh_info.transform = csg_items[i]->get_transform();
 		mesh_info.name = csg_items[i]->get_name();
@@ -72,14 +75,17 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 			Vector3 cell_location = cells[k];
 			int32_t cell = grid_map_items[i]->get_cell_item(cell_location.x, cell_location.y, cell_location.z);
 			MeshInfo mesh_info;
-			mesh_info.mesh = grid_map_items[i]->get_mesh_library()->get_item_mesh(cell);
+			Ref<Mesh> mesh = grid_map_items[i]->get_mesh_library()->get_item_mesh(cell);
+			for (int32_t material_i = 0; material_i < mesh->get_surface_count(); material_i++) {
+				mesh_info.materials.push_back(mesh->surface_get_material(material_i));
+			}
+			mesh_info.mesh = mesh;
 			Transform cell_xform;
 			cell_xform.basis.set_orthogonal_index(grid_map_items[i]->get_cell_item_orientation(cell_location.x, cell_location.y, cell_location.z));
 			cell_xform.basis.scale(Vector3(grid_map_items[i]->get_cell_scale(), grid_map_items[i]->get_cell_scale(), grid_map_items[i]->get_cell_scale()));
 			cell_xform.set_origin(grid_map_items[i]->map_to_world(cell_location.x, cell_location.y, cell_location.z));
 			mesh_info.transform = cell_xform * grid_map_items[i]->get_transform();
 			mesh_info.name = grid_map_items[i]->get_mesh_library()->get_item_name(cell);
-			mesh_info.original_node = csg_items[i];
 			meshes.push_back(mesh_info);
 		}
 	}
@@ -92,7 +98,12 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 		}
 		mi->set_name(meshes[i].name);
 		mi->set_transform(meshes[i].transform);
-		meshes[i].original_node->replace_by(mi);
+		if (meshes[i].original_node) {
+			meshes[i].original_node->replace_by(mi);
+		} else {
+			p_node->add_child(mi);
+			mi->set_owner(p_node);
+		}
 	}
 
 	Ref<GLTFDocument> gltf_document;
