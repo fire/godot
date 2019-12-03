@@ -169,13 +169,8 @@ public:
 
 		Map<int32_t, GLTFNodeIndex> godot_bone_node;
 
-		Map<int32_t, int32_t> node_godot_parent;
-
-		GLTFNodeIndex parent;
-
 		GLTFSkeleton() :
-				godot_skeleton(nullptr),				
-				parent(-1) {
+				godot_skeleton(nullptr) {
 		}
 	};
 
@@ -295,6 +290,7 @@ public:
 		Set<String> unique_names;
 
 		Vector<GLTFSkeleton> skeletons;
+		Map<GLTFSkeletonIndex, GLTFNodeIndex> skeleton_to_node;
 		Vector<GLTFAnimation> animations;
 
 		Map<GLTFNodeIndex, Node *> scene_nodes;
