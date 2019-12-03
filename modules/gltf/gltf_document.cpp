@@ -4461,6 +4461,13 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	Camera *camera = Object::cast_to<Camera>(p_current_node);
 	Skeleton *skeleton = Object::cast_to<Skeleton>(p_current_node);
 	Spatial *spatial = Object::cast_to<Spatial>(p_current_node);
+	Node2D *node_2d = Object::cast_to<Node2D>(p_current_node);
+	if(node_2d && !node_2d->is_visible()) {
+		return;
+	}
+	if(spatial && !spatial->is_visible()) {
+		return;
+	}
 	GLTFNodeIndex current_node_i = state.nodes.size();
 	state.scene_nodes.insert(current_node_i, p_current_node);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
