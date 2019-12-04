@@ -4469,17 +4469,15 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	state.scene_nodes.insert(current_node_i, p_current_node);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
 	gltf_node->name = _gen_unique_name(state, p_current_node->get_name());
-	if (p_parent_node_index != -1) {
-		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
-	}
-	
+
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 		if (gltf_mesh_index != -1) {
 			gltf_node->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		_convert_skeleton(state, skeleton, gltf_node, current_node_i);
+		current_node_i = p_parent_node_index;
+		_convert_skeleton(state, skeleton, state.nodes.write[current_node_i], current_node_i);
 	} else if (camera) {
 		gltf_node->camera = _convert_camera(state, camera);
 	} else if (spatial) {
@@ -4487,11 +4485,16 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	} else {
 		print_verbose(String("glTF: Converting node of type: ") + p_current_node->get_class_name());
 	}
+	if (!skeleton) {
+		if (p_parent_node_index != -1) {
+			state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
+		}
+		state.nodes.push_back(gltf_node);
+	}
 
 	if (spatial) {
 		_convert_spatial(state, spatial, gltf_node);
 	}
-	state.nodes.push_back(gltf_node);
 	for (int node_i = 0; node_i < p_current_node->get_child_count(); node_i++) {
 		_convert_scene_node(state, p_root_node, p_current_node->get_child(node_i), p_root_node_index, current_node_i);
 	}
