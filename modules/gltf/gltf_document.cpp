@@ -1744,9 +1744,10 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 	type_min.resize(1);
 
 	for (int i = 0; i < p_attribs.size(); i++) {
-		w[i] = p_attribs[i];
-		type_max[0] = MAX(double(type_max[0]), w[i]);
-		type_min[0] = MIN(double(type_min[0]), w[i]);
+		w[i] = Math::stepify(p_attribs[i], 0.000001);
+		;
+		type_max[0] = MAX(real_t(type_max[0]), w[i]);
+		type_min[0] = MIN(real_t(type_min[0]), w[i]);
 	}
 
 	ERR_FAIL_COND_V(!attribs.size(), -1);
@@ -4132,7 +4133,6 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 			}
 		}
 	}
-
 	Array animations;
 	for (GLTFAnimationIndex animation_i = 0; animation_i < state.animations.size(); animation_i++) {
 		Dictionary d;
@@ -4210,22 +4210,41 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 				t["target"] = target;
 				channels.push_back(t);
 			}
-			//{
-			//	Dictionary t;
-			//	c["sampler"] = samplers.size();
-			//	Dictionary s;
+			if (track.weight_tracks.size()) {
+				Dictionary t;
+				t["sampler"] = samplers.size();
+				Dictionary s;
 
-			//	Array times = Variant(track.weight_tracks.times);
-			//	s["input"] = _encode_accessor_as_floats(state, times, false);
-			//	Array values = Variant(track.weight_tracks.values);
-			//	s["output"] = _encode_accessor_as_floats(state, values, false);
+				Array times;
+				Array values;
 
-			//	samplers.push_back(s);
-			//	t["path"] = "weights";
-			//	t["node"] = E->key();
-			//	c["target"] = t;
-			//	channels.push_back(c);
-			//}
+				for (int32_t times_i = 0; times_i < track.weight_tracks[0].times.size(); times_i++) {
+					real_t time = track.weight_tracks[0].times[times_i];
+					times.push_back(time);
+				}
+
+				values.resize(times.size() * track.weight_tracks.size());
+				// TODO Sort by order in blend shapes
+				for (int k = 0; k < track.weight_tracks.size(); k++) {
+					Vector<float> wdata = track.weight_tracks[k].values;
+					for (int l = 0; l < wdata.size(); l++) {
+						values[l * track.weight_tracks.size() + k] = wdata.write[l];
+					}
+				}
+
+				s["interpolation"] = interpolation_to_string(track.weight_tracks[track.weight_tracks.size() - 1].interpolation);
+				s["input"] = _encode_accessor_as_floats(state, times, false);
+				s["output"] = _encode_accessor_as_floats(state, values, false);
+
+				samplers.push_back(s);
+
+				Dictionary target;
+				target["path"] = "weights";
+				target["node"] = E->key();
+
+				t["target"] = target;
+				channels.push_back(t);
+			}
 		}
 		if (channels.size() && samplers.size()) {
 			d["channels"] = channels;
@@ -5038,26 +5057,7 @@ GLTFDocument::GLTFAnimation::Track GLTFDocument::_convert_animation_track(GLTFDo
 		gltf_interpolation = GLTFAnimation::INTERP_CUBIC_SPLINE;
 	}
 	Animation::TrackType track_type = p_animation->track_get_type(p_track_i);
-	if (track_type == Animation::TYPE_VALUE) {
-		// Vector<float> times;
-		// for (int32_t key_i = 0; key_i < animation->track_get_key_count(track_i); key_i++) {
-		// 	times.write[key_i] = animation->track_get_key_time(track_i, key_i);
-		// }
-		// Vector<GLTFAnimation::Channel<float>> blend_weights;
-		// for (int32_t key_i = 0; key_i < animation->track_get_key_count(track_i); key_i++) {
-		// 	GLTFAnimation::Channel<float> weight;
-		// 	Vector<float> weights;
-		// 	weights.resize();
-		// 	weight.interpolation = gltf_interpolation;
-		// 	for (int32_t value_i = 0; value_i < animation->value_track_get_key_indices(track_i, key_i); value_i++) {
-		// 		weights.write[key_i] = animation->track_get_key_value(track_i, key_i);
-		// 	}
-		// 	weight.times = times;
-		// 	weight.values = weights;
-		// 	blend_weights.push_back(weight);
-		// }
-		// track.weight_tracks = blend_weights;
-	} else if (track_type == Animation::TYPE_TRANSFORM) {
+	if (track_type == Animation::TYPE_TRANSFORM) {
 		Vector<float> times;
 		int32_t key_count = p_animation->track_get_key_count(p_track_i);
 		times.resize(key_count);
@@ -5121,19 +5121,97 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 		if (E) {
 			GLTFAnimation::Track track = _convert_animation_track(state, animation, Transform(), track_i, E->get());
 			gltf_animation.tracks.insert(E->get(), track);
-		} else if (String(orig_track_path).find(":") != -1) {
-			Vector<String> node_joint = String(orig_track_path).split(":");
-			String node = node_joint[0];
-			Skeleton *skeleton = Object::cast_to<Skeleton>(ap->get_owner()->get_node(node));
-			String joint = node_joint[1];
-			int32_t bone = skeleton->find_bone(joint);
-			Transform xform = skeleton->get_bone_rest(bone);
+		} else if (String(orig_track_path).find(":") != -1 && String(orig_track_path).find(":blend_shapes/") == -1) {
+			Vector<String> node_suffix = String(orig_track_path).split(":");
+			String node = node_suffix[0];
+			String suffix = node_suffix[1];
+			Node *godot_node = ap->get_owner()->get_node(node);
+			Skeleton *skeleton = Object::cast_to<Skeleton>(godot_node);
+			if (!skeleton) {
+				continue;
+			}
+			int32_t bone = skeleton->find_bone(suffix);
+			Transform xform;
+			if (bone != -1) {
+				xform = skeleton->get_bone_rest(bone);
+			}
 			for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
-				if (state.nodes[node_i]->name == _sanitize_bone_name(joint)) {
+				if (state.nodes[node_i]->name == _sanitize_bone_name(suffix)) {
 					GLTFAnimation::Track track = _convert_animation_track(state, animation, xform, track_i, node_i);
 					gltf_animation.tracks.insert(node_i, track);
 					break;
 				}
+			}
+		}
+	}
+	for (int32_t track_i = 0; track_i < animation->get_track_count(); track_i++) {
+		if (!animation->track_is_enabled(track_i)) {
+			continue;
+		}
+		String orig_track_path = animation->track_get_path(track_i);
+		if (String(orig_track_path).find(":blend_shapes/") != -1) {
+			Vector<String> node_suffix = String(orig_track_path).split(":blend_shapes/");
+			String node = node_suffix[0];
+			String suffix = node_suffix[1];
+			NodePath path = node;
+			Node *godot_node = ap->get_owner()->get_node(node);
+			MeshInstance *mi = Object::cast_to<MeshInstance>(godot_node);
+			if (!mi) {
+				continue;
+			}
+			Ref<ArrayMesh> array_mesh = mi->get_mesh();
+			if (array_mesh.is_null()) {
+				continue;
+			}
+			if (node_suffix.size() != 2) {
+				continue;
+			}
+			GLTFNodeIndex mesh_index = -1;
+			for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
+				String mesh_name = path.get_name(path.get_name_count() - 1);
+				if (state.nodes[node_i]->name == _sanitize_scene_name(mesh_name)) {
+					mesh_index = node_i;
+					break;
+				}
+			}
+			ERR_CONTINUE(mesh_index == -1);
+			Ref<Mesh> mesh = mi->get_mesh();
+			ERR_CONTINUE(mesh.is_null());
+			for (int32_t shape_i = 0; shape_i < mesh->get_blend_shape_count(); shape_i++) {
+				if (mesh->get_blend_shape_name(shape_i) != suffix) {
+					continue;
+				}
+				GLTFDocument::GLTFAnimation::Track track;
+				Map<int, GLTFDocument::GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(mesh_index);
+				if (E) {
+					track = E->get();
+				}
+				Animation::InterpolationType interpolation = animation->track_get_interpolation_type(track_i);
+
+				GLTFAnimation::Interpolation gltf_interpolation = GLTFAnimation::INTERP_LINEAR;
+				if (interpolation == Animation::InterpolationType::INTERPOLATION_LINEAR) {
+					gltf_interpolation = GLTFAnimation::INTERP_LINEAR;
+				} else if (interpolation == Animation::InterpolationType::INTERPOLATION_NEAREST) {
+					gltf_interpolation = GLTFAnimation::INTERP_STEP;
+				} else if (interpolation == Animation::InterpolationType::INTERPOLATION_CUBIC) {
+					gltf_interpolation = GLTFAnimation::INTERP_CUBIC_SPLINE;
+				}
+				Animation::TrackType track_type = animation->track_get_type(track_i);
+				if (track_type == Animation::TYPE_VALUE) {
+					int32_t key_count = animation->track_get_key_count(track_i);
+					GLTFAnimation::Channel<float> weight;
+					weight.interpolation = gltf_interpolation;
+					weight.times.resize(key_count);
+					for (int32_t time_i = 0; time_i < key_count; time_i++) {
+						weight.times.write[time_i] = animation->track_get_key_time(track_i, time_i);
+					}
+					weight.values.resize(key_count);
+					for (int32_t value_i = 0; value_i < key_count; value_i++) {
+						weight.values.write[value_i] = animation->track_get_key_value(track_i, value_i);
+					}
+					track.weight_tracks.push_back(weight);
+				}
+				gltf_animation.tracks.insert(mesh_index, track);
 			}
 		}
 	}
