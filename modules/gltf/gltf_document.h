@@ -409,6 +409,7 @@ private:
 
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
+	GLTFAccessorIndex _encode_accessor_as_quats(GLTFState &state, const Vector<Quat> p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_weights(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_joints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_floats(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
@@ -427,7 +428,7 @@ private:
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
 	String interpolation_to_string(const GLTFAnimation::Interpolation p_interp);
-	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
+	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, Transform p_bone_rest, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
 
 public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);
