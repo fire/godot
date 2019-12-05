@@ -4959,9 +4959,9 @@ void GLTFDocument::_convert_skeletons(GLTFState &state) {
 			int32_t parent = state.skeletons[skeleton_i].godot_skeleton->get_bone_parent(bone_i);
 			if (parent == -1) {
 				state.skeletons.write[skeleton_i].roots.push_back(state.nodes.size());
-				GLTFNodeIndex node = state.skeleton_to_node[skeleton_i];
-				if (state.nodes[node]->children.find(state.nodes.size()) == -1) {
-					state.nodes[node]->children.push_back(state.nodes.size());
+				GLTFNodeIndex skeleton_node = state.skeleton_to_node[skeleton_i];
+				if (state.nodes[skeleton_node]->children.find(state.nodes.size()) == -1) {
+					state.nodes[skeleton_node]->children.push_back(state.nodes.size());
 				}
 			}
 			state.skeletons.write[skeleton_i].godot_bone_node.insert(bone_i, state.nodes.size());
