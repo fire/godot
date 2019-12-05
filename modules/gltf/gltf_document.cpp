@@ -4327,7 +4327,7 @@ Error GLTFDocument::_parse_animations(GLTFState &state) {
 				const Vector<Quat> rotations = _decode_accessor_as_quat(state, output, false);
 				track->rotation_track.interpolation = interp;
 				track->rotation_track.times = Variant(times); //convert via variant
-				track->rotation_track.values = rotations; //convert via variant
+				track->rotation_track.values = rotations;
 			} else if (path == "scale") {
 				const PoolVector<Vector3> scales = _decode_accessor_as_vec3(state, output, false);
 				track->scale_track.interpolation = interp;
