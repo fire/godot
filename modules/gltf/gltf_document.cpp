@@ -5129,10 +5129,12 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			GLTFAnimation::Track track = _convert_animation_track(state, animation, Transform(), track_i, E->get());
 			gltf_animation.tracks.insert(E->get(), track);
 		} else if (String(orig_track_path).find(":") != -1 && String(orig_track_path).find(":blend_shapes/") == -1) {
-			Vector<String> node_suffix = String(orig_track_path).split(":");
-			String node = node_suffix[0];
-			String suffix = node_suffix[1];
-			Node *godot_node = ap->get_owner()->get_node(node);
+			const Vector<String> node_suffix = String(orig_track_path).split(":");
+			const String node = node_suffix[0];
+			const NodePath node_path = node;
+			const String skeleton_name = node_path.get_name(node_path.get_name_count() - 1);
+			const String suffix = node_suffix[1];
+			Node *godot_node = ap->get_owner()->find_node(skeleton_name);
 			Skeleton *skeleton = Object::cast_to<Skeleton>(godot_node);
 			if (!skeleton) {
 				continue;
@@ -5157,11 +5159,12 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 		}
 		String orig_track_path = animation->track_get_path(track_i);
 		if (String(orig_track_path).find(":blend_shapes/") != -1) {
-			Vector<String> node_suffix = String(orig_track_path).split(":blend_shapes/");
-			String node = node_suffix[0];
-			String suffix = node_suffix[1];
-			NodePath path = node;
-			Node *godot_node = ap->get_owner()->get_node(node);
+			const Vector<String> node_suffix = String(orig_track_path).split(":blend_shapes/");
+			const String node = node_suffix[0];
+			const String suffix = node_suffix[1];
+			const NodePath path = node;
+			const String mesh_name = path.get_name(path.get_name_count() - 1);
+			Node *godot_node = ap->get_owner()->find_node((mesh_name);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(godot_node);
 			if (!mi) {
 				continue;
