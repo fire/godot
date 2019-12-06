@@ -4566,6 +4566,10 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	GLTFNodeIndex current_node_i = state.nodes.size();
 	state.scene_nodes.insert(current_node_i, p_scene_parent);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
+	if (p_parent_node_index != -1) {
+		gltf_node->parent = p_parent_node_index;
+		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
+	}
 	gltf_node->name = _gen_unique_name(state, p_scene_parent->get_name());
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
@@ -4574,9 +4578,8 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 			gltf_node->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		GLTFMeshIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, gltf_node, current_node_i);
-		if (gltf_skeleton_index != -1) {			
-			_convert_spatial(state, spatial, gltf_node);
+		GLTFSkeletonIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, gltf_node, current_node_i);
+		if (gltf_skeleton_index != -1) {
 			gltf_node->skeleton = gltf_skeleton_index;
 		}
 	} else if (camera) {
@@ -4590,10 +4593,6 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		print_verbose(String("glTF: Converting spatial: ") + spatial->get_name());
 	} else {
 		print_verbose(String("glTF: Converting node of type: ") + p_scene_parent->get_class_name());
-		
-	}
-	if (p_parent_node_index != -1) {
-		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
 	}
 	state.nodes.push_back(gltf_node);
 
@@ -4973,17 +4972,20 @@ void GLTFDocument::_import_animation(GLTFState &state, AnimationPlayer *ap, cons
 
 void GLTFDocument::_convert_skeletons(GLTFState &state) {
 	for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
+		GLTFNodeIndex skeleton_node = state.skeleton_to_node[skeleton_i];
 		for (int32_t bone_i = 0; bone_i < state.skeletons[skeleton_i].godot_skeleton->get_bone_count(); bone_i++) {
 			GLTFNode *node = memnew(GLTFNode);
 			node->name = _gen_unique_bone_name(state, skeleton_i, state.skeletons[skeleton_i].godot_skeleton->get_bone_name(bone_i));
+
 			Transform xform = state.skeletons[skeleton_i].godot_skeleton->get_bone_rest(bone_i);
 			node->scale = xform.basis.get_scale();
 			node->rotation = xform.basis.get_rotation_quat();
 			node->translation = xform.origin;
+
 			int32_t parent = state.skeletons[skeleton_i].godot_skeleton->get_bone_parent(bone_i);
 			if (parent == -1) {
 				state.skeletons.write[skeleton_i].roots.push_back(state.nodes.size());
-				GLTFNodeIndex skeleton_node = state.skeleton_to_node[skeleton_i];
+				node->parent = skeleton_node;
 				if (state.nodes[skeleton_node]->children.find(state.nodes.size()) == -1) {
 					state.nodes[skeleton_node]->children.push_back(state.nodes.size());
 				}
