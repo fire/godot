@@ -5132,9 +5132,8 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const Vector<String> node_suffix = String(orig_track_path).split(":");
 			const String node = node_suffix[0];
 			const NodePath node_path = node;
-			const String skeleton_name = node_path.get_name(node_path.get_name_count() - 1);
 			const String suffix = node_suffix[1];
-			Node *godot_node = ap->get_owner()->find_node(skeleton_name);
+			Node *godot_node = ap->get_owner()->get_node_or_null(node_path);
 			Skeleton *skeleton = Object::cast_to<Skeleton>(godot_node);
 			if (!skeleton) {
 				continue;
@@ -5163,8 +5162,7 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const String node = node_suffix[0];
 			const String suffix = node_suffix[1];
 			const NodePath path = node;
-			const String mesh_name = path.get_name(path.get_name_count() - 1);
-			Node *godot_node = ap->get_owner()->find_node((mesh_name);
+			Node *godot_node = ap->get_owner()->get_node_or_null(node);
 			MeshInstance *mi = Object::cast_to<MeshInstance>(godot_node);
 			if (!mi) {
 				continue;
