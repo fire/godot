@@ -4522,8 +4522,9 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 		c.zfar = p_camera->get_zfar();
 		c.znear = p_camera->get_znear();
 	}
+	GLTFCameraIndex camera_index = state.cameras.size();
 	state.cameras.push_back(c);
-	return state.cameras.size() - 1;
+	return camera_index;
 }
 
 GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index) {
@@ -4550,12 +4551,12 @@ Spatial *GLTFDocument::_generate_spatial(GLTFState &state, Node *scene_parent, c
 
 	return spatial;
 }
-void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node *p_current_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
-	MeshInstance *mi = Object::cast_to<MeshInstance>(p_current_node);
-	Camera *camera = Object::cast_to<Camera>(p_current_node);
-	Skeleton *skeleton = Object::cast_to<Skeleton>(p_current_node);
-	Spatial *spatial = Object::cast_to<Spatial>(p_current_node);
-	Node2D *node_2d = Object::cast_to<Node2D>(p_current_node);
+void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node *p_scene_parent, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index) {
+	MeshInstance *mi = Object::cast_to<MeshInstance>(p_scene_parent);
+	Camera *camera = Object::cast_to<Camera>(p_scene_parent);
+	Skeleton *skeleton = Object::cast_to<Skeleton>(p_scene_parent);
+	Spatial *spatial = Object::cast_to<Spatial>(p_scene_parent);
+	Node2D *node_2d = Object::cast_to<Node2D>(p_scene_parent);
 	if (node_2d && !node_2d->is_visible()) {
 		return;
 	}
@@ -4563,37 +4564,41 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		return;
 	}
 	GLTFNodeIndex current_node_i = state.nodes.size();
-	state.scene_nodes.insert(current_node_i, p_current_node);
+	state.scene_nodes.insert(current_node_i, p_scene_parent);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
-	gltf_node->name = _gen_unique_name(state, p_current_node->get_name());
-
+	gltf_node->name = _gen_unique_name(state, p_scene_parent->get_name());
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 		if (gltf_mesh_index != -1) {
+			_convert_spatial(state, spatial, gltf_node);
 			gltf_node->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		current_node_i = p_parent_node_index;
-		_convert_skeleton(state, skeleton, state.nodes.write[current_node_i], current_node_i);
+		GLTFMeshIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, gltf_node, current_node_i);
+		if (gltf_skeleton_index != -1) {			
+			_convert_spatial(state, spatial, gltf_node);
+			gltf_node->skeleton = gltf_skeleton_index;
+		}
 	} else if (camera) {
-		gltf_node->camera = _convert_camera(state, camera);
+		GLTFCameraIndex camera_index = _convert_camera(state, camera);
+		if (camera_index != -1) {
+			_convert_spatial(state, spatial, gltf_node);
+			gltf_node->camera = camera_index;
+		}
 	} else if (spatial) {
+		_convert_spatial(state, spatial, gltf_node);
 		print_verbose(String("glTF: Converting spatial: ") + spatial->get_name());
 	} else {
-		print_verbose(String("glTF: Converting node of type: ") + p_current_node->get_class_name());
+		print_verbose(String("glTF: Converting node of type: ") + p_scene_parent->get_class_name());
+		
 	}
-	if (!skeleton) {
-		if (p_parent_node_index != -1) {
-			state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
-		}
-		state.nodes.push_back(gltf_node);
+	if (p_parent_node_index != -1) {
+		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
 	}
+	state.nodes.push_back(gltf_node);
 
-	if (spatial) {
-		_convert_spatial(state, spatial, gltf_node);
-	}
-	for (int node_i = 0; node_i < p_current_node->get_child_count(); node_i++) {
-		_convert_scene_node(state, p_root_node, p_current_node->get_child(node_i), p_root_node_index, current_node_i);
+	for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+		_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, current_node_i);
 	}
 }
 
