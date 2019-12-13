@@ -3905,8 +3905,8 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 
 		for (int32_t bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
 			String bone_name = skeleton->get_bone_name(bone_i);
-			for (int32_t joint_i = 0; joint_i < gltf_skin.joints.size(); joint_i++) {
-				if (bone_name == state.nodes[gltf_skin.joints[joint_i]]->name) {
+			for (int32_t joint_i = 0; joint_i < gltf_skin.joints_original.size(); joint_i++) {
+				if (_sanitize_bone_name(bone_name) == state.nodes[gltf_skin.joints_original[joint_i]]->name) {
 					gltf_skin.joint_i_to_bone_i.insert(joint_i, bone_i);
 					continue;
 				}
