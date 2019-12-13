@@ -5144,14 +5144,10 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const String suffix = node_suffix[1];
 			Node *godot_node = ap->get_owner()->get_node_or_null(node_path);
 			Skeleton *skeleton = Object::cast_to<Skeleton>(godot_node);
-			if (!skeleton) {
-				continue;
-			}
+			ERR_CONTINUE_MSG(!skeleton, "gltf: Can't find matching skeleton for animation")
 			int32_t bone = skeleton->find_bone(suffix);
-			Transform xform;
-			if (bone != -1) {
-				xform = skeleton->get_bone_rest(bone);
-			}
+			ERR_CONTINUE_MSG(bone == -1, "gltf: Can't find matching bone for animation")
+			Transform xform = skeleton->get_bone_rest(bone);
 			for (GLTFNodeIndex node_i = 0; node_i < state.nodes.size(); node_i++) {
 				if (state.nodes[node_i]->name == _sanitize_bone_name(suffix)) {
 					GLTFAnimation::Track track = _convert_animation_track(state, animation, xform, track_i, node_i);
