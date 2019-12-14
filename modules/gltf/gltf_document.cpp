@@ -2163,29 +2163,25 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 					break;
 				}
 			}
-			if (joint_i_to_bone_i.size()) {
+			{
 				Array a = array[Mesh::ARRAY_BONES];
 				if (a.size()) {
 					const int ret_size = a.size() / 4;
 					Array attribs;
 					attribs.resize(ret_size);
 					{
-						Map<int, int> bone_i_to_joint_i;
-						for (Map<int, int>::Element *E = joint_i_to_bone_i.front(); E; E = E->next()) {
-							bone_i_to_joint_i.insert(E->get(), E->key());
-						}
-						for (int i = 0; i < attribs.size(); i++) {
-							int32_t joint_0 = bone_i_to_joint_i[a[(i * 4) + 0]];
-							int32_t joint_1 = bone_i_to_joint_i[a[(i * 4) + 1]];
-							int32_t joint_2 = bone_i_to_joint_i[a[(i * 4) + 2]];
-							int32_t joint_3 = bone_i_to_joint_i[a[(i * 4) + 3]];
-							attribs[i] = Color(joint_0, joint_1, joint_2, joint_3);
+						for (int array_i = 0; array_i < attribs.size(); array_i++) {
+							int32_t joint_0 = a[(array_i * 4) + 0];
+							int32_t joint_1 = a[(array_i * 4) + 1];
+							int32_t joint_2 = a[(array_i * 4) + 2];
+							int32_t joint_3 = a[(array_i * 4) + 3];
+							attribs[array_i] = Color(joint_0, joint_1, joint_2, joint_3);
 						}
 					}
 					attributes["JOINTS_0"] = _encode_accessor_as_joints(state, attribs, true);
 				}
 			}
-			if (joint_i_to_bone_i.size()) {
+			{
 				Array a = array[Mesh::ARRAY_WEIGHTS];
 				if (a.size()) {
 					const int ret_size = a.size() / 4;
@@ -3903,12 +3899,12 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 			// print_verbose("glTF: bone rest " + itos(bone_index) + " " + skeleton->get_bone_rest(bone_index));
 		}
 
-		for (int32_t bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
-			String bone_name = skeleton->get_bone_name(bone_i);
-			for (int32_t joint_i = 0; joint_i < gltf_skin.joints_original.size(); joint_i++) {
-				if (_sanitize_bone_name(bone_name) == state.nodes[gltf_skin.joints_original[joint_i]]->name) {
+		for (int32_t joint_i = 0; joint_i < gltf_skin.joints.size(); joint_i++) {
+			for (int32_t bone_i = 0; bone_i < skeleton->get_bone_count(); bone_i++) {
+				String bone_name = skeleton->get_bone_name(bone_i);
+				if (_sanitize_bone_name(bone_name) == state.nodes[gltf_skin.joints[joint_i]]->name) {
 					gltf_skin.joint_i_to_bone_i.insert(joint_i, bone_i);
-					continue;
+					break;
 				}
 			}
 		}
