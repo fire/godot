@@ -3921,6 +3921,7 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		gltf_skin.godot_skin = skin;
 		gltf_skin.name = _gen_unique_name(state, skin->get_name());
 		state.nodes.write[node_i]->skin = state.skins.size();
+		_expand_skin(state, gltf_skin);
 		state.skins.push_back(gltf_skin);
 
 		json_skin["inverseBindMatrices"] = _encode_accessor_as_xform(state, gltf_skin.inverse_binds, false);
@@ -4571,9 +4572,11 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	GLTFNodeIndex current_node_i = state.nodes.size();
 	state.scene_nodes.insert(current_node_i, p_scene_parent);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
-	if (p_parent_node_index != -1) {
+	if (p_parent_node_index != current_node_i) {
 		gltf_node->parent = p_parent_node_index;
 		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
+	} else {
+		gltf_node->parent = p_parent_node_index;
 	}
 	gltf_node->name = _gen_unique_name(state, p_scene_parent->get_name());
 	if (mi) {
@@ -5010,6 +5013,7 @@ void GLTFDocument::_convert_skeletons(GLTFState &state) {
 			GLTFNodeIndex node_i = state.skeletons[skeleton_i].godot_bone_node[E->key()];
 			GLTFNodeIndex parent_i = state.skeletons[skeleton_i].godot_bone_node[parent];
 			if (state.nodes[parent_i]->children.find(node_i) == -1) {
+				state.nodes[node_i]->parent = parent_i;
 				state.nodes[parent_i]->children.push_back(node_i);
 			}
 		}
