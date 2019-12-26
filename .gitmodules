@@ -1,0 +1,33 @@
+[submodule "thirdparty/or-tools"]
+	path = thirdparty/or-tools
+	url = https://github.com/google/or-tools.git
+[submodule "thirdparty/abseil-cpp"]
+	path = thirdparty/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git
+[submodule "thirdparty/gflags"]
+	path = thirdparty/gflags
+	url = https://github.com/gflags/gflags.git
+[submodule "thirdparty/glog"]
+	path = thirdparty/glog
+	url = https://github.com/google/glog.git
+[submodule "thirdparty/protobuf"]
+	path = thirdparty/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+[submodule "thirdparty/coin_utils"]
+	path = thirdparty/coin_utils
+	url = https://github.com/Mizux/CoinUtils.git
+[submodule "thirdparty/osi"]
+	path = thirdparty/osi
+	url = https://github.com/Mizux/Osi.git
+[submodule "thirdparty/clip"]
+	path = thirdparty/clip
+	url = https://github.com/Mizux/Clp.git
+[submodule "thirdparty/cbc"]
+	path = thirdparty/cbc
+	url = https://github.com/Mizux/Cbc.git
+[submodule "thirdparty/cgl"]
+	path = thirdparty/cgl
+	url = https://github.com/Mizux/Cgl.git
+[submodule "thirdparty/clp"]
+	path = thirdparty/clp
+	url = https://github.com/Mizux/Clp.git
