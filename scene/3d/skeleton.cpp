@@ -35,6 +35,7 @@
 #include "core/engine.h"
 #include "core/project_settings.h"
 #include "scene/3d/physics_body.h"
+#include "scene/resources/skeleton_definition.h"
 #include "scene/resources/surface_tool.h"
 
 void SkinReference::_skin_changed() {
@@ -154,17 +155,21 @@ bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
 
 	return true;
 }
+
 void Skeleton::_get_property_list(List<PropertyInfo> *p_list) const {
-
 	for (int i = 0; i < bones.size(); i++) {
-
 		String prep = "bones/" + itos(i) + "/";
-		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name"));
-		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest"));
-		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR));
-		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children"));
+
+		// Only write out the bone properties if we do not have a skeleton definition, otherwise we will load them from there
+		if (skeleton_definition == nullptr) {
+			p_list->push_back(PropertyInfo(Variant::STRING, prep + "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+			p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1", PROPERTY_USAGE_NOEDITOR));
+			p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		}
+
+		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
 	}
 }
 
@@ -332,6 +337,11 @@ void Skeleton::_notification(int p_what) {
 			}
 
 			dirty = false;
+
+#ifdef TOOLS_ENABLED
+			emit_signal("pose_updated");
+#endif // TOOLS_ENABLED
+
 		} break;
 
 #ifndef _3D_DISABLED
@@ -376,7 +386,7 @@ Transform Skeleton::get_bone_global_pose(int p_bone) const {
 
 // skeleton creation api
 void Skeleton::add_bone(const String &p_name) {
-
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 	ERR_FAIL_COND(p_name == "" || p_name.find(":") != -1 || p_name.find("/") != -1);
 
 	for (int i = 0; i < bones.size(); i++) {
@@ -427,7 +437,7 @@ int Skeleton::get_bone_count() const {
 }
 
 void Skeleton::set_bone_parent(int p_bone, int p_parent) {
-
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 	ERR_FAIL_INDEX(p_bone, bones.size());
 	ERR_FAIL_COND(p_parent != -1 && (p_parent < 0));
 
@@ -437,7 +447,7 @@ void Skeleton::set_bone_parent(int p_bone, int p_parent) {
 }
 
 void Skeleton::unparent_bone_and_rest(int p_bone) {
-
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
 	_update_process_order();
@@ -474,7 +484,7 @@ int Skeleton::get_bone_parent(int p_bone) const {
 }
 
 void Skeleton::set_bone_rest(int p_bone, const Transform &p_rest) {
-
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
 	bones.write[p_bone].rest = p_rest;
@@ -536,6 +546,7 @@ void Skeleton::get_bound_child_nodes_to_bone(int p_bone, List<Node *> *p_bound) 
 }
 
 void Skeleton::clear_bones() {
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 
 	bones.clear();
 	process_order_dirty = true;
@@ -592,7 +603,13 @@ int Skeleton::get_process_order(int p_idx) {
 	return process_order[p_idx];
 }
 
+const Vector<int> &Skeleton::get_process_order() {
+	_update_process_order();
+	return process_order;
+}
+
 void Skeleton::localize_rests() {
+	ERR_FAIL_COND(skeleton_definition != nullptr);
 
 	_update_process_order();
 
@@ -836,6 +853,92 @@ Ref<SkinReference> Skeleton::register_skin(const Ref<Skin> &p_skin) {
 	return skin_ref;
 }
 
+void Skeleton::set_skeleton_definition(Ref<SkeletonDefinition> p_definition) {
+
+	struct BoneTemp {
+		String name;
+#ifndef _3D_DISABLED
+		PhysicalBone *physical_bone;
+#endif // _3D_DISABLED
+		List<Node *> bound_nodes;
+	};
+
+	Vector<BoneTemp> bone_temps;
+	for (BoneId i = 0; i < bones.size(); ++i) {
+		BoneTemp temp;
+		temp.name = bones[i].name;
+
+#ifndef _3D_DISABLED
+		temp.physical_bone = bones[i].physical_bone;
+#endif // _3D_DISABLED
+
+		for (int j = 0; j < bones[i].nodes_bound.size(); ++j) {
+			Node *node = Object::cast_to<Node>(ObjectDB::get_instance(bones[i].nodes_bound[j]));
+			if (node)
+				temp.bound_nodes.push_back(node);
+		}
+
+		bone_temps.push_back(temp);
+	}
+
+	// Remove the skeleton definition first
+	skeleton_definition = Ref<SkeletonDefinition>();
+	if (p_definition == nullptr) {
+#ifdef TOOLS_ENABLED
+		emit_signal("skeleton_definition_changed");
+#endif // TOOLS_ENABLED
+		return;
+	}
+
+	clear_bones();
+
+	const int bone_count = p_definition->get_bone_count();
+	for (BoneId i = 0; i < bone_count; ++i) {
+		add_bone(p_definition->get_bone_name(i));
+		set_bone_parent(i, p_definition->get_bone_parent(i));
+		set_bone_rest(i, p_definition->get_bone_rest(i));
+	}
+
+	for (BoneId old_id = 0; old_id < bone_temps.size(); ++old_id) {
+		BoneTemp &bone = bone_temps.write[old_id];
+
+		BoneId new_id = find_bone(bone.name);
+
+		if (new_id == -1) {
+			// We don't want to re-parent physical bones (if we cant match), just kill them off
+#ifndef _3D_DISABLED
+			if (bone.physical_bone) {
+				bone.physical_bone->set_owner(nullptr);
+				bone.physical_bone = nullptr;
+			}
+#endif // _3D_DISABLED
+
+			// Attempt to re-parent any nodes to the root if we cant find anything
+			new_id = 0;
+		}
+
+#ifndef _3D_DISABLED
+		if (bone.physical_bone) {
+			bind_physical_bone_to_bone(new_id, bone.physical_bone);
+		}
+#endif // _3D_DISABLED
+
+		for (List<Node *>::Element *el = bone.bound_nodes.front(); el != nullptr; el = el->next()) {
+			bind_child_node_to_bone(new_id, el->get());
+		}
+	}
+
+	skeleton_definition = p_definition;
+
+#ifdef TOOLS_ENABLED
+	emit_signal("skeleton_definition_changed");
+#endif // TOOLS_ENABLED
+}
+
+Ref<SkeletonDefinition> Skeleton::get_skeleton_definition() const {
+	return skeleton_definition;
+}
+
 void Skeleton::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("add_bone", "name"), &Skeleton::add_bone);
@@ -886,6 +989,16 @@ void Skeleton::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "animate_physical_bones"), "set_animate_physical_bones", "get_animate_physical_bones");
 #endif // _3D_DISABLED
+
+	ClassDB::bind_method(D_METHOD("get_skeleton_definition"), &Skeleton::get_skeleton_definition);
+	ClassDB::bind_method(D_METHOD("set_skeleton_definition", "skeleton_definition"), &Skeleton::set_skeleton_definition);
+
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "skeleton_definition", PROPERTY_HINT_RESOURCE_TYPE, "", PROPERTY_USAGE_NOEDITOR), "set_skeleton_definition", "get_skeleton_definition");
+
+#ifdef TOOLS_ENABLED
+	ADD_SIGNAL(MethodInfo("pose_updated"));
+	ADD_SIGNAL(MethodInfo("skeleton_definition_changed"));
+#endif // TOOLS_ENABLED
 
 	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }

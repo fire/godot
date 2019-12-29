@@ -74,6 +74,7 @@
 #include "scene/animation/animation_player.h"
 #include "scene/animation/animation_tree.h"
 #include "scene/animation/root_motion_view.h"
+#include "scene/animation/skeleton_ik_cmdd.h"
 #include "scene/animation/tween.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/gui/box_container.h"
@@ -157,6 +158,7 @@
 #include "scene/resources/rectangle_shape_2d.h"
 #include "scene/resources/resource_format_text.h"
 #include "scene/resources/segment_shape_2d.h"
+#include "scene/resources/skeleton_definition.h"
 #include "scene/resources/sky.h"
 #include "scene/resources/sphere_shape.h"
 #include "scene/resources/surface_tool.h"
@@ -367,8 +369,15 @@ void register_scene_types() {
 	ClassDB::register_class<Skin>();
 	ClassDB::register_virtual_class<SkinReference>();
 
+	ClassDB::register_virtual_class<IKConstraint>();
+	ClassDB::register_class<IKTwistLimit>();
+	ClassDB::register_class<IKDirectionLimit>();
+	ClassDB::register_class<IKConstraintKusudama>();
+	ClassDB::register_class<SkeletonIKConstraints>();
+
 	ClassDB::register_class<Spatial>();
 	ClassDB::register_virtual_class<SpatialGizmo>();
+	ClassDB::register_class<SkeletonDefinition>();
 	ClassDB::register_class<Skeleton>();
 	ClassDB::register_class<AnimationPlayer>();
 	ClassDB::register_class<Tween>();
@@ -442,6 +451,7 @@ void register_scene_types() {
 	ClassDB::register_class<SoftBody>();
 
 	ClassDB::register_class<SkeletonIK>();
+	ClassDB::register_class<SkeletonIKCMDD>();
 	ClassDB::register_class<BoneAttachment>();
 
 	ClassDB::register_class<VehicleBody>();
@@ -675,6 +685,7 @@ void register_scene_types() {
 	ClassDB::register_virtual_class<Font>();
 	ClassDB::register_class<BitmapFont>();
 	ClassDB::register_class<Curve>();
+	ClassDB::register_class<SkeletonDefinition>();
 
 	ClassDB::register_class<TextFile>();
 
