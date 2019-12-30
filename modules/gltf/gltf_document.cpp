@@ -4256,17 +4256,15 @@ String GLTFDocument::interpolation_to_string(const GLTFAnimation::Interpolation 
 }
 
 Error GLTFDocument::_serialize_animations(GLTFState &state) {
-
-	for (int32_t nodes_i = 0; nodes_i < state.scene_nodes.size(); nodes_i++) {
-		AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(state.scene_nodes[nodes_i]);
-		if (!ap) {
-			continue;
-		}
+	if (!state.animation_players.size()) {
+		return FAILED;
+	}
+	for (int32_t player_i = 0; player_i < state.animation_players.size(); player_i++) {
 		List<StringName> animation_names;
-		ap->get_animation_list(&animation_names);
+		state.animation_players[player_i]->get_animation_list(&animation_names);
 		if (animation_names.size()) {
 			for (int animation_name_i = 0; animation_name_i < animation_names.size(); animation_name_i++) {
-				_convert_animation(state, ap, animation_names[animation_name_i]);
+				_convert_animation(state, state.animation_players[player_i], animation_names[animation_name_i]);
 			}
 		}
 	}
@@ -4697,6 +4695,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	MeshInstance *mi = Object::cast_to<MeshInstance>(p_scene_parent);
 	Camera *camera = Object::cast_to<Camera>(p_scene_parent);
 	Skeleton *skeleton = Object::cast_to<Skeleton>(p_scene_parent);
+	AnimationPlayer *animation_player = Object::cast_to<AnimationPlayer>(p_scene_parent);
 	Spatial *spatial = Object::cast_to<Spatial>(p_scene_parent);
 	Node2D *node_2d = Object::cast_to<Node2D>(p_scene_parent);
 	if (node_2d && !node_2d->is_visible()) {
@@ -4705,16 +4704,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	if (spatial && !spatial->is_visible()) {
 		return;
 	}
-	GLTFNodeIndex current_node_i = state.nodes.size();
-	state.scene_nodes.insert(current_node_i, p_scene_parent);
 	GLTFDocument::GLTFNode *gltf_node = memnew(GLTFDocument::GLTFNode);
-	if (p_parent_node_index != current_node_i) {
-		gltf_node->parent = p_parent_node_index;
-		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
-	} else {
-		gltf_node->parent = p_parent_node_index;
-	}
-	gltf_node->name = _gen_unique_name(state, p_scene_parent->get_name());
 	if (mi) {
 		GLTFMeshIndex gltf_mesh_index = _convert_mesh_instance(state, mi);
 		if (gltf_mesh_index != -1) {
@@ -4722,10 +4712,15 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 			gltf_node->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		GLTFSkeletonIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, gltf_node, current_node_i);
+		memdelete(gltf_node);
+		GLTFSkeletonIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, state.nodes.write[p_parent_node_index], p_parent_node_index);
 		if (gltf_skeleton_index != -1) {
 			gltf_node->skeleton = gltf_skeleton_index;
 		}
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		}
+		return;
 	} else if (camera) {
 		GLTFCameraIndex camera_index = _convert_camera(state, camera);
 		if (camera_index != -1) {
@@ -4735,9 +4730,26 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	} else if (spatial) {
 		_convert_spatial(state, spatial, gltf_node);
 		print_verbose(String("glTF: Converting spatial: ") + spatial->get_name());
+	} else if (animation_player) {
+		memdelete(gltf_node);
+		state.animation_players.push_back(animation_player);
+		print_verbose(String("glTF: Converting animation player: ") + animation_player->get_name());
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		}
+		return;
 	} else {
 		print_verbose(String("glTF: Converting node of type: ") + p_scene_parent->get_class_name());
 	}
+	GLTFNodeIndex current_node_i = state.nodes.size();
+	state.scene_nodes.insert(current_node_i, p_scene_parent);
+	if (p_parent_node_index != current_node_i) {
+		gltf_node->parent = p_parent_node_index;
+		state.nodes.write[p_parent_node_index]->children.push_back(current_node_i);
+	} else {
+		gltf_node->parent = p_parent_node_index;
+	}
+	gltf_node->name = _gen_unique_name(state, p_scene_parent->get_name());
 	state.nodes.push_back(gltf_node);
 
 	for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {

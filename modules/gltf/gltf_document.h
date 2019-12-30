@@ -280,6 +280,8 @@ public:
 		Vector<GLTFAccessor> accessors;
 
 		Vector<GLTFMesh> meshes; //meshes are loaded directly, no reason not to.
+		
+		Vector<AnimationPlayer*> animation_players;
 		Map<Ref<Material>, GLTFMaterialIndex> material_cache;
 		Vector<Ref<Material> > materials;
 
