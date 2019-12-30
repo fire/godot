@@ -4257,7 +4257,7 @@ String GLTFDocument::interpolation_to_string(const GLTFAnimation::Interpolation 
 
 Error GLTFDocument::_serialize_animations(GLTFState &state) {
 	if (!state.animation_players.size()) {
-		return FAILED;
+		return OK;
 	}
 	for (int32_t player_i = 0; player_i < state.animation_players.size(); player_i++) {
 		List<StringName> animation_names;
