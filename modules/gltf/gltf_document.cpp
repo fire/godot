@@ -32,6 +32,8 @@
 #include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
 #include "core/math/disjoint_set.h"
+#include "core/version.h"
+#include "core/version_hash.gen.h"
 #include "drivers/png/png_driver_common.h"
 #include "editor/import/resource_importer_scene.h"
 #include "modules/regex/regex.h"
@@ -131,6 +133,9 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	state.minor_version = version.get_slice(".", 1).to_int();
 	Dictionary asset;
 	asset["version"] = version;
+
+	String hash = VERSION_HASH;
+	asset["generator"] = String(VERSION_FULL_NAME) + String("@") + (hash.length() == 0 ? String("unknown") : hash);
 	state.json["asset"] = asset;
 	ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
 	ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
@@ -1438,10 +1443,13 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 			if (i == 0) {
 				type_max[0] = w[i * 2 + 0];
 				type_min[0] = w[i * 2 + 0];
+
+				type_max[1] = w[i * 2 + 1];
+				type_min[1] = w[i * 2 + 1];
 			}
 
 			type_max[0] = MAX(w[i * 2 + 0], double(type_max[0]));
-			type_min[0] = MIN(w[i * 2 + 0], double(type_max[0]));
+			type_min[0] = MIN(w[i * 2 + 0], double(type_min[0]));
 
 			type_max[1] = MAX(w[i * 2 + 1], double(type_max[1]));
 			type_min[1] = MIN(w[i * 2 + 1], double(type_min[1]));
@@ -1509,16 +1517,16 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 			}
 
 			type_max[0] = MAX(w[i * 4 + 0], double(type_max[0]));
-			type_min[0] = MIN(w[i * 4 + 0], double(type_max[0]));
+			type_min[0] = MIN(w[i * 4 + 0], double(type_min[0]));
 
 			type_max[1] = MAX(w[i * 4 + 1], double(type_max[1]));
-			type_min[1] = MIN(w[i * 4 + 1], double(type_max[1]));
+			type_min[1] = MIN(w[i * 4 + 1], double(type_min[1]));
 
 			type_max[2] = MAX(w[i * 4 + 2], double(type_max[2]));
-			type_min[2] = MIN(w[i * 4 + 2], double(type_max[2]));
+			type_min[2] = MIN(w[i * 4 + 2], double(type_min[2]));
 
 			type_max[3] = MAX(w[i * 4 + 3], double(type_max[3]));
-			type_min[3] = MIN(w[i * 4 + 3], double(type_max[3]));
+			type_min[3] = MIN(w[i * 4 + 3], double(type_min[3]));
 		}
 	}
 
