@@ -1341,9 +1341,13 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_ints(GLTFState
 	Array type_min;
 	type_min.resize(1);
 	for (int i = 0; i < p_attribs.size(); i++) {
-		w[i] = p_attribs[i];
-		type_max[0] = MAX(double(w[i]), double(p_attribs[i]));
-		type_min[0] = MIN(double(w[i]), double(p_attribs[i]));
+		w[i] = Math::stepify(p_attribs[i], 1.0);
+		if (i == 0) {
+			type_max[0] = w[i];
+			type_min[0] = w[i];
+		}
+		type_max[0] = MAX(w[i], double(type_max[0]));
+		type_min[0] = MIN(w[i], double(type_min[0]));
 	}
 
 	ERR_FAIL_COND_V(attribs.size() == 0, -1);
@@ -1428,14 +1432,19 @@ GLTFDocument::_encode_accessor_as_vec2(GLTFState &state, const Array p_attribs, 
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Vector2 attrib = p_attribs[i];
-			w[(i * 2) + 0] = attrib.x;
-			w[(i * 2) + 1] = attrib.y;
+			w[(i * 2) + 0] = Math::stepify(attrib.x, step_constant);
+			w[(i * 2) + 1] = Math::stepify(attrib.y, step_constant);
 
-			type_max[0] = MAX(w[0], w[i * 2 + 0]);
-			type_min[0] = MIN(w[0], w[i * 2 + 0]);
+			if (i == 0) {
+				type_max[0] = w[i * 2 + 0];
+				type_min[0] = w[i * 2 + 0];
+			}
 
-			type_max[1] = MAX(w[1], w[i * 2 + 1]);
-			type_min[1] = MIN(w[1], w[i * 2 + 1]);
+			type_max[0] = MAX(w[i * 2 + 0], double(type_max[0]));
+			type_min[0] = MIN(w[i * 2 + 0], double(type_max[0]));
+
+			type_max[1] = MAX(w[i * 2 + 1], double(type_max[1]));
+			type_min[1] = MIN(w[i * 2 + 1], double(type_min[1]));
 		}
 	}
 
@@ -1482,22 +1491,34 @@ GLTFDocument::_encode_accessor_as_color(GLTFState &state, const Array p_attribs,
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
-			w[(i * 4) + 0] = attrib.r;
-			w[(i * 4) + 1] = attrib.g;
-			w[(i * 4) + 2] = attrib.b;
-			w[(i * 4) + 3] = attrib.a;
+			w[(i * 4) + 0] = Math::stepify(attrib.r, step_constant);
+			w[(i * 4) + 1] = Math::stepify(attrib.g, step_constant);
+			w[(i * 4) + 2] = Math::stepify(attrib.b, step_constant);
+			w[(i * 4) + 3] = Math::stepify(attrib.a, step_constant);
 
-			type_max[0] = MAX(w[0], w[i * 4 + 0]);
-			type_min[0] = MIN(w[0], w[i * 4 + 0]);
+			if (i == 0) {
+				type_max[0] = w[i * 4 + 0];
+				type_max[1] = w[i * 4 + 1];
+				type_max[2] = w[i * 4 + 2];
+				type_max[3] = w[i * 4 + 3];
 
-			type_max[1] = MAX(w[1], w[i * 4 + 1]);
-			type_min[1] = MIN(w[1], w[i * 4 + 1]);
+				type_min[0] = w[i * 4 + 0];
+				type_min[1] = w[i * 4 + 1];
+				type_min[2] = w[i * 4 + 2];
+				type_min[3] = w[i * 4 + 3];
+			}
 
-			type_max[2] = MAX(w[2], w[i * 4 + 2]);
-			type_min[2] = MIN(w[2], w[i * 4 + 2]);
+			type_max[0] = MAX(w[i * 4 + 0], double(type_max[0]));
+			type_min[0] = MIN(w[i * 4 + 0], double(type_max[0]));
 
-			type_max[3] = MAX(w[3], w[i * 4 + 3]);
-			type_min[3] = MIN(w[3], w[i * 4 + 3]);
+			type_max[1] = MAX(w[i * 4 + 1], double(type_max[1]));
+			type_min[1] = MIN(w[i * 4 + 1], double(type_max[1]));
+
+			type_max[2] = MAX(w[i * 4 + 2], double(type_max[2]));
+			type_min[2] = MIN(w[i * 4 + 2], double(type_max[2]));
+
+			type_max[3] = MAX(w[i * 4 + 3], double(type_max[3]));
+			type_min[3] = MIN(w[i * 4 + 3], double(type_max[3]));
 		}
 	}
 
@@ -1544,19 +1565,35 @@ GLTFDocument::_encode_accessor_as_weights(GLTFState &state, const Array p_attrib
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
-			w[(i * 4) + 0] = attrib.r;
+
+			w[(i * 4) + 0] = Math::stepify(attrib.r, step_constant);
+			w[(i * 4) + 1] = Math::stepify(attrib.g, step_constant);
+			w[(i * 4) + 2] = Math::stepify(attrib.b, step_constant);
+			w[(i * 4) + 3] = Math::stepify(attrib.a, step_constant);
+
+			if (i == 0) {
+				type_max[0] = w[(i * 4) + 0];
+				type_min[0] = w[(i * 4) + 0];
+
+				type_max[1] = w[(i * 4) + 1];
+				type_min[1] = w[(i * 4) + 1];
+
+				type_max[2] = w[(i * 4) + 2];
+				type_min[2] = w[(i * 4) + 2];
+
+				type_max[3] = w[(i * 4) + 3];
+				type_min[3] = w[(i * 4) + 3];
+			}
+
 			type_max[0] = MAX(double(type_max[0]), w[(i * 4) + 0]);
 			type_min[0] = MIN(double(type_min[0]), w[(i * 4) + 0]);
 
-			w[(i * 4) + 1] = attrib.g;
 			type_max[1] = MAX(double(type_max[1]), w[(i * 4) + 1]);
 			type_min[1] = MIN(double(type_min[1]), w[(i * 4) + 1]);
 
-			w[(i * 4) + 2] = attrib.b;
 			type_max[2] = MAX(double(type_max[2]), w[(i * 4) + 2]);
 			type_min[2] = MIN(double(type_min[2]), w[(i * 4) + 2]);
 
-			w[(i * 4) + 3] = attrib.a;
 			type_max[3] = MAX(double(type_max[3]), w[(i * 4) + 3]);
 			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
@@ -1605,19 +1642,33 @@ GLTFDocument::_encode_accessor_as_joints(GLTFState &state, const Array p_attribs
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Color attrib = p_attribs[i];
-			w[(i * 4) + 0] = attrib.r;
+			w[(i * 4) + 0] = Math::stepify(attrib.r, step_constant);
+			w[(i * 4) + 1] = Math::stepify(attrib.g, step_constant);
+			w[(i * 4) + 2] = Math::stepify(attrib.b, step_constant);
+			w[(i * 4) + 3] = Math::stepify(attrib.a, step_constant);
+			if (i == 0) {
+				type_max[0] = w[(i * 4) + 0];
+				type_min[0] = w[(i * 4) + 0];
+
+				type_max[1] = w[(i * 4) + 1];
+				type_min[1] = w[(i * 4) + 1];
+
+				type_max[2] = w[(i * 4) + 2];
+				type_min[2] = w[(i * 4) + 2];
+
+				type_max[3] = w[(i * 4) + 3];
+				type_min[3] = w[(i * 4) + 3];
+			}
+
 			type_max[0] = MAX(double(type_max[0]), w[(i * 4) + 0]);
 			type_min[0] = MIN(double(type_min[0]), w[(i * 4) + 0]);
 
-			w[(i * 4) + 1] = attrib.g;
 			type_max[1] = MAX(double(type_max[1]), w[(i * 4) + 1]);
 			type_min[1] = MIN(double(type_min[1]), w[(i * 4) + 1]);
 
-			w[(i * 4) + 2] = attrib.b;
 			type_max[2] = MAX(double(type_max[2]), w[(i * 4) + 2]);
 			type_min[2] = MIN(double(type_min[2]), w[(i * 4) + 2]);
 
-			w[(i * 4) + 3] = attrib.a;
 			type_max[3] = MAX(double(type_max[3]), w[(i * 4) + 3]);
 			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
@@ -1665,20 +1716,35 @@ GLTFDocument::_encode_accessor_as_quats(GLTFState &state, const Vector<Quat> p_a
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
-			Quat attrib = p_attribs[i];
-			w[(i * 4) + 0] = attrib.x;
+			Quat quat = p_attribs[i];
+			w[(i * 4) + 0] = Math::stepify(quat.x, step_constant);
+			w[(i * 4) + 1] = Math::stepify(quat.y, step_constant);
+			w[(i * 4) + 2] = Math::stepify(quat.z, step_constant);
+			w[(i * 4) + 3] = Math::stepify(quat.w, step_constant);
+
+			if (i == 0) {
+				type_max[0] = w[(i * 4) + 0];
+				type_min[0] = w[(i * 4) + 0];
+
+				type_max[1] = w[(i * 4) + 1];
+				type_min[1] = w[(i * 4) + 1];
+
+				type_max[2] = w[(i * 4) + 2];
+				type_min[2] = w[(i * 4) + 2];
+
+				type_max[3] = w[(i * 4) + 3];
+				type_min[3] = w[(i * 4) + 3];
+			}
+
 			type_max[0] = MAX(double(type_max[0]), w[(i * 4) + 0]);
 			type_min[0] = MIN(double(type_min[0]), w[(i * 4) + 0]);
 
-			w[(i * 4) + 1] = attrib.y;
 			type_max[1] = MAX(double(type_max[1]), w[(i * 4) + 1]);
 			type_min[1] = MIN(double(type_min[1]), w[(i * 4) + 1]);
 
-			w[(i * 4) + 2] = attrib.z;
 			type_max[2] = MAX(double(type_max[2]), w[(i * 4) + 2]);
 			type_min[2] = MIN(double(type_min[2]), w[(i * 4) + 2]);
 
-			w[(i * 4) + 3] = attrib.w;
 			type_max[3] = MAX(double(type_max[3]), w[(i * 4) + 3]);
 			type_min[3] = MIN(double(type_min[3]), w[(i * 4) + 3]);
 		}
@@ -1744,10 +1810,13 @@ GLTFDocument::GLTFAccessorIndex GLTFDocument::_encode_accessor_as_floats(GLTFSta
 	type_min.resize(1);
 
 	for (int i = 0; i < p_attribs.size(); i++) {
-		w[i] = Math::stepify(p_attribs[i], 0.000001);
-		;
-		type_max[0] = MAX(real_t(type_max[0]), w[i]);
-		type_min[0] = MIN(real_t(type_min[0]), w[i]);
+		w[i] = Math::stepify(p_attribs[i], step_constant);
+		if (i == 0) {
+			type_max[0] = w[i];
+			type_min[0] = w[i];
+		}
+		type_max[0] = MAX(w[i], double(type_max[0]));
+		type_min[0] = MIN(w[i], double(type_min[0]));
 	}
 
 	ERR_FAIL_COND_V(!attribs.size(), -1);
@@ -1794,17 +1863,29 @@ GLTFDocument::_encode_accessor_as_vec3(GLTFState &state, const Array p_attribs, 
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Vector3 attrib = p_attribs[i];
-			w[(i * 3) + 0] = attrib.x;
-			type_max[0] = MAX(double(type_max[0]), w[(i * 3) + 0]);
-			type_min[0] = MIN(double(type_min[0]), w[(i * 3) + 0]);
+			w[(i * 3) + 0] = Math::stepify(attrib.x, step_constant);
+			w[(i * 3) + 1] = Math::stepify(attrib.y, step_constant);
+			w[(i * 3) + 2] = Math::stepify(attrib.z, step_constant);
 
-			w[(i * 3) + 1] = attrib.y;
-			type_max[1] = MAX(double(type_max[1]), w[(i * 3) + 1]);
-			type_min[1] = MIN(double(type_min[1]), w[(i * 3) + 1]);
+			if (i == 0) {
+				type_max[0] = w[(i * 3) + 0];
+				type_min[0] = w[(i * 3) + 0];
 
-			w[(i * 3) + 2] = attrib.z;
-			type_max[2] = MAX(double(type_max[2]), w[(i * 3) + 2]);
-			type_min[2] = MIN(double(type_min[2]), w[(i * 3) + 2]);
+				type_max[1] = w[(i * 3) + 1];
+				type_min[1] = w[(i * 3) + 1];
+
+				type_max[2] = w[(i * 3) + 2];
+				type_min[2] = w[(i * 3) + 2];
+			}
+
+			type_max[0] = MAX(w[(i * 3) + 0], double(type_max[0]));
+			type_min[0] = MIN(w[(i * 3) + 0], double(type_min[0]));
+
+			type_max[1] = MAX(w[(i * 3) + 1], double(type_max[1]));
+			type_min[1] = MIN(w[(i * 3) + 1], double(type_min[1]));
+
+			type_max[2] = MAX(w[(i * 3) + 2], double(type_max[2]));
+			type_min[2] = MIN(w[(i * 3) + 2], double(type_min[2]));
 		}
 	}
 
@@ -1844,84 +1925,129 @@ GLTFDocument::_encode_accessor_as_xform(GLTFState &state, const Vector<Transform
 
 	Array type_max;
 	type_max.resize(16);
-	type_max[3] = 0.0;
-	type_max[7] = 0.0;
-	type_max[11] = 0.0;
-	type_max[15] = 1.0;
 	Array type_min;
 	type_min.resize(16);
-	type_min[3] = 0.0;
-	type_min[7] = 0.0;
-	type_min[11] = 0.0;
-	type_min[15] = 1.0;
 	{
 		PoolVector<double>::Write w = attribs.write();
 		for (int i = 0; i < p_attribs.size(); i++) {
 			Transform attrib = p_attribs[i];
 			Basis basis = attrib.get_basis();
 			Vector3 axis_0 = basis.get_axis(Vector3::AXIS_X);
-			w[i * 16 + 0] = Math::stepify(axis_0.x, 0.000001);
-			w[i * 16 + 1] = Math::stepify(axis_0.y, 0.000001);
-			w[i * 16 + 2] = Math::stepify(axis_0.z, 0.000001);
+
+			w[i * 16 + 0] = Math::stepify(axis_0.x, step_constant);
+			w[i * 16 + 1] = Math::stepify(axis_0.y, step_constant);
+			w[i * 16 + 2] = Math::stepify(axis_0.z, step_constant);
 			w[i * 16 + 3] = 0.0;
 
-			type_max[0] = MAX(double(type_max[0]), w[i * 16 + 0]);
-			type_max[1] = MAX(double(type_max[1]), w[i * 16 + 1]);
-			type_max[2] = MAX(double(type_max[2]), w[i * 16 + 2]);
-			type_max[3] = MAX(double(type_max[3]), w[i * 16 + 3]);
-
-			type_min[0] = MIN(double(type_min[0]), w[i * 16 + 0]);
-			type_min[1] = MIN(double(type_min[1]), w[i * 16 + 1]);
-			type_min[2] = MIN(double(type_min[2]), w[i * 16 + 2]);
-			type_min[3] = MIN(double(type_min[3]), w[i * 16 + 3]);
-
 			Vector3 axis_1 = basis.get_axis(Vector3::AXIS_Y);
-			w[i * 16 + 4] = Math::stepify(axis_1.x, 0.000001);
-			w[i * 16 + 5] = Math::stepify(axis_1.y, 0.000001);
-			w[i * 16 + 6] = Math::stepify(axis_1.z, 0.000001);
+			w[i * 16 + 4] = Math::stepify(axis_1.x, step_constant);
+			w[i * 16 + 5] = Math::stepify(axis_1.y, step_constant);
+			w[i * 16 + 6] = Math::stepify(axis_1.z, step_constant);
 			w[i * 16 + 7] = 0.0;
 
-			type_max[4] = MAX(double(type_max[4]), w[i * 16 + 4]);
-			type_max[5] = MAX(double(type_max[5]), w[i * 16 + 5]);
-			type_max[6] = MAX(double(type_max[6]), w[i * 16 + 6]);
-			type_max[7] = MAX(double(type_max[7]), w[i * 16 + 7]);
-
-			type_min[4] = MIN(double(type_min[4]), w[i * 16 + 4]);
-			type_min[5] = MIN(double(type_min[5]), w[i * 16 + 5]);
-			type_min[6] = MIN(double(type_min[6]), w[i * 16 + 6]);
-			type_min[7] = MIN(double(type_min[7]), w[i * 16 + 7]);
-
 			Vector3 axis_2 = basis.get_axis(Vector3::AXIS_Z);
-			w[i * 16 + 8] = Math::stepify(axis_2.x, 0.000001);
-			w[i * 16 + 9] = Math::stepify(axis_2.y, 0.000001);
-			w[i * 16 + 10] = Math::stepify(axis_2.z, 0.000001);
+			w[i * 16 + 8] = Math::stepify(axis_2.x, step_constant);
+			w[i * 16 + 9] = Math::stepify(axis_2.y, step_constant);
+			w[i * 16 + 10] = Math::stepify(axis_2.z, step_constant);
 			w[i * 16 + 11] = 0.0;
 
-			type_max[8] = MAX(double(type_max[8]), w[i * 16 + 8]);
-			type_max[9] = MAX(double(type_max[9]), w[i * 16 + 9]);
-			type_max[10] = MAX(double(type_max[10]), w[i * 16 + 10]);
-			type_max[11] = MAX(double(type_max[11]), w[i * 16 + 11]);
-
-			type_min[8] = MIN(double(type_min[8]), w[i * 16 + 8]);
-			type_min[9] = MIN(double(type_min[9]), w[i * 16 + 9]);
-			type_min[10] = MIN(double(type_min[10]), w[i * 16 + 10]);
-			type_min[11] = MIN(double(type_min[11]), w[i * 16 + 11]);
-
 			Vector3 origin = attrib.get_origin();
-			w[i * 16 + 12] = Math::stepify(origin.x, 0.000001);
-			w[i * 16 + 13] = Math::stepify(origin.y, 0.000001);
-			w[i * 16 + 14] = Math::stepify(origin.z, 0.000001);
+			w[i * 16 + 12] = Math::stepify(origin.x, step_constant);
+			w[i * 16 + 13] = Math::stepify(origin.y, step_constant);
+			w[i * 16 + 14] = Math::stepify(origin.z, step_constant);
 			w[i * 16 + 15] = 1.0;
 
-			type_max[12] = MAX(double(type_max[12]), w[i * 16 + 12]);
-			type_max[13] = MAX(double(type_max[13]), w[i * 16 + 13]);
-			type_max[14] = MAX(double(type_max[14]), w[i * 16 + 14]);
-			type_max[15] = MAX(double(type_max[15]), w[i * 16 + 15]);
+			if (i == 0) {
+				type_max[0] = w[i * 16 + 0];
+				type_max[1] = w[i * 16 + 1];
+				type_max[2] = w[i * 16 + 2];
+				type_max[3] = w[i * 16 + 3];
 
-			type_min[12] = MIN(double(type_min[12]), w[i * 16 + 12]);
-			type_min[13] = MIN(double(type_min[13]), w[i * 16 + 13]);
-			type_min[14] = MIN(double(type_min[14]), w[i * 16 + 14]);
-			type_min[15] = MIN(double(type_min[15]), w[i * 16 + 15]);
+				type_min[0] = w[i * 16 + 0];
+				type_min[1] = w[i * 16 + 1];
+				type_min[2] = w[i * 16 + 2];
+				type_min[3] = w[i * 16 + 3];
+
+				type_max[0] = w[i * 16 + 0];
+				type_max[1] = w[i * 16 + 1];
+				type_max[2] = w[i * 16 + 2];
+				type_max[3] = w[i * 16 + 3];
+
+				type_min[0] = w[i * 16 + 0];
+				type_min[1] = w[i * 16 + 1];
+				type_min[2] = w[i * 16 + 2];
+				type_min[3] = w[i * 16 + 3];
+
+				type_max[4] = w[i * 16 + 4];
+				type_max[5] = w[i * 16 + 5];
+				type_max[6] = w[i * 16 + 6];
+				type_max[7] = w[i * 16 + 7];
+
+				type_min[4] = w[i * 16 + 4];
+				type_min[5] = w[i * 16 + 5];
+				type_min[6] = w[i * 16 + 6];
+				type_min[7] = w[i * 16 + 7];
+
+				type_max[8] = w[i * 16 + 8];
+				type_max[9] = w[i * 16 + 9];
+				type_max[10] = w[i * 16 + 10];
+				type_max[11] = w[i * 16 + 11];
+
+				type_min[8] = w[i * 16 + 8];
+				type_min[9] = w[i * 16 + 9];
+				type_min[10] = w[i * 16 + 10];
+				type_min[11] = w[i * 16 + 11];
+
+				type_max[12] = w[i * 16 + 12];
+				type_max[13] = w[i * 16 + 13];
+				type_max[14] = w[i * 16 + 14];
+				type_max[15] = w[i * 16 + 15];
+
+				type_min[12] = w[i * 16 + 12];
+				type_min[13] = w[i * 16 + 13];
+				type_min[14] = w[i * 16 + 14];
+				type_min[15] = w[i * 16 + 15];
+			}
+
+			type_max[0] = MAX(w[i * 16 + 0], double(type_max[0]));
+			type_max[1] = MAX(w[i * 16 + 1], double(type_max[1]));
+			type_max[2] = MAX(w[i * 16 + 2], double(type_max[2]));
+			type_max[3] = MAX(w[i * 16 + 3], double(type_max[3]));
+
+			type_min[0] = MIN(w[i * 16 + 0], double(type_min[0]));
+			type_min[1] = MIN(w[i * 16 + 1], double(type_min[1]));
+			type_min[2] = MIN(w[i * 16 + 2], double(type_min[2]));
+			type_min[3] = MIN(w[i * 16 + 3], double(type_min[3]));
+
+			type_max[4] = MAX(w[i * 16 + 4], double(type_max[4]));
+			type_max[5] = MAX(w[i * 16 + 5], double(type_max[5]));
+			type_max[6] = MAX(w[i * 16 + 6], double(type_max[6]));
+			type_max[7] = MAX(w[i * 16 + 7], double(type_max[7]));
+
+			type_min[4] = MIN(w[i * 16 + 4], double(type_min[4]));
+			type_min[5] = MIN(w[i * 16 + 5], double(type_min[5]));
+			type_min[6] = MIN(w[i * 16 + 6], double(type_min[6]));
+			type_min[7] = MIN(w[i * 16 + 7], double(type_min[7]));
+
+			type_max[8] = MAX(w[i * 16 + 8], double(type_max[8]));
+			type_max[9] = MAX(w[i * 16 + 9], double(type_max[9]));
+			type_max[10] = MAX(w[i * 16 + 10], double(type_max[10]));
+			type_max[11] = MAX(w[i * 16 + 11], double(type_max[11]));
+
+			type_min[8] = MIN(w[i * 16 + 8], double(type_min[8]));
+			type_min[9] = MIN(w[i * 16 + 9], double(type_min[9]));
+			type_min[10] = MIN(w[i * 16 + 10], double(type_min[10]));
+			type_min[11] = MIN(w[i * 16 + 11], double(type_min[11]));
+
+			type_max[12] = MAX(w[i * 16 + 12], double(type_max[12]));
+			type_max[13] = MAX(w[i * 16 + 13], double(type_max[13]));
+			type_max[14] = MAX(w[i * 16 + 14], double(type_max[14]));
+			type_max[15] = MAX(w[i * 16 + 15], double(type_max[15]));
+
+			type_min[12] = MIN(w[i * 16 + 12], double(type_min[12]));
+			type_min[13] = MIN(w[i * 16 + 13], double(type_min[13]));
+			type_min[14] = MIN(w[i * 16 + 14], double(type_min[14]));
+			type_min[15] = MIN(w[i * 16 + 15], double(type_min[15]));
 		}
 	}
 
@@ -2116,7 +2242,13 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 						tangent.y = a[(i * 4) + 1];
 						tangent.z = a[(i * 4) + 2];
 						tangent.normalize();
-						attribs[i] = Color(tangent.x, tangent.y, tangent.z, a[(i * 4) + 3]);
+
+						Color out;
+						out.r = tangent.x;
+						out.g = tangent.y;
+						out.b = tangent.z;
+						out.a = a[(i * 4) + 3];
+						attribs[i] = out;
 					}
 					attributes["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
 				}
@@ -2266,7 +2398,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 						for (int i = 0; i < ret_size; i++) {
 							attribs[i] = Color(tarr[(i * 4) + 0], tarr[(i * 4) + 1], tarr[(i * 4) + 2], tarr[(i * 4) + 3]);
 						}
-						t["TANGENT"] = _encode_accessor_as_joints(state, attribs, true);
+						t["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
 					}
 					targets.push_back(t);
 				}

@@ -41,6 +41,7 @@ class MeshInstance;
 class GLTFDocument : public Resource {
 	GDCLASS(GLTFDocument, Resource);
 
+	constexpr static const double step_constant = 0.0001;
 public:
 	typedef int GLTFAccessorIndex;
 	typedef int GLTFAnimationIndex;
