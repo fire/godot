@@ -4274,7 +4274,6 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 		}
 	}
 	Array animations;
-	animations.resize(state.animations.size());
 	for (GLTFAnimationIndex animation_i = 0; animation_i < state.animations.size(); animation_i++) {
 		Dictionary d;
 		GLTFAnimation gltf_animation = state.animations[animation_i];
@@ -4390,7 +4389,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 		if (channels.size() && samplers.size()) {
 			d["channels"] = channels;
 			d["samplers"] = samplers;
-			animations[animation_i] = d;
+			animations.push_back(d);
 		}
 	}
 
