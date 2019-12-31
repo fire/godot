@@ -2414,9 +2414,9 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 
 			Ref<Material> mat = godot_mesh->surface_get_material(surface_i);
 			if (mat.is_valid()) {
-				Map<Ref<Material>, GLTFMaterialIndex>::Element *E = state.material_cache.find(mat);
-				if (E) {
-					primitive["material"] = E->get();
+				Map<Ref<Material>, GLTFMaterialIndex>::Element *material_cache_i = state.material_cache.find(mat);
+				if (material_cache_i) {
+					primitive["material"] = material_cache_i->get();
 				} else {
 					state.material_cache.insert(mat, state.materials.size());
 					primitive["material"] = state.materials.size();
@@ -4052,10 +4052,10 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 				}
 			}
 		}
-		for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-			if (E->get() == skeleton) {
-				gltf_skin.skin_root = E->key();
-				json_skin["skeleton"] = E->key();
+		for (Map<GLTFNodeIndex, Node *>::Element *skin_scene_node_i = state.scene_nodes.front(); skin_scene_node_i; skin_scene_node_i = skin_scene_node_i->next()) {
+			if (skin_scene_node_i->get() == skeleton) {
+				gltf_skin.skin_root = skin_scene_node_i->key();
+				json_skin["skeleton"] = skin_scene_node_i->key();
 			}
 		}
 		gltf_skin.godot_skin = skin;
@@ -4287,9 +4287,9 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 		Array channels;
 		Array samplers;
 
-		for (Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.front(); E; E = E->next()) {
+		for (Map<int, GLTFAnimation::Track>::Element *track_i = gltf_animation.tracks.front(); track_i; track_i = track_i->next()) {
 
-			GLTFAnimation::Track track = E->get();
+			GLTFAnimation::Track track = track_i->get();
 			if (track.translation_track.times.size()) {
 				Dictionary t;
 				t["sampler"] = samplers.size();
@@ -4305,7 +4305,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
 				Dictionary target;
 				target["path"] = "translation";
-				target["node"] = E->key();
+				target["node"] = track_i->key();
 
 				t["target"] = target;
 				channels.push_back(t);
@@ -4325,7 +4325,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
 				Dictionary target;
 				target["path"] = "rotation";
-				target["node"] = E->key();
+				target["node"] = track_i->key();
 
 				t["target"] = target;
 				channels.push_back(t);
@@ -4345,7 +4345,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
 				Dictionary target;
 				target["path"] = "scale";
-				target["node"] = E->key();
+				target["node"] = track_i->key();
 
 				t["target"] = target;
 				channels.push_back(t);
@@ -4380,7 +4380,7 @@ Error GLTFDocument::_serialize_animations(GLTFState &state) {
 
 				Dictionary target;
 				target["path"] = "weights";
-				target["node"] = E->key();
+				target["node"] = track_i->key();
 
 				t["target"] = target;
 				channels.push_back(t);
@@ -4974,19 +4974,19 @@ void GLTFDocument::_import_animation(GLTFState &state, AnimationPlayer *ap, cons
 
 	float length = 0;
 
-	for (Map<int, GLTFAnimation::Track>::Element *E = anim.tracks.front(); E; E = E->next()) {
+	for (Map<int, GLTFAnimation::Track>::Element *track_i = anim.tracks.front(); track_i; track_i = track_i->next()) {
 
-		const GLTFAnimation::Track &track = E->get();
+		const GLTFAnimation::Track &track = track_i->get();
 		//need to find the path
 		NodePath node_path;
 
-		GLTFNodeIndex node_index = E->key();
+		GLTFNodeIndex node_index = track_i->key();
 		if (state.nodes[node_index]->fake_joint_parent >= 0) {
 			// Should be same as parent
 			node_index = state.nodes[node_index]->fake_joint_parent;
 		}
 
-		const GLTFNode *node = state.nodes[E->key()];
+		const GLTFNode *node = state.nodes[track_i->key()];
 
 		if (node->skeleton >= 0) {
 			const Skeleton *sk = Object::cast_to<Skeleton>(state.scene_nodes.find(node_index)->get());
@@ -5030,15 +5030,15 @@ void GLTFDocument::_import_animation(GLTFState &state, AnimationPlayer *ap, cons
 			Vector3 base_scale = Vector3(1, 1, 1);
 
 			if (!track.rotation_track.values.size()) {
-				base_rot = state.nodes[E->key()]->rotation.normalized();
+				base_rot = state.nodes[track_i->key()]->rotation.normalized();
 			}
 
 			if (!track.translation_track.values.size()) {
-				base_pos = state.nodes[E->key()]->translation;
+				base_pos = state.nodes[track_i->key()]->translation;
 			}
 
 			if (!track.scale_track.values.size()) {
-				base_scale = state.nodes[E->key()]->scale;
+				base_scale = state.nodes[track_i->key()]->scale;
 			}
 
 			bool last = false;
@@ -5158,12 +5158,12 @@ void GLTFDocument::_convert_skeletons(GLTFState &state) {
 			state.skeletons.write[skeleton_i].godot_bone_node.insert(bone_i, state.nodes.size());
 			state.nodes.push_back(node);
 		}
-		for (Map<int32_t, GLTFNodeIndex>::Element *E = state.skeletons.write[skeleton_i].godot_bone_node.front(); E; E = E->next()) {
-			int32_t parent = state.skeletons.write[skeleton_i].godot_skeleton->get_bone_parent(E->key());
+		for (Map<int32_t, GLTFNodeIndex>::Element *godot_bone_i = state.skeletons.write[skeleton_i].godot_bone_node.front(); godot_bone_i; godot_bone_i = godot_bone_i->next()) {
+			int32_t parent = state.skeletons.write[skeleton_i].godot_skeleton->get_bone_parent(godot_bone_i->key());
 			if (parent == -1) {
 				continue;
 			}
-			GLTFNodeIndex node_i = state.skeletons[skeleton_i].godot_bone_node[E->key()];
+			GLTFNodeIndex node_i = state.skeletons[skeleton_i].godot_bone_node[godot_bone_i->key()];
 			GLTFNodeIndex parent_i = state.skeletons[skeleton_i].godot_bone_node[parent];
 			if (state.nodes[parent_i]->children.find(node_i) == -1) {
 				state.nodes[node_i]->parent = parent_i;
@@ -5229,13 +5229,14 @@ GLTFDocument::GLTFAnimation::Track GLTFDocument::_convert_animation_track(GLTFDo
 		gltf_interpolation = GLTFAnimation::INTERP_CUBIC_SPLINE;
 	}
 	Animation::TrackType track_type = p_animation->track_get_type(p_track_i);
+	int32_t key_count = p_animation->track_get_key_count(p_track_i);
+	Vector<float> times;
+	times.resize(key_count);
+	String path = p_animation->track_get_path(p_track_i);
+	for (int32_t key_i = 0; key_i < key_count; key_i++) {
+		times.write[key_i] = p_animation->track_get_key_time(p_track_i, key_i);
+	}
 	if (track_type == Animation::TYPE_TRANSFORM) {
-		Vector<float> times;
-		int32_t key_count = p_animation->track_get_key_count(p_track_i);
-		times.resize(key_count);
-		for (int32_t key_i = 0; key_i < key_count; key_i++) {
-			times.write[key_i] = p_animation->track_get_key_time(p_track_i, key_i);
-		}
 		p_track.translation_track.times = times;
 		p_track.translation_track.interpolation = gltf_interpolation;
 		p_track.rotation_track.times = times;
@@ -5264,13 +5265,6 @@ GLTFDocument::GLTFAnimation::Track GLTFDocument::_convert_animation_track(GLTFDo
 			p_track.scale_track.values.write[key_i] = xform.basis.get_scale();
 		}
 	} else if (track_type == Animation::TYPE_VALUE) {
-		String path = p_animation->track_get_path(p_track_i);
-		Vector<float> times;
-		int32_t key_count = p_animation->track_get_key_count(p_track_i);
-		times.resize(key_count);
-		for (int32_t key_i = 0; key_i < key_count; key_i++) {
-			times.write[key_i] = p_animation->track_get_key_time(p_track_i, key_i);
-		}
 		if (path.find(":translation") != -1) {
 			p_track.translation_track.times = times;
 			p_track.translation_track.interpolation = gltf_interpolation;
@@ -5311,12 +5305,6 @@ GLTFDocument::GLTFAnimation::Track GLTFDocument::_convert_animation_track(GLTFDo
 				p_track.scale_track.values.write[key_i] = scale_track;
 			}
 		} else if (path.find(":transform") != -1) {
-			Vector<float> times;
-			int32_t key_count = p_animation->track_get_key_count(p_track_i);
-			times.resize(key_count);
-			for (int32_t key_i = 0; key_i < key_count; key_i++) {
-				times.write[key_i] = p_animation->track_get_key_time(p_track_i, key_i);
-			}
 			p_track.translation_track.times = times;
 			p_track.translation_track.interpolation = gltf_interpolation;
 			p_track.rotation_track.times = times;
@@ -5357,13 +5345,13 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const Vector<String> node_suffix = String(orig_track_path).split(":translation");
 			const NodePath path = node_suffix[0];
 			const Node *node = ap->get_parent()->get_node_or_null(path);
-			for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-				if (E->get() == node) {
-					GLTFNodeIndex node_index = E->key();
-					Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(node_index);
+			for (Map<GLTFNodeIndex, Node *>::Element *translation_scene_node_i = state.scene_nodes.front(); translation_scene_node_i; translation_scene_node_i = translation_scene_node_i->next()) {
+				if (translation_scene_node_i->get() == node) {
+					GLTFNodeIndex node_index = translation_scene_node_i->key();
+					Map<int, GLTFAnimation::Track>::Element *translation_track_i = gltf_animation.tracks.find(node_index);
 					GLTFAnimation::Track track;
-					if (E) {
-						track = E->get();
+					if (translation_track_i) {
+						track = translation_track_i->get();
 					}
 					track = _convert_animation_track(state, track, animation, Transform(), track_i, node_index);
 					gltf_animation.tracks.insert(node_index, track);
@@ -5373,13 +5361,13 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const Vector<String> node_suffix = String(orig_track_path).split(":rotation_degrees");
 			const NodePath path = node_suffix[0];
 			const Node *node = ap->get_parent()->get_node_or_null(path);
-			for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-				if (E->get() == node) {
-					GLTFNodeIndex node_index = E->key();
-					Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(node_index);
+			for (Map<GLTFNodeIndex, Node *>::Element *rotation_degree_scene_node_i = state.scene_nodes.front(); rotation_degree_scene_node_i; rotation_degree_scene_node_i = rotation_degree_scene_node_i->next()) {
+				if (rotation_degree_scene_node_i->get() == node) {
+					GLTFNodeIndex node_index = rotation_degree_scene_node_i->key();
+					Map<int, GLTFAnimation::Track>::Element *rotation_degree_track_i = gltf_animation.tracks.find(node_index);
 					GLTFAnimation::Track track;
-					if (E) {
-						track = E->get();
+					if (rotation_degree_track_i) {
+						track = rotation_degree_track_i->get();
 					}
 					track = _convert_animation_track(state, track, animation, Transform(), track_i, node_index);
 					gltf_animation.tracks.insert(node_index, track);
@@ -5389,13 +5377,13 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const Vector<String> node_suffix = String(orig_track_path).split(":scale");
 			const NodePath path = node_suffix[0];
 			const Node *node = ap->get_parent()->get_node_or_null(path);
-			for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-				if (E->get() == node) {
-					GLTFNodeIndex node_index = E->key();
-					Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(node_index);
+			for (Map<GLTFNodeIndex, Node *>::Element *scale_scene_node_i = state.scene_nodes.front(); scale_scene_node_i; scale_scene_node_i = scale_scene_node_i->next()) {
+				if (scale_scene_node_i->get() == node) {
+					GLTFNodeIndex node_index = scale_scene_node_i->key();
+					Map<int, GLTFAnimation::Track>::Element *scale_track_i = gltf_animation.tracks.find(node_index);
 					GLTFAnimation::Track track;
-					if (E) {
-						track = E->get();
+					if (scale_track_i) {
+						track = scale_track_i->get();
 					}
 					track = _convert_animation_track(state, track, animation, Transform(), track_i, node_index);
 					gltf_animation.tracks.insert(node_index, track);
@@ -5405,11 +5393,11 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			const Vector<String> node_suffix = String(orig_track_path).split(":transform");
 			const NodePath path = node_suffix[0];
 			const Node *node = ap->get_parent()->get_node_or_null(path);
-			for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-				if (E->get() == node) {
+			for (Map<GLTFNodeIndex, Node *>::Element *transform_track_i = state.scene_nodes.front(); transform_track_i; transform_track_i = transform_track_i->next()) {
+				if (transform_track_i->get() == node) {
 					GLTFAnimation::Track track;
-					track = _convert_animation_track(state, track, animation, Transform(), track_i, E->key());
-					gltf_animation.tracks.insert(E->key(), track);
+					track = _convert_animation_track(state, track, animation, Transform(), track_i, transform_track_i->key());
+					gltf_animation.tracks.insert(transform_track_i->key(), track);
 				}
 			}
 		} else if (String(orig_track_path).find(":blend_shapes/") != -1) {
@@ -5445,9 +5433,9 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 					continue;
 				}
 				GLTFAnimation::Track track;
-				Map<int, GLTFDocument::GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(mesh_index);
-				if (E) {
-					track = E->get();
+				Map<int, GLTFDocument::GLTFAnimation::Track>::Element *blend_shape_track_i = gltf_animation.tracks.find(mesh_index);
+				if (blend_shape_track_i) {
+					track = blend_shape_track_i->get();
 				}
 				Animation::InterpolationType interpolation = animation->track_get_interpolation_type(track_i);
 
@@ -5489,10 +5477,10 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 					ERR_CONTINUE(bone == -1);
 					Transform xform = state.skeletons[skeleton_i].godot_skeleton->get_bone_rest(bone);
 					GLTFNodeIndex node_i = state.skeletons[skeleton_i].godot_bone_node[bone];
-					Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(node_i);
+					Map<int, GLTFAnimation::Track>::Element *property_track_i = gltf_animation.tracks.find(node_i);
 					GLTFAnimation::Track track;
-					if (E) {
-						track = E->get();
+					if (property_track_i) {
+						track = property_track_i->get();
 					}
 					track = _convert_animation_track(state, track, animation, xform, track_i, node_i);
 					gltf_animation.tracks[node_i] = track;
@@ -5501,13 +5489,13 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			}
 		} else if (String(orig_track_path).find(":") == -1) {
 			const Node *node = ap->get_parent()->get_node_or_null(orig_track_path);
-			for (Map<GLTFNodeIndex, Node *>::Element *E = state.scene_nodes.front(); E; E = E->next()) {
-				if (E->get() == node) {
-					GLTFNodeIndex node_index = E->key();
-					Map<int, GLTFAnimation::Track>::Element *E = gltf_animation.tracks.find(node_index);
+			for (Map<GLTFNodeIndex, Node *>::Element *scene_node_i = state.scene_nodes.front(); scene_node_i; scene_node_i = scene_node_i->next()) {
+				if (scene_node_i->get() == node) {
+					GLTFNodeIndex node_index = scene_node_i->key();
+					Map<int, GLTFAnimation::Track>::Element *node_track_i = gltf_animation.tracks.find(node_index);
 					GLTFAnimation::Track track;
-					if (E) {
-						track = E->get();
+					if (node_track_i) {
+						track = node_track_i->get();
 					}
 					track = _convert_animation_track(state, track, animation, Transform(), track_i, node_index);
 					gltf_animation.tracks.insert(node_index, track);
