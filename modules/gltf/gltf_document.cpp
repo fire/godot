@@ -46,7 +46,7 @@
 #include "scene/resources/surface_tool.h"
 #include <limits>
 
-Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
+Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 
 	if (!state.buffers.size()) {
 		state.buffers.push_back(Vector<uint8_t>());
@@ -110,25 +110,19 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 		return Error::FAILED;
 	}
 
-	/* STEP 10 SERIALIZE BUFFERS */
-	err = _encode_buffers(state, p_path);
-	if (err != OK) {
-		return Error::FAILED;
-	}
-
-	/* STEP 11 SERIALIZE NODES */
+	/* STEP 10 SERIALIZE NODES */
 	err = _serialize_nodes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 12 SERIALIZE SCENE */
+	/* STEP 11 SERIALIZE SCENE */
 	err = _serialize_scenes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	String version = "2.0";
+	const String version = "2.0";
 	state.major_version = version.get_slice(".", 0).to_int();
 	state.minor_version = version.get_slice(".", 1).to_int();
 	Dictionary asset;
@@ -140,14 +134,66 @@ Error GLTFDocument::_serialize_json(const String &p_path, GLTFState &state) {
 	ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
 	ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
 
-	FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
-	if (!f) {
-		return err;
+	if (p_path.to_lower().ends_with("glb")) {
+		err = _encode_buffer_glb(state, p_path);
+		ERR_FAIL_COND_V(err != OK, err);
+		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
+		ERR_FAIL_COND_V(!f, FAILED);
+
+		String json = JSON::print(state.json);
+		CharString json_string = json.utf8();
+
+		uint32_t magic = 0x46546C67; // GLTF
+		f->store_32(magic);
+		f->store_32(state.major_version); // version
+
+		const int32_t header_size = sizeof(uint32_t) * 3;
+		const int32_t chunk_header_size = sizeof(uint32_t) * 2;
+
+		int32_t binary_chunk_size = 0;
+		if (state.buffers.size()) {
+			binary_chunk_size =
+					state.buffers[0].size() + state.buffers[0].size() % 4;
+		}
+		int32_t binary_size = chunk_header_size + binary_chunk_size;
+
+		f->store_32(header_size + chunk_header_size + binary_size); // length
+
+		uint32_t chunk_length = json_string.length() + json_string.length() % 4;
+		uint32_t chunk_type = 0x4E4F534A; //JSON
+
+		f->store_32(chunk_length);
+		f->store_32(chunk_type);
+		f->store_buffer((const uint8_t *)json_string.get_data(), json_string.length());
+		for (int32_t pad_i = 0; pad_i < json_string.length() % 4; pad_i++) {
+			f->store_8(0);
+		}
+
+		if (binary_chunk_size) {
+			chunk_length = state.buffers[0].size() + state.buffers[0].size() % 4;
+			chunk_type = 0x004E4942; //BIN
+
+			f->store_32(chunk_length);
+			f->store_32(chunk_type);
+			f->store_buffer(state.buffers[0].ptr(), state.buffers[0].size());
+			for (int32_t pad_i = 0; pad_i < state.buffers[0].size() % 4; pad_i++) {
+				f->store_8(0);
+			}
+		}
+
+		f->close();
+
+	} else {
+
+		err = _encode_buffer_bins(state, p_path);
+		ERR_FAIL_COND_V(err != OK, err);
+		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
+		ERR_FAIL_COND_V(!f, FAILED);
+		String json = JSON::print(state.json);
+		f->store_string(json);
+		f->close();
 	}
 
-	PoolByteArray array;
-	String json = JSON::print(state.json);
-	f->store_string(json);
 	return OK;
 }
 
@@ -574,8 +620,7 @@ static Vector<uint8_t> _parse_base64_uri(const String &uri) {
 
 	return buf;
 }
-
-Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
+Error GLTFDocument::_encode_buffer_glb(GLTFState &state, const String &p_path) {
 
 	print_verbose("glTF: Total buffers: " + itos(state.buffers.size()));
 
@@ -583,21 +628,17 @@ Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
 		return OK;
 	}
 	Array buffers;
-	for (GLTFBufferIndex i = 0; i < state.buffers.size(); i++) {
-		// if (i == 0 && state.glb_data.size()) {
-		// 	state.buffers.push_back(state.glb_data);
-
-		// } else {
-		// }
+	if (state.buffers.size()) {
+		Vector<uint8_t> buffer_data = state.buffers[0];
 		Dictionary gltf_buffer;
 
-		Vector<uint8_t> buffer_data = state.buffers[i];
+		gltf_buffer["byteLength"] = buffer_data.size();
+		buffers.push_back(gltf_buffer);
+	}
 
-		// if (uri.findn("data:application/octet-stream;base64") == 0) {
-		// 	//embedded data
-		// 	buffer_data = _parse_base64_uri(uri);
-		// } else {
-		// }
+	for (GLTFBufferIndex i = 1; i < state.buffers.size() - 1; i++) {
+		Vector<uint8_t> buffer_data = state.buffers[i];
+		Dictionary gltf_buffer;
 		String filename = p_path.get_basename().get_file() + itos(i) + ".bin";
 		String path = p_path.get_base_dir() + "/" + filename;
 		Error err;
@@ -610,6 +651,41 @@ Error GLTFDocument::_encode_buffers(GLTFState &state, const String &p_path) {
 		}
 		f->create(FileAccess::ACCESS_RESOURCES);
 		f->store_buffer(buffer_data.ptr(), buffer_data.size());
+		f->close();
+		gltf_buffer["uri"] = filename;
+		gltf_buffer["byteLength"] = buffer_data.size();
+		buffers.push_back(gltf_buffer);
+	}
+	state.json["buffers"] = buffers;
+
+	return OK;
+}
+
+Error GLTFDocument::_encode_buffer_bins(GLTFState &state, const String &p_path) {
+
+	print_verbose("glTF: Total buffers: " + itos(state.buffers.size()));
+
+	if (!state.buffers.size()) {
+		return OK;
+	}
+	Array buffers;
+
+	for (GLTFBufferIndex i = 0; i < state.buffers.size(); i++) {
+		Vector<uint8_t> buffer_data = state.buffers[i];
+		Dictionary gltf_buffer;
+		String filename = p_path.get_basename().get_file() + itos(i) + ".bin";
+		String path = p_path.get_base_dir() + "/" + filename;
+		Error err;
+		FileAccessRef f = FileAccess::open(path, FileAccess::WRITE, &err);
+		if (!f) {
+			return err;
+		}
+		if (buffer_data.size() == 0) {
+			return OK;
+		}
+		f->create(FileAccess::ACCESS_RESOURCES);
+		f->store_buffer(buffer_data.ptr(), buffer_data.size());
+		f->close();
 		gltf_buffer["uri"] = filename;
 		gltf_buffer["byteLength"] = buffer_data.size();
 		buffers.push_back(gltf_buffer);
@@ -5508,6 +5584,7 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 		state.animations.push_back(gltf_animation);
 	}
 }
+
 Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {
 
 	if (p_path.to_lower().ends_with("glb")) {

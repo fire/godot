@@ -29,6 +29,7 @@
 /*************************************************************************/
 
 #include "editor_scene_exporter_gltf.h"
+#include "core/io/json.h"
 #include "core/object.h"
 #include "core/project_settings.h"
 #include "core/vector.h"
@@ -45,10 +46,10 @@
 
 void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions) const {
 	r_extensions->push_back("*.gltf");
+	r_extensions->push_back("*.glb");
 }
 
 void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-	Error err = Error::FAILED;
 	Vector<CSGShape *> csg_items;
 	_find_all_csg_roots(csg_items, p_node, p_node);
 
@@ -114,9 +115,7 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	gltf_document->_convert_mesh_instances(state);
 	gltf_document->_convert_skeletons(state);
 	state.scene_name = p_node->get_name();
-
-	err = gltf_document->_serialize_json(p_path, state);
-
+	Error err = gltf_document->serialize(state, p_path);
 	if (r_err) {
 		*r_err = err;
 	}

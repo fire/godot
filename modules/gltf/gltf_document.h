@@ -430,13 +430,14 @@ private:
 
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
 	Error _encode_buffer_views(GLTFState &state);
-	Error _encode_buffers(GLTFState &state, const String &p_base_path);
 	Error _serialize_materials(GLTFState &state);
 	Error _serialize_meshes(GLTFState &state);
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
 	String interpolation_to_string(const GLTFAnimation::Interpolation p_interp);
 	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, GLTFDocument::GLTFAnimation::Track p_track, Ref<Animation> p_animation, Transform p_bone_rest, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
+	Error _encode_buffer_bins(GLTFState &state, const String &p_path);
+	Error _encode_buffer_glb(GLTFState &state, const String &p_path);
 
 public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);
@@ -450,7 +451,7 @@ public:
 	void _convert_spatial(GLTFState &state, Spatial *p_spatial, GLTFNode *p_node);
 	void _convert_scene_node(GLTFState &state, Node *_root_node, Node *p_root_node, const GLTFNodeIndex p_root_node_index, const GLTFNodeIndex p_parent_node_index);
 	void _convert_animation(GLTFState &state, AnimationPlayer *ap, String p_animation_track_name);
-	Error _serialize_json(const String &p_path, GLTFState &state);
+	Error serialize(GLTFState &state, const String &p_path);
 	Error parse(GLTFState *state, String p_path);
 };
 #endif
