@@ -5473,7 +5473,7 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 			Node *godot_node = ap->get_parent()->get_node_or_null(node_path);
 			for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
 				if (state.skeletons[skeleton_i].godot_skeleton == godot_node) {
-					BoneId bone = state.skeletons[skeleton_i].godot_skeleton->find_bone(suffix);
+					int32_t bone = state.skeletons[skeleton_i].godot_skeleton->find_bone(suffix);
 					ERR_CONTINUE(bone == -1);
 					Transform xform = state.skeletons[skeleton_i].godot_skeleton->get_bone_rest(bone);
 					GLTFNodeIndex node_i = state.skeletons[skeleton_i].godot_bone_node[bone];
