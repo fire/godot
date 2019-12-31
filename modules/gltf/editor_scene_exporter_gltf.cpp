@@ -45,7 +45,6 @@
 
 void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions) const {
 	r_extensions->push_back("*.gltf");
-	r_extensions->push_back("*.glb");
 }
 
 void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
@@ -116,14 +115,8 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	gltf_document->_convert_skeletons(state);
 	state.scene_name = p_node->get_name();
 
-	if (p_path.to_lower().ends_with("glb")) {
-		//binary file
-		//text file
-		//err = _serialize_glb(p_path, *state);
-	} else {
-		//text file
-		err = gltf_document->_serialize_json(p_path, state);
-	}
+	err = gltf_document->_serialize_json(p_path, state);
+
 	if (r_err) {
 		*r_err = err;
 	}
