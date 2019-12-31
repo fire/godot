@@ -280,7 +280,7 @@ public:
 		Vector<GLTFAccessor> accessors;
 
 		Vector<GLTFMesh> meshes; //meshes are loaded directly, no reason not to.
-		
+
 		Vector<AnimationPlayer*> animation_players;
 		Map<Ref<Material>, GLTFMaterialIndex> material_cache;
 		Vector<Ref<Material> > materials;
@@ -435,7 +435,7 @@ private:
 	Error _serialize_nodes(GLTFState &state);
 	Error _serialize_scenes(GLTFState &state);
 	String interpolation_to_string(const GLTFAnimation::Interpolation p_interp);
-	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, Ref<Animation> p_animation, Transform p_bone_rest, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
+	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, GLTFDocument::GLTFAnimation::Track p_track, Ref<Animation> p_animation, Transform p_bone_rest, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
 
 public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);
