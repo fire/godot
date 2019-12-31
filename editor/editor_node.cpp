@@ -166,8 +166,8 @@
 #include "editor/pvrtc_compress.h"
 #include "editor/quick_open.h"
 #include "editor/register_exporters.h"
-#include "editor/saver/resource_saver_scene.h"
 #include "editor/run_settings_dialog.h"
+#include "editor/saver/resource_saver_scene.h"
 #include "editor/script_editor_debugger.h"
 #include "editor/settings_config_dialog.h"
 
