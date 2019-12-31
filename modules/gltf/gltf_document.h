@@ -42,6 +42,7 @@ class GLTFDocument : public Resource {
 	GDCLASS(GLTFDocument, Resource);
 
 	constexpr static const double step_constant = 0.0001;
+
 public:
 	typedef int GLTFAccessorIndex;
 	typedef int GLTFAnimationIndex;
@@ -281,7 +282,7 @@ public:
 
 		Vector<GLTFMesh> meshes; //meshes are loaded directly, no reason not to.
 
-		Vector<AnimationPlayer*> animation_players;
+		Vector<AnimationPlayer *> animation_players;
 		Map<Ref<Material>, GLTFMaterialIndex> material_cache;
 		Vector<Ref<Material> > materials;
 
