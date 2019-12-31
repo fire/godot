@@ -5347,7 +5347,7 @@ void GLTFDocument::_convert_animation(GLTFState &state, AnimationPlayer *ap, Str
 
 	Ref<Animation> animation = ap->get_animation(p_animation_track_name);
 	GLTFAnimation gltf_animation;
-	gltf_animation.name = p_animation_track_name;
+	gltf_animation.name = _gen_unique_name(state, p_animation_track_name);
 
 	for (int32_t track_i = 0; track_i < animation->get_track_count(); track_i++) {
 		if (!animation->track_is_enabled(track_i)) {
