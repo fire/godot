@@ -4748,7 +4748,7 @@ GLTFDocument::GLTFCameraIndex GLTFDocument::_convert_camera(GLTFState &state, Ca
 	return camera_index;
 }
 
-GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNode *p_node, GLTFNodeIndex p_node_index) {
+GLTFDocument::GLTFSkeletonIndex GLTFDocument::_convert_skeleton(GLTFState &state, Skeleton *p_skeleton, GLTFNodeIndex p_node_index) {
 	print_verbose("glTF: Converting skeleton: " + p_skeleton->get_name());
 	GLTFSkeleton gltf_skeleton;
 	gltf_skeleton.godot_skeleton = p_skeleton;
@@ -4795,7 +4795,8 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		}
 	} else if (skeleton) {
 		memdelete(gltf_node);
-		GLTFSkeletonIndex gltf_skeleton_index = _convert_skeleton(state, skeleton, state.nodes.write[p_parent_node_index], p_parent_node_index);
+		GLTFSkeletonIndex gltf_skeleton_index = -1;
+		gltf_skeleton_index = _convert_skeleton(state, skeleton, p_parent_node_index);
 		if (gltf_skeleton_index != -1) {
 			gltf_node->skeleton = gltf_skeleton_index;
 		}
