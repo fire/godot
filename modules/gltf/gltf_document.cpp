@@ -143,10 +143,15 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		String json = JSON::print(state.json);
 
 		const uint32_t magic = 0x46546C67; // GLTF
-		const int32_t header_size = 3;
-		const int32_t chunk_header_size = 2;
+		const int32_t header_size = 12;
+		const int32_t chunk_header_size = 8;
 
-		const uint32_t text_chunk_length = json.utf8().size();
+		for (int32_t pad_i = 0; pad_i < (chunk_header_size + json.utf8().length()) % 4; pad_i++) {
+			json += " ";
+		}
+		CharString cs = json.utf8();
+		const uint32_t text_chunk_length = cs.length();
+
 		const uint32_t text_chunk_type = 0x4E4F534A; //JSON
 		int32_t binary_data_length = 0;
 		if (state.buffers.size()) {
@@ -155,12 +160,13 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		const int32_t binary_chunk_length = binary_data_length;
 		const int32_t binary_chunk_type = 0x004E4942; //BIN
 
+		f->create(FileAccess::ACCESS_RESOURCES);
 		f->store_32(magic);
 		f->store_32(state.major_version); // version
 		f->store_32(header_size + chunk_header_size + text_chunk_length + chunk_header_size + binary_data_length); // length
 		f->store_32(text_chunk_length);
 		f->store_32(text_chunk_type);
-		f->store_string(json.utf8().get_data());
+		f->store_buffer((uint8_t *)&cs[0], cs.length());
 		if (binary_chunk_length) {
 			f->store_32(binary_chunk_length);
 			f->store_32(binary_chunk_type);
@@ -175,6 +181,8 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		ERR_FAIL_COND_V(err != OK, err);
 		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
 		ERR_FAIL_COND_V(!f, FAILED);
+
+		f->create(FileAccess::ACCESS_RESOURCES);
 		String json = JSON::print(state.json);
 		f->store_string(json);
 		f->close();
@@ -4804,13 +4812,11 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	} else if (animation_player) {
 		state.animation_players.push_back(animation_player);
 		print_verbose(String("glTF: Converting animation player: ") + animation_player->get_name());
-		if (p_parent_node_index != p_root_node_index) {
-			memdelete(gltf_node);
-			for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
-				_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
-			}
-			return;
+		memdelete(gltf_node);
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
 		}
+		return;
 	} else {
 		print_verbose(String("glTF: Converting node of type: ") + p_scene_parent->get_class_name());
 	}
