@@ -141,44 +141,30 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		ERR_FAIL_COND_V(!f, FAILED);
 
 		String json = JSON::print(state.json);
-		CharString json_string = json.utf8();
 
-		uint32_t magic = 0x46546C67; // GLTF
+		const uint32_t magic = 0x46546C67; // GLTF
+		const int32_t header_size = 3;
+		const int32_t chunk_header_size = 2;
+
+		const uint32_t text_chunk_length = json.utf8().size();
+		const uint32_t text_chunk_type = 0x4E4F534A; //JSON
+		int32_t binary_data_length = 0;
+		if (state.buffers.size()) {
+			binary_data_length = state.buffers[0].size();
+		}
+		const int32_t binary_chunk_length = binary_data_length;
+		const int32_t binary_chunk_type = 0x004E4942; //BIN
+
 		f->store_32(magic);
 		f->store_32(state.major_version); // version
-
-		const int32_t header_size = sizeof(uint32_t) * 3;
-		const int32_t chunk_header_size = sizeof(uint32_t) * 2;
-
-		int32_t binary_chunk_size = 0;
-		if (state.buffers.size()) {
-			binary_chunk_size =
-					state.buffers[0].size() + state.buffers[0].size() % 4;
-		}
-		int32_t binary_size = chunk_header_size + binary_chunk_size;
-
-		f->store_32(header_size + chunk_header_size + binary_size); // length
-
-		uint32_t chunk_length = json_string.length() + json_string.length() % 4;
-		uint32_t chunk_type = 0x4E4F534A; //JSON
-
-		f->store_32(chunk_length);
-		f->store_32(chunk_type);
-		f->store_buffer((const uint8_t *)json_string.get_data(), json_string.length());
-		for (int32_t pad_i = 0; pad_i < json_string.length() % 4; pad_i++) {
-			f->store_8(0);
-		}
-
-		if (binary_chunk_size) {
-			chunk_length = state.buffers[0].size() + state.buffers[0].size() % 4;
-			chunk_type = 0x004E4942; //BIN
-
-			f->store_32(chunk_length);
-			f->store_32(chunk_type);
-			f->store_buffer(state.buffers[0].ptr(), state.buffers[0].size());
-			for (int32_t pad_i = 0; pad_i < state.buffers[0].size() % 4; pad_i++) {
-				f->store_8(0);
-			}
+		f->store_32(header_size + chunk_header_size + text_chunk_length + chunk_header_size + binary_data_length); // length
+		f->store_32(text_chunk_length);
+		f->store_32(text_chunk_type);
+		f->store_string(json.utf8().get_data());
+		if (binary_chunk_length) {
+			f->store_32(binary_chunk_length);
+			f->store_32(binary_chunk_type);
+			f->store_buffer(state.buffers[0].ptr(), binary_data_length);
 		}
 
 		f->close();
@@ -4794,16 +4780,18 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 			gltf_node->mesh = gltf_mesh_index;
 		}
 	} else if (skeleton) {
-		memdelete(gltf_node);
 		GLTFSkeletonIndex gltf_skeleton_index = -1;
 		gltf_skeleton_index = _convert_skeleton(state, skeleton, p_parent_node_index);
-		if (gltf_skeleton_index != -1) {
-			gltf_node->skeleton = gltf_skeleton_index;
+		if (p_parent_node_index != p_root_node_index) {
+			memdelete(gltf_node);
+			if (gltf_skeleton_index != -1) {
+				gltf_node->skeleton = gltf_skeleton_index;
+			}
+			for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+				_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+			}
+			return;
 		}
-		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
-			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
-		}
-		return;
 	} else if (camera) {
 		GLTFCameraIndex camera_index = _convert_camera(state, camera);
 		if (camera_index != -1) {
@@ -4814,13 +4802,15 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		_convert_spatial(state, spatial, gltf_node);
 		print_verbose(String("glTF: Converting spatial: ") + spatial->get_name());
 	} else if (animation_player) {
-		memdelete(gltf_node);
 		state.animation_players.push_back(animation_player);
 		print_verbose(String("glTF: Converting animation player: ") + animation_player->get_name());
-		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
-			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		if (p_parent_node_index != p_root_node_index) {
+			memdelete(gltf_node);
+			for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+				_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+			}
+			return;
 		}
-		return;
 	} else {
 		print_verbose(String("glTF: Converting node of type: ") + p_scene_parent->get_class_name());
 	}
@@ -5285,7 +5275,7 @@ void GLTFDocument::_process_mesh_instances(GLTFState &state, Node *scene_root) {
 
 			mi->get_parent()->remove_child(mi);
 			skeleton->add_child(mi);
-			mi->set_owner(scene_root);
+			mi->set_owner(skeleton->get_owner());
 
 			mi->set_skin(state.skins[skin_i].godot_skin);
 			mi->set_skeleton_path(mi->get_path_to(skeleton));
