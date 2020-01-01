@@ -174,6 +174,8 @@ public:
 
 		Map<int32_t, GLTFNodeIndex> godot_bone_node;
 
+		Vector<BoneAttachment *> bone_attachments;
+
 		GLTFSkeleton() :
 				godot_skeleton(nullptr) {
 		}
@@ -438,6 +440,7 @@ private:
 	GLTFAnimation::Track _convert_animation_track(GLTFDocument::GLTFState &state, GLTFDocument::GLTFAnimation::Track p_track, Ref<Animation> p_animation, Transform p_bone_rest, int32_t p_track_i, GLTFDocument::GLTFNodeIndex p_node_i);
 	Error _encode_buffer_bins(GLTFState &state, const String &p_path);
 	Error _encode_buffer_glb(GLTFState &state, const String &p_path);
+	Error _serialize_bone_attachment(GLTFState &state);
 
 public:
 	void _process_mesh_instances(GLTFState &state, Node *scene_root);

@@ -58,43 +58,47 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 2 CREATE SKINS */
+	/* STEP 2 CREATE SKINS */
 	err = _serialize_skins(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
-
-	/* STEP 3 SERIALIZE MESHES (we have enough info now) */
+	/* STEP 3 CREATE BONE ATTACHMENTS */
+	err = _serialize_bone_attachment(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+	/* STEP 4 SERIALIZE MESHES (we have enough info now) */
 	err = _serialize_meshes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 4 SERIALIZE TEXTURES */
+	/* STEP 5 SERIALIZE TEXTURES */
 	err = _serialize_materials(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 5 SERIALIZE IMAGES */
+	/* STEP 6 SERIALIZE IMAGES */
 	err = _serialize_images(state, p_path);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 6 SERIALIZE TEXTURES */
+	/* STEP 7 SERIALIZE TEXTURES */
 	err = _serialize_textures(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	// /* STEP 7 SERIALIZE ANIMATIONS */
+	// /* STEP 8 SERIALIZE ANIMATIONS */
 	err = _serialize_animations(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 8 SERIALIZE ACCESSORS */
+	/* STEP 9 SERIALIZE ACCESSORS */
 	err = _encode_accessors(state);
 	if (err != OK) {
 		return Error::FAILED;
@@ -104,19 +108,19 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		state.buffer_views.write[i].buffer = 0;
 	}
 
-	/* STEP 9 SERIALIZE BUFFER VIEWS */
+	/* STEP 10 SERIALIZE BUFFER VIEWS */
 	err = _encode_buffer_views(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 10 SERIALIZE NODES */
+	/* STEP 11 SERIALIZE NODES */
 	err = _serialize_nodes(state);
 	if (err != OK) {
 		return Error::FAILED;
 	}
 
-	/* STEP 11 SERIALIZE SCENE */
+	/* STEP 12 SERIALIZE SCENE */
 	err = _serialize_scenes(state);
 	if (err != OK) {
 		return Error::FAILED;
@@ -236,6 +240,26 @@ Error GLTFDocument::_parse_json(const String &p_path, GLTFState &state) {
 	}
 	state.json = v;
 
+	return OK;
+}
+
+Error GLTFDocument::_serialize_bone_attachment(GLTFState &state) {
+	for (int skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
+		for (int attachment_i = 0; attachment_i < state.skeletons[skeleton_i].bone_attachments.size(); attachment_i++) {
+			BoneAttachment *bone_attachment = state.skeletons[skeleton_i].bone_attachments[attachment_i];
+			int32_t bone = state.skeletons[skeleton_i].godot_skeleton->find_bone(bone_attachment->get_bone_name());
+			for (int skin_i = 0; skin_i < state.skins.size(); skin_i++) {
+				if (state.skins[skin_i].skeleton != skeleton_i) {
+					continue;
+				}
+
+				for (int node_i = 0; node_i < bone_attachment->get_child_count(); node_i++) {
+					_convert_scene_node(state, bone_attachment->get_owner(), bone_attachment->get_child(node_i), 0, state.skins[skin_i].joints[bone]);
+				}
+				break;
+			}
+		}
+	}
 	return OK;
 }
 
@@ -376,6 +400,8 @@ Error GLTFDocument::_serialize_nodes(GLTFState &state) {
 		}
 		if (n->skin != -1) {
 			node["skin"] = n->skin;
+		}
+		if (n->skeleton != -1 && n->skin < 0) {
 		}
 		if (n->xform != Transform()) {
 			node["matrix"] = _xform_to_array(n->xform);
@@ -4093,17 +4119,19 @@ Error GLTFDocument::_serialize_skins(GLTFState &state) {
 		GLTFSkin gltf_skin;
 		Array json_joints;
 
-		GLTFSkeletonIndex found_skel_i = -1;
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < state.skeletons.size(); skel_i++) {
 			if (state.skeletons[skel_i].godot_skeleton == skeleton) {
-				found_skel_i = skel_i;
+				gltf_skin.skeleton = skel_i;
 				break;
 			}
 		}
 
 		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
 			int32_t bone_index = skin->get_bind_bone(bind_i);
-			GLTFNodeIndex node_index = state.skeletons[found_skel_i].godot_bone_node[bone_index];
+			if (gltf_skin.skeleton == -1) {
+				continue;
+			}
+			GLTFNodeIndex node_index = state.skeletons[gltf_skin.skeleton].godot_bone_node[bone_index];
 			gltf_skin.joints.push_back(node_index);
 			gltf_skin.joints_original.push_back(node_index);
 			state.nodes[node_index]->joint = true;
@@ -4773,6 +4801,7 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	AnimationPlayer *animation_player = Object::cast_to<AnimationPlayer>(p_scene_parent);
 	Spatial *spatial = Object::cast_to<Spatial>(p_scene_parent);
 	Node2D *node_2d = Object::cast_to<Node2D>(p_scene_parent);
+	BoneAttachment *bone_attachment = Object::cast_to<BoneAttachment>(p_scene_parent);
 	if (node_2d && !node_2d->is_visible()) {
 		return;
 	}
@@ -4786,6 +4815,29 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		if (gltf_mesh_index != -1) {
 			_convert_spatial(state, spatial, gltf_node);
 			gltf_node->mesh = gltf_mesh_index;
+		}
+	} else if (bone_attachment) {
+		Node *node = bone_attachment->get_parent();
+		while (node) {
+
+			Skeleton *skeleton = Object::cast_to<Skeleton>(node);
+			GLTFNodeIndex gltf_bone_index = -1;
+			if (skeleton && p_parent_node_index != p_root_node_index) {
+				for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
+					if (state.skeletons[skeleton_i].godot_skeleton != skeleton) {
+						continue;
+					}
+					memdelete(gltf_node);
+					for (int32_t skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
+						if (state.skeletons[skeleton_i].godot_skeleton != skeleton) {
+							continue;
+						}
+						state.skeletons.write[skeleton_i].bone_attachments.push_back(bone_attachment);
+						return;
+					}
+				}
+			}
+			node = node->get_parent();
 		}
 	} else if (skeleton) {
 		GLTFSkeletonIndex gltf_skeleton_index = -1;
