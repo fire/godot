@@ -3083,12 +3083,15 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			{
 				Dictionary bct;
 				Ref<Texture> albedo_texture = material->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
+				Dictionary texture_transform = _serialize_texture_transform_uv1(material);
 				GLTFTextureIndex gltf_texture_index = -1;
+
 				if (albedo_texture.is_valid() && albedo_texture->get_data().is_valid()) {
 					gltf_texture_index = _set_texture(state, albedo_texture);
 				}
 				if (gltf_texture_index != -1) {
 					bct["index"] = gltf_texture_index;
+					bct["extensions"] = texture_transform;
 					mr["baseColorTexture"] = bct;
 				}
 			}
@@ -3259,6 +3262,7 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			if (emission_texture.is_valid() && emission_texture->get_data().is_valid()) {
 				gltf_texture_index = _set_texture(state, emission_texture);
 			}
+
 			if (gltf_texture_index != -1) {
 				et["index"] = gltf_texture_index;
 				d["emissiveTexture"] = et;
@@ -3310,6 +3314,21 @@ Error GLTFDocument::_parse_materials(GLTFState &state) {
 				const Dictionary &bct = mr["baseColorTexture"];
 				if (bct.has("index")) {
 					material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, _get_texture(state, bct["index"]));
+				}
+				if (bct.has("extensions")) {
+					const Dictionary &extensions = bct["extensions"];
+					if (extensions.has("KHR_texture_transform")) {
+						const Dictionary &texture_transform = extensions["KHR_texture_transform"];
+						const Array &offset_arr = texture_transform["offset"];
+						ERR_FAIL_COND_V(offset_arr.size() != 3, ERR_PARSE_ERROR);
+						const Vector3 offset_vector3 = Vector3(offset_arr[0], offset_arr[1], offset_arr[2]);
+						material->set_uv1_offset(offset_vector3);
+
+						const Array &scale_arr = texture_transform["scale"];
+						ERR_FAIL_COND_V(scale_arr.size() != 3, ERR_PARSE_ERROR);
+						const Vector3 scale_vector3 = Vector3(scale_arr[0], scale_arr[1], scale_arr[2]);
+						material->set_uv1_scale(scale_vector3);
+					}
 				}
 				if (!mr.has("baseColorFactor")) {
 					material->set_albedo(Color(1, 1, 1));

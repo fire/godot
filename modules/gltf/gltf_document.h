@@ -441,9 +441,57 @@ private:
 	Error _encode_buffer_bins(GLTFState &state, const String &p_path);
 	Error _encode_buffer_glb(GLTFState &state, const String &p_path);
 	Error _serialize_bone_attachment(GLTFState &state);
+	Dictionary _serialize_texture_transform_uv1(Ref<Material> p_material) {
+		Dictionary extension;
+		Ref<SpatialMaterial> mat = p_material;
+		if (mat.is_valid()) {
+
+			Dictionary texture_transform;
+			Array offset;
+			offset.resize(3);
+			offset[0] = mat->get_uv1_offset().x;
+			offset[1] = mat->get_uv1_offset().y;
+			offset[2] = mat->get_uv1_offset().z;
+			texture_transform["offset"] = offset;
+			Array scale;
+			scale.resize(3);
+			scale[0] = mat->get_uv1_scale().x;
+			scale[1] = mat->get_uv1_scale().y;
+			scale[2] = mat->get_uv1_scale().z;
+			texture_transform["scale"] = scale;
+			// Godot doesn't support texture rotation
+			extension["KHR_texture_transform"] = texture_transform;
+		}
+		return extension;
+	}
+
+	Dictionary _serialize_texture_transform_uv2(Ref<Material> p_material) {
+		Dictionary extension;
+		Ref<SpatialMaterial> mat = p_material;
+		if (mat.is_valid()) {
+
+			Dictionary texture_transform;
+			Array offset;
+			offset.resize(3);
+			offset[0] = mat->get_uv2_offset().x;
+			offset[1] = mat->get_uv2_offset().y;
+			offset[2] = mat->get_uv2_offset().z;
+			texture_transform["offset"] = offset;
+			Array scale;
+			scale.resize(3);
+			scale[0] = mat->get_uv2_scale().x;
+			scale[1] = mat->get_uv2_scale().y;
+			scale[2] = mat->get_uv2_scale().z;
+			texture_transform["scale"] = scale;
+			// Godot doesn't support texture rotation
+			extension["KHR_texture_transform"] = texture_transform;
+		}
+		return extension;
+	}
 
 public:
-	void _process_mesh_instances(GLTFState &state, Node *scene_root);
+	void
+	_process_mesh_instances(GLTFState &state, Node *scene_root);
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Spatial *scene_root, const GLTFNodeIndex node_index);
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
 	GLTFMeshIndex _convert_mesh_instance(GLTFState &state, MeshInstance *p_mesh_instance);
