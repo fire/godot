@@ -4820,18 +4820,17 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		Node *node = bone_attachment->get_parent();
 		while (node) {
 
-			Skeleton *skeleton = Object::cast_to<Skeleton>(node);
-			GLTFNodeIndex gltf_bone_index = -1;
-			if (skeleton && p_parent_node_index != p_root_node_index) {
+			Skeleton *bone_attachment_skeleton = Object::cast_to<Skeleton>(node);
+			if (bone_attachment_skeleton && p_parent_node_index != p_root_node_index) {
 				for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
-					if (state.skeletons[skeleton_i].godot_skeleton != skeleton) {
+					if (state.skeletons[skeleton_i].godot_skeleton != bone_attachment_skeleton) {
 						continue;
 					}
-					memdelete(gltf_node);
 					for (int32_t skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
-						if (state.skeletons[skeleton_i].godot_skeleton != skeleton) {
+						if (state.skeletons[skeleton_i].godot_skeleton != bone_attachment_skeleton) {
 							continue;
 						}
+						memdelete(gltf_node);
 						state.skeletons.write[skeleton_i].bone_attachments.push_back(bone_attachment);
 						return;
 					}
