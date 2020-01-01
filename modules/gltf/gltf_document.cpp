@@ -4826,14 +4826,9 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 					if (state.skeletons[skeleton_i].godot_skeleton != bone_attachment_skeleton) {
 						continue;
 					}
-					for (int32_t skeleton_i = 0; skeleton_i < state.skeletons.size(); skeleton_i++) {
-						if (state.skeletons[skeleton_i].godot_skeleton != bone_attachment_skeleton) {
-							continue;
-						}
-						memdelete(gltf_node);
-						state.skeletons.write[skeleton_i].bone_attachments.push_back(bone_attachment);
-						return;
-					}
+					memdelete(gltf_node);
+					state.skeletons.write[skeleton_i].bone_attachments.push_back(bone_attachment);
+					return;
 				}
 			}
 			node = node->get_parent();
