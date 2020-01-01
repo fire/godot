@@ -3272,6 +3272,10 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		if (ds) {
 			d["doubleSided"] = ds;
 		}
+		if (material->get_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR)) {
+			d["alphaMode"] = "MASK";
+			d["alphaCutoff"] = material->get_alpha_scissor_threshold();
+		}
 		if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
 			d["alphaMode"] = "BLEND";
 		}
@@ -3411,9 +3415,16 @@ Error GLTFDocument::_parse_materials(GLTFState &state) {
 
 		if (d.has("alphaMode")) {
 			const String &am = d["alphaMode"];
-			if (am != "OPAQUE") {
+			if (am == "BLEND") {
 				material->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, true);
 				material->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_ALPHA_OPAQUE_PREPASS);
+			} else if (am == "MASK") {
+				material->set_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR, true);
+				if (d.has("alphaCutoff")) {
+					material->set_alpha_scissor_threshold(d["alphaCutoff"]);
+				} else {
+					material->set_alpha_scissor_threshold(0.5f);
+				}
 			}
 		}
 
