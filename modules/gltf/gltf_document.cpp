@@ -29,6 +29,7 @@
 /*************************************************************************/
 
 #include "gltf_document.h"
+#include "../gridmap/grid_map.h"
 #include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
 #include "core/math/disjoint_set.h"
@@ -40,6 +41,7 @@
 #include "scene/3d/bone_attachment.h"
 #include "scene/3d/camera.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/3d/multimesh_instance.h"
 #include "scene/3d/skeleton.h"
 #include "scene/3d/spatial.h"
 #include "scene/animation/animation_player.h"
@@ -4832,6 +4834,8 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	AnimationPlayer *animation_player = Object::cast_to<AnimationPlayer>(p_scene_parent);
 	Spatial *spatial = Object::cast_to<Spatial>(p_scene_parent);
 	Node2D *node_2d = Object::cast_to<Node2D>(p_scene_parent);
+	MultiMeshInstance *multi_mesh_instance = Object::cast_to<MultiMeshInstance>(p_scene_parent);
+	GridMap *grid_map = Object::cast_to<GridMap>(p_scene_parent);
 	BoneAttachment *bone_attachment = Object::cast_to<BoneAttachment>(p_scene_parent);
 	if (node_2d && !node_2d->is_visible()) {
 		return;
@@ -4869,14 +4873,30 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 		gltf_skeleton_index = _convert_skeleton(state, skeleton, p_parent_node_index);
 		if (p_parent_node_index != p_root_node_index) {
 			memdelete(gltf_node);
-			if (gltf_skeleton_index != -1) {
-				gltf_node->skeleton = gltf_skeleton_index;
-			}
-			for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
-				_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
-			}
-			return;
 		}
+		if (gltf_skeleton_index != -1) {
+			gltf_node->skeleton = gltf_skeleton_index;
+		}
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		}
+		return;
+	} else if (multi_mesh_instance) {
+		if (p_parent_node_index != p_root_node_index) {
+			memdelete(gltf_node);
+		}
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		}
+		return;
+	} else if (grid_map) {
+		if (p_parent_node_index != p_root_node_index) {
+			memdelete(gltf_node);
+		}
+		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
+			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
+		}
+		return;
 	} else if (camera) {
 		GLTFCameraIndex camera_index = _convert_camera(state, camera);
 		if (camera_index != -1) {
@@ -4889,7 +4909,9 @@ void GLTFDocument::_convert_scene_node(GLTFState &state, Node *p_root_node, Node
 	} else if (animation_player) {
 		state.animation_players.push_back(animation_player);
 		print_verbose(String("glTF: Converting animation player: ") + animation_player->get_name());
-		memdelete(gltf_node);
+		if (p_parent_node_index != p_root_node_index) {
+			memdelete(gltf_node);
+		}
 		for (int node_i = 0; node_i < p_scene_parent->get_child_count(); node_i++) {
 			_convert_scene_node(state, p_root_node, p_scene_parent->get_child(node_i), p_root_node_index, p_parent_node_index);
 		}

@@ -41,6 +41,7 @@
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/3d/multimesh_instance.h"
 
 #ifndef EDITOR_SCENE_EXPORTER_GLTF_H
 #define EDITOR_SCENE_EXPORTER_GLTF_H
@@ -58,7 +59,9 @@ public:
 		String name;
 		Vector<Ref<Material> > materials;
 		Node *original_node = NULL;
+		Node *original_parent = NULL;
 	};
+	void _find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
 	void get_exporter_extensions(List<String> *r_extensions) const;

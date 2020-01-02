@@ -38,6 +38,7 @@
 #include "modules/csg/csg_shape.h"
 #include "modules/gridmap/grid_map.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/3d/multimesh_instance.h"
 #include "scene/animation/animation_player.h"
 #include "scene/gui/check_box.h"
 #include "scene/main/node.h"
@@ -56,7 +57,34 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	Vector<GridMap *> grid_map_items;
 	_find_all_gridmaps(grid_map_items, p_node, p_node);
 
+	Vector<MultiMeshInstance *> multimesh_items;
+	_find_all_multimesh_instance(multimesh_items, p_node, p_node);
+
 	Vector<MeshInfo> meshes;
+
+	for (int32_t multimesh_i = 0; multimesh_i < multimesh_items.size(); multimesh_i++) {
+		Ref<MultiMesh> mesh = multimesh_items[multimesh_i]->get_multimesh();
+		for (int32_t instance_i = 0; instance_i < mesh->get_instance_count(); instance_i++) {
+			MeshInfo mesh_info;
+			mesh_info.mesh = mesh->get_mesh();
+			if (mesh->get_transform_format() == MultiMesh::TRANSFORM_2D) {
+				Transform2D xform_2d = mesh->get_instance_transform_2d(instance_i);
+				mesh_info.transform.origin = Vector3(xform_2d.get_origin().x, 0, xform_2d.get_origin().y);
+				real_t rotation = xform_2d.get_rotation();
+				Quat quat;
+				quat.set_axis_angle(Vector3(0, 1, 0), rotation);
+				Size2 scale = xform_2d.get_scale();
+				mesh_info.transform.basis.set_quat_scale(quat, Vector3(scale.x, 0, scale.y));
+				mesh_info.transform = multimesh_items[multimesh_i]->get_transform() * mesh_info.transform;
+			} else if (mesh->get_transform_format() == MultiMesh::TRANSFORM_3D) {
+				mesh_info.transform = multimesh_items[multimesh_i]->get_transform() * mesh->get_instance_transform(instance_i);
+			}
+			mesh_info.original_parent = multimesh_items[multimesh_i]->get_parent();
+			mesh_info.name = multimesh_items[multimesh_i]->get_name();
+			meshes.push_back(mesh_info);
+		}
+	}
+
 	for (int32_t i = 0; i < csg_items.size(); i++) {
 		Ref<Mesh> mesh = csg_items[i]->get_calculated_mesh();
 		MeshInfo mesh_info;
@@ -86,6 +114,7 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 			cell_xform.set_origin(grid_map_items[i]->map_to_world(cell_location.x, cell_location.y, cell_location.z));
 			mesh_info.transform = cell_xform * grid_map_items[i]->get_transform();
 			mesh_info.name = grid_map_items[i]->get_mesh_library()->get_item_name(cell);
+			mesh_info.original_parent = grid_map_items[i]->get_parent();
 			meshes.push_back(mesh_info);
 		}
 	}
@@ -98,7 +127,10 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 		}
 		mi->set_name(meshes[i].name);
 		mi->set_transform(meshes[i].transform);
-		if (meshes[i].original_node) {
+		if (meshes[i].original_parent) {
+			meshes[i].original_parent->add_child(mi);
+			mi->set_owner(p_node);
+		} else if (meshes[i].original_node) {
 			meshes[i].original_node->replace_by(mi);
 		} else {
 			p_node->add_child(mi);
@@ -118,6 +150,16 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	Error err = gltf_document->serialize(state, p_path);
 	if (r_err) {
 		*r_err = err;
+	}
+}
+
+void EditorSceneExporterGLTF::_find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner) {
+	MultiMeshInstance *multimesh = Object::cast_to<MultiMeshInstance>(p_current_node);
+	if (multimesh != NULL) {
+		r_items.push_back(multimesh);
+	}
+	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
+		_find_all_multimesh_instance(r_items, p_current_node->get_child(i), p_owner);
 	}
 }
 
