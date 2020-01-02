@@ -254,6 +254,7 @@ Error GLTFDocument::_serialize_bone_attachment(GLTFState &state) {
 				}
 
 				for (int node_i = 0; node_i < bone_attachment->get_child_count(); node_i++) {
+					ERR_CONTINUE(bone >= state.skins[skin_i].joints.size());
 					_convert_scene_node(state, bone_attachment->get_owner(), bone_attachment->get_child(node_i), 0, state.skins[skin_i].joints[bone]);
 				}
 				break;
