@@ -40,6 +40,7 @@ class AnimationPlayer;
 class BoneAttachment;
 class MeshInstance;
 
+#ifdef TOOLS_ENABLED
 class EditorSceneImporterGLTF : public EditorSceneImporter {
 
 	GDCLASS(EditorSceneImporterGLTF, EditorSceneImporter);
@@ -52,6 +53,7 @@ public:
 
 	EditorSceneImporterGLTF();
 };
+#endif
 
 class SceneImporterGLTF : public Reference {
 

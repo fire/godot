@@ -83,6 +83,7 @@ public:
 	SceneExporterGLTF() {}
 };
 
+#ifdef TOOLS_ENABLED
 class EditorSceneExporterGLTF : public EditorSceneExporter {
 
 	GDCLASS(EditorSceneExporterGLTF, EditorSceneExporter);
@@ -102,5 +103,5 @@ public:
 	EditorSceneExporterGLTF() {}
 	~EditorSceneExporterGLTF() {}
 };
-
+#endif
 #endif
