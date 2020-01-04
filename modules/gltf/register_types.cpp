@@ -34,7 +34,6 @@
 #include "editor_scene_exporter_gltf.h"
 #include "editor_scene_exporter_gltf_plugin.h"
 #include "editor_scene_importer_gltf.h"
-#include "scene_import_export.h"
 
 #ifdef TOOLS_ENABLED
 static void _editor_init() {
@@ -48,16 +47,17 @@ static void _editor_init() {
 #endif
 
 void register_gltf_types() {
+#ifdef TOOLS_ENABLED
 	ClassDB::register_class<EditorSceneImporterGLTF>();
 	ClassDB::register_class<EditorSceneExporterGLTF>();
-#ifdef TOOLS_ENABLED
 	ClassDB::APIType prev_api = ClassDB::get_current_api();
 	ClassDB::set_current_api(ClassDB::API_EDITOR);
 	EditorPlugins::add_by_type<SceneExporterGLTFPlugin>();
 	ClassDB::set_current_api(prev_api);
 	EditorNode::add_init_callback(_editor_init);
 #endif
-	ClassDB::register_class<SceneImportExport>();
+	ClassDB::register_class<SceneExporterGLTF>();
+	ClassDB::register_class<SceneImporterGLTF>();
 }
 
 void unregister_gltf_types() {

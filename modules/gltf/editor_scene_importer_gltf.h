@@ -44,9 +44,6 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 
 	GDCLASS(EditorSceneImporterGLTF, EditorSceneImporter);
 
-	Ref<GLTFDocument> gltf_document;
-	Spatial *_generate_scene(GLTFDocument::GLTFState &state, const int p_bake_fps);
-
 public:
 	virtual uint32_t get_import_flags() const;
 	virtual void get_extensions(List<String> *r_extensions) const;
@@ -54,6 +51,27 @@ public:
 	virtual Ref<Animation> import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps);
 
 	EditorSceneImporterGLTF();
+};
+
+class SceneImporterGLTF : public Reference {
+
+	GDCLASS(SceneImporterGLTF, Reference);
+
+protected:
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("import_gltf", "path", "flags", "bake_fps"), &SceneImporterGLTF::import_gltf, DEFVAL(0), DEFVAL(1000.0f));
+	}
+
+public:
+	Node *import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err);
+	Node *import_gltf(String p_path, int32_t p_flags = 0, real_t p_bake_fps = 1000.0f) {
+		Error err;
+		List<String> deps;
+		Node *root = import_scene(p_path, p_flags, p_bake_fps, &deps, &err);
+		ERR_FAIL_COND_V(err != OK, NULL);
+		return root;
+	}
+	SceneImporterGLTF() {}
 };
 
 #endif // EDITOR_SCENE_IMPORTER_GLTF_H

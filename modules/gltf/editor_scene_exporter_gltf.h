@@ -45,14 +45,12 @@
 
 #ifndef EDITOR_SCENE_EXPORTER_GLTF_H
 #define EDITOR_SCENE_EXPORTER_GLTF_H
-class EditorSceneExporter;
-class EditorSceneExporterGLTF : public EditorSceneExporter {
 
-	GDCLASS(EditorSceneExporterGLTF, EditorSceneExporter);
+class SceneExporterGLTF : public Reference {
 
-public:
-	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
+	GDCLASS(SceneExporterGLTF, Reference);
 
+private:
 	struct MeshInfo {
 		Transform transform;
 		Ref<Mesh> mesh;
@@ -64,7 +62,43 @@ public:
 	void _find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
+
+protected:
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("export_gltf", "node", "path", "flags", "bake_fps"), &SceneExporterGLTF::export_gltf, DEFVAL(0), DEFVAL(1000.0f));
+	}
+
+public:
+	void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
+
+	Error export_gltf(Node *p_root, String p_path, int32_t p_flags = 0, real_t p_bake_fps = 1000.0f) {
+
+		ERR_FAIL_COND_V(p_root == NULL, FAILED);
+		Error err;
+		List<String> deps;
+		save_scene(p_root, p_path, "", p_flags, p_bake_fps, &deps, &err);
+		return err;
+	}
+
+	SceneExporterGLTF() {}
+};
+
+class EditorSceneExporterGLTF : public EditorSceneExporter {
+
+	GDCLASS(EditorSceneExporterGLTF, EditorSceneExporter);
+
+public:
 	void get_exporter_extensions(List<String> *r_extensions) const;
+
+	virtual void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
+
+	virtual Error export_gltf(Node *p_node, const String &p_path, uint32_t p_flags = 0, int p_bake_fps = 1000.0f) {
+		List<String> deps;
+		Error err = FAILED;
+		save_scene(p_node, p_path, "", p_flags, p_bake_fps, &deps, &err);
+		return err;
+	}
+
 	EditorSceneExporterGLTF() {}
 	~EditorSceneExporterGLTF() {}
 };

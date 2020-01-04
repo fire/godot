@@ -50,7 +50,11 @@ void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions
 	r_extensions->push_back("*.glb");
 }
 
-void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+void SceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+	Error err = FAILED;
+	if (r_err) {
+		*r_err = err;
+	}
 	Vector<CSGShape *> csg_items;
 	_find_all_csg_roots(csg_items, p_node, p_node);
 
@@ -153,13 +157,13 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	gltf_document->_convert_mesh_instances(state);
 	gltf_document->_convert_skeletons(state);
 	state.scene_name = p_node->get_name();
-	Error err = gltf_document->serialize(state, p_path);
+	err = gltf_document->serialize(state, p_path);
 	if (r_err) {
 		*r_err = err;
 	}
 }
 
-void EditorSceneExporterGLTF::_find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner) {
+void SceneExporterGLTF::_find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner) {
 	MultiMeshInstance *multimesh = Object::cast_to<MultiMeshInstance>(p_current_node);
 	if (multimesh != NULL) {
 		r_items.push_back(multimesh);
@@ -169,7 +173,7 @@ void EditorSceneExporterGLTF::_find_all_multimesh_instance(Vector<MultiMeshInsta
 	}
 }
 
-void EditorSceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner) {
+void SceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner) {
 	GridMap *gridmap = Object::cast_to<GridMap>(p_current_node);
 	if (gridmap != NULL) {
 		r_items.push_back(gridmap);
@@ -179,12 +183,18 @@ void EditorSceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Nod
 	}
 }
 
-void EditorSceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner) {
+void SceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner) {
 	CSGShape *csg = Object::cast_to<CSGShape>(p_current_node);
-	if (csg != NULL && csg->is_root_shape()) {
+	if (csg && csg->is_root_shape()) {
 		r_items.push_back(csg);
 	}
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
 		_find_all_csg_roots(r_items, p_current_node->get_child(i), p_owner);
 	}
+}
+
+void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+	Ref<SceneExporterGLTF> exporter;
+	exporter.instance();
+	return exporter->save_scene(p_node, p_path, p_src_path, p_flags, p_bake_fps, r_missing_deps, r_err);
 }

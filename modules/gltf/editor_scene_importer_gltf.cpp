@@ -53,10 +53,26 @@ void EditorSceneImporterGLTF::get_extensions(List<String> *r_extensions) const {
 	r_extensions->push_back("glb");
 }
 
-Spatial *EditorSceneImporterGLTF::_generate_scene(GLTFDocument::GLTFState &state, const int p_bake_fps) {
+Node *EditorSceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 
+	Ref<SceneImporterGLTF> importer;
+	importer.instance();
+	return importer->import_scene(p_path, p_flags, p_bake_fps, r_missing_deps, r_err);
+}
+
+Ref<Animation> EditorSceneImporterGLTF::import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) {
+
+	return Ref<Animation>();
+}
+
+EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
+}
+
+Node *SceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+
+	Ref<GLTFDocument> gltf_document;
 	Spatial *root = memnew(Spatial);
-
+	GLTFDocument::GLTFState state;
 	// scene_name is already unique
 	root->set_name(state.scene_name);
 
@@ -79,24 +95,8 @@ Spatial *EditorSceneImporterGLTF::_generate_scene(GLTFDocument::GLTFState &state
 	Map<Node *, Node *> reown;
 	Node *base = root->get_child(0);
 	reown[root] = base;
-	return Object::cast_to<Spatial>(base->duplicate_and_reown(reown));
-}
-
-Node *EditorSceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-
-	GLTFDocument::GLTFState state;
+	Spatial *scene = Object::cast_to<Spatial>(base->duplicate_and_reown(reown));
 	ERR_FAIL_COND_V(gltf_document->parse(&state, p_path) != Error::OK, NULL);
 
-	Spatial *scene = _generate_scene(state, p_bake_fps);
-
 	return scene;
-}
-
-Ref<Animation> EditorSceneImporterGLTF::import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) {
-
-	return Ref<Animation>();
-}
-
-EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
-	gltf_document.instance();
 }

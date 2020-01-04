@@ -36,7 +36,7 @@ class SceneExporterGLTFPlugin : public EditorPlugin {
 
 	GDCLASS(SceneExporterGLTFPlugin, EditorPlugin);
 
-	Ref<EditorSceneExporterGLTF> convert_gltf2;
+	Ref<SceneExporterGLTF> convert_gltf2;
 	EditorNode *editor;
 	CheckBox *file_export_lib_merge;
 	EditorFileDialog *file_export_lib;
