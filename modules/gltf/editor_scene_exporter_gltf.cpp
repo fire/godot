@@ -64,6 +64,9 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 
 	for (int32_t multimesh_i = 0; multimesh_i < multimesh_items.size(); multimesh_i++) {
 		Ref<MultiMesh> mesh = multimesh_items[multimesh_i]->get_multimesh();
+		if (mesh.is_null()) {
+			continue;
+		}
 		for (int32_t instance_i = 0; instance_i < mesh->get_instance_count(); instance_i++) {
 			MeshInfo mesh_info;
 			mesh_info.mesh = mesh->get_mesh();
@@ -87,6 +90,9 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 
 	for (int32_t i = 0; i < csg_items.size(); i++) {
 		Ref<Mesh> mesh = csg_items[i]->get_calculated_mesh();
+		if (mesh.is_null()) {
+			continue;
+		}
 		MeshInfo mesh_info;
 		for (int32_t material_i = 0; material_i < mesh->get_surface_count(); material_i++) {
 			mesh_info.materials.push_back(mesh->surface_get_material(material_i));
