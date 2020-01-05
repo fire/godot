@@ -188,6 +188,7 @@ void SceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p
 	}
 }
 
+#ifdef TOOLS_ENABLED
 void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Ref<SceneExporterGLTF> exporter;
 	exporter.instance();
@@ -198,3 +199,4 @@ void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions
 	r_extensions->push_back("*.gltf");
 	r_extensions->push_back("*.glb");
 }
+#endif

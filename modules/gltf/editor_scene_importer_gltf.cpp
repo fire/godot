@@ -43,6 +43,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 
+#ifdef TOOLS_ENABLED
 uint32_t EditorSceneImporterGLTF::get_import_flags() const {
 
 	return IMPORT_SCENE | IMPORT_ANIMATION;
@@ -64,7 +65,7 @@ Ref<Animation> EditorSceneImporterGLTF::import_animation(const String &p_path, u
 
 	return Ref<Animation>();
 }
-
+#endif
 EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
 }
 
