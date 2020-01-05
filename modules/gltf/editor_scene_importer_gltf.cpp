@@ -69,10 +69,12 @@ EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
 }
 
 Node *SceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
-
-	Ref<GLTFDocument> gltf_document;
-	Spatial *root = memnew(Spatial);
 	GLTFDocument::GLTFState state;
+	Ref<GLTFDocument> gltf_document;
+	ERR_FAIL_COND_V(gltf_document->parse(&state, p_path) != Error::OK, NULL);
+
+	Spatial *root = memnew(Spatial);
+
 	// scene_name is already unique
 	root->set_name(state.scene_name);
 
@@ -96,7 +98,5 @@ Node *SceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, in
 	Node *base = root->get_child(0);
 	reown[root] = base;
 	Spatial *scene = Object::cast_to<Spatial>(base->duplicate_and_reown(reown));
-	ERR_FAIL_COND_V(gltf_document->parse(&state, p_path) != Error::OK, NULL);
-
 	return scene;
 }
