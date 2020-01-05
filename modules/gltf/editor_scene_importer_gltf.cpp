@@ -65,9 +65,11 @@ Ref<Animation> EditorSceneImporterGLTF::import_animation(const String &p_path, u
 
 	return Ref<Animation>();
 }
-#endif
+
 EditorSceneImporterGLTF::EditorSceneImporterGLTF() {
 }
+
+#endif
 
 Node *SceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	GLTFDocument::GLTFState state;
