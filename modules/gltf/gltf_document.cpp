@@ -3283,11 +3283,10 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 		if (ds) {
 			d["doubleSided"] = ds;
 		}
-		if (material->get_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR)) {
+		if (material->get_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR) && !material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
 			d["alphaMode"] = "MASK";
 			d["alphaCutoff"] = material->get_alpha_scissor_threshold();
-		}
-		if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
+		} else if (material->get_feature(SpatialMaterial::FEATURE_TRANSPARENT)) {
 			d["alphaMode"] = "BLEND";
 		}
 		materials.push_back(d);
