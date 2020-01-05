@@ -45,11 +45,6 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 
-void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions) const {
-	r_extensions->push_back("*.gltf");
-	r_extensions->push_back("*.glb");
-}
-
 void SceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Error err = FAILED;
 	if (r_err) {
@@ -197,4 +192,9 @@ void EditorSceneExporterGLTF::save_scene(Node *p_node, const String &p_path, con
 	Ref<SceneExporterGLTF> exporter;
 	exporter.instance();
 	return exporter->save_scene(p_node, p_path, p_src_path, p_flags, p_bake_fps, r_missing_deps, r_err);
+}
+
+void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions) const {
+	r_extensions->push_back("*.gltf");
+	r_extensions->push_back("*.glb");
 }
