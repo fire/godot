@@ -114,7 +114,11 @@ void SceneExporterGLTFPlugin::convert_scene_to_gltf2(Variant p_user_data) {
 		editor->show_accept(TTR("This operation can't be done without a scene."), TTR("OK"));
 		return;
 	}
-	file_export_lib->set_current_file(String(root->get_filename().get_file().get_basename()) + String(".glb"));
+	String filename = String(root->get_filename().get_file().get_basename());
+	if (filename.empty()) {
+		filename = root->get_name();
+	}
+	file_export_lib->set_current_file(filename + String(".glb"));
 	file_export_lib->connect("file_selected", this, "_gltf2_dialog_action");
 }
 #endif
