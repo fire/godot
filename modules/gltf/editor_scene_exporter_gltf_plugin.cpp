@@ -41,6 +41,7 @@
 
 #include "editor/editor_node.h"
 
+#ifndef _3D_DISABLED
 String SceneExporterGLTFPlugin::get_name() const {
 	return "ConvertGLTF2";
 }
@@ -110,3 +111,4 @@ void SceneExporterGLTFPlugin::convert_scene_to_gltf2(Variant p_user_data) {
 	file_export_lib->set_title(TTR("Export Mesh GLTF2"));
 	file_export_lib->connect("file_selected", this, "_gltf2_dialog_action");
 }
+#endif

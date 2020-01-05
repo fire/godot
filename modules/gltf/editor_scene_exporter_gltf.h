@@ -46,6 +46,7 @@
 #ifndef EDITOR_SCENE_EXPORTER_GLTF_H
 #define EDITOR_SCENE_EXPORTER_GLTF_H
 
+#ifndef _3D_DISABLED
 class SceneExporterGLTF : public Reference {
 
 	GDCLASS(SceneExporterGLTF, Reference);
@@ -139,5 +140,6 @@ public:
 	EditorSceneExporterGLTF() {}
 	~EditorSceneExporterGLTF() {}
 };
+#endif
 #endif
 #endif

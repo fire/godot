@@ -44,7 +44,7 @@
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
-
+#ifndef _3D_DISABLED
 void SceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
 	Error err = FAILED;
 	if (r_err) {
@@ -199,4 +199,5 @@ void EditorSceneExporterGLTF::get_exporter_extensions(List<String> *r_extensions
 	r_extensions->push_back("*.gltf");
 	r_extensions->push_back("*.glb");
 }
+#endif
 #endif

@@ -43,6 +43,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
 
+#ifndef _3D_DISABLED
 #ifdef TOOLS_ENABLED
 uint32_t EditorSceneImporterGLTF::get_import_flags() const {
 
@@ -103,3 +104,4 @@ Node *SceneImporterGLTF::import_scene(const String &p_path, uint32_t p_flags, in
 	Spatial *scene = Object::cast_to<Spatial>(base->duplicate_and_reown(reown));
 	return scene;
 }
+#endif //_3D_DISABLED

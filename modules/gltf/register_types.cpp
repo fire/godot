@@ -35,6 +35,7 @@
 #include "editor_scene_exporter_gltf_plugin.h"
 #include "editor_scene_importer_gltf.h"
 
+#ifndef _3D_DISABLED
 #ifdef TOOLS_ENABLED
 static void _editor_init() {
 	Ref<EditorSceneImporterGLTF> import_gltf;
@@ -45,8 +46,10 @@ static void _editor_init() {
 	ResourceExporterScene::get_singleton()->add_exporter(exporter_gltf);
 }
 #endif
+#endif
 
 void register_gltf_types() {
+#ifndef _3D_DISABLED
 #ifdef TOOLS_ENABLED
 	ClassDB::register_class<EditorSceneImporterGLTF>();
 	ClassDB::register_class<EditorSceneExporterGLTF>();
@@ -58,6 +61,7 @@ void register_gltf_types() {
 #endif
 	ClassDB::register_class<SceneExporterGLTF>();
 	ClassDB::register_class<SceneImporterGLTF>();
+#endif
 }
 
 void unregister_gltf_types() {

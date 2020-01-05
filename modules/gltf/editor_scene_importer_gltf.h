@@ -36,6 +36,7 @@
 #include "scene/3d/skeleton.h"
 #include "scene/3d/spatial.h"
 
+#ifndef _3D_DISABLED
 class AnimationPlayer;
 class BoneAttachment;
 class MeshInstance;
@@ -76,4 +77,5 @@ public:
 	SceneImporterGLTF() {}
 };
 
+#endif // _3D_DISABLED
 #endif // EDITOR_SCENE_IMPORTER_GLTF_H

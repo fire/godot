@@ -32,6 +32,7 @@
 #define EDITOR_SCENE_EXPORTER_GLTF_PLUGIN_H
 #include "editor_scene_exporter_gltf.h"
 
+#ifndef _3D_DISABLED
 class SceneExporterGLTFPlugin : public EditorPlugin {
 
 	GDCLASS(SceneExporterGLTFPlugin, EditorPlugin);
@@ -56,4 +57,5 @@ public:
 	void convert_scene_to_gltf2(Variant p_user_data);
 };
 
+#endif
 #endif
