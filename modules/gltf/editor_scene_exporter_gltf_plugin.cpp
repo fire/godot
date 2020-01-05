@@ -109,6 +109,12 @@ void SceneExporterGLTFPlugin::convert_scene_to_gltf2(Variant p_user_data) {
 	file_export_lib->add_filter("*.gltf");
 	file_export_lib->popup_centered_ratio();
 	file_export_lib->set_title(TTR("Export Mesh GLTF2"));
+	Node *root = editor->get_tree()->get_edited_scene_root();
+	if (!root) {
+		editor->show_accept(TTR("This operation can't be done without a scene."), TTR("OK"));
+		return;
+	}
+	file_export_lib->set_current_file(String(root->get_filename().get_file().get_basename()) + String(".glb"));
 	file_export_lib->connect("file_selected", this, "_gltf2_dialog_action");
 }
 #endif
