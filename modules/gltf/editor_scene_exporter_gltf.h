@@ -62,6 +62,8 @@ private:
 	void _find_all_multimesh_instance(Vector<MultiMeshInstance *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_current_node, const Node *p_owner);
 	void _find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner);
+	Thread *save_thread = NULL;
+	Dictionary user_data;
 
 protected:
 	static void _bind_methods() {
@@ -72,15 +74,49 @@ public:
 	void save_scene(Node *p_node, const String &p_path, const String &p_src_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err = NULL);
 
 	Error export_gltf(Node *p_root, String p_path, int32_t p_flags = 0, real_t p_bake_fps = 1000.0f) {
-
+		if (save_thread) {
+			return ERR_BUSY;
+		}
+		Ref<PackedScene> packed_scene;
+		packed_scene.instance();
 		ERR_FAIL_COND_V(p_root == NULL, FAILED);
-		Error err;
-		List<String> deps;
-		save_scene(p_root, p_path, "", p_flags, p_bake_fps, &deps, &err);
-		return err;
+		packed_scene->pack(p_root);
+		user_data["scene"] = packed_scene;
+		user_data["path"] = p_path;
+		user_data["flags"] = p_flags;
+		user_data["bake_fps"] = p_bake_fps;
+		user_data["error"] = FAILED;
+		user_data["self"] = Ref<SceneExporterGLTF>(this);
+		Ref<SceneExporterGLTF> exporter;
+		exporter.instance();
+		save_thread = Thread::create(_save_thread_function, &user_data);
+		int32_t error_code = user_data["error"];
+		if (error_code != 0) {
+			return Error(error_code);
+		}
+		return OK;
 	}
 
-	SceneExporterGLTF() {}
+	static void
+	_save_thread_function(void *p_user) {
+		Dictionary *user_data = (Dictionary *)p_user;
+		Ref<PackedScene> scene = (*user_data)["scene"];
+		List<String> deps;
+		Error err;
+		Node *node = scene->instance();
+		String path = (*user_data)["path"];
+		int32_t flags = (*user_data)["flags"];
+		real_t baked_fps = (*user_data)["bake_fps"];
+		Ref<SceneExporterGLTF> exporter;
+		exporter.instance();
+		exporter->save_scene(node, path, "", flags, baked_fps, &deps, &err);
+		(*user_data)["error"] = err;
+		Ref<SceneExporterGLTF> self_exporter = (*user_data)["self"];
+		self_exporter->save_thread = NULL;
+	}
+
+	SceneExporterGLTF() {
+	}
 };
 
 #ifdef TOOLS_ENABLED
