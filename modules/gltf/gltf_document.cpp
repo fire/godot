@@ -3258,15 +3258,7 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 			}
 		}
 
-		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
-			const Color c = material->get_emission().to_srgb();
-			Array arr;
-			arr.push_back(c.r);
-			arr.push_back(c.g);
-			arr.push_back(c.b);
-			d["emissiveFactor"] = arr;
-		}
-		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+		if (material->get_texture(SpatialMaterial::TEXTURE_EMISSION).is_valid() && material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
 			Dictionary et;
 			Ref<Texture> emission_texture = material->get_texture(SpatialMaterial::TEXTURE_EMISSION);
 			GLTFTextureIndex gltf_texture_index = -1;
@@ -3278,6 +3270,17 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 				et["index"] = gltf_texture_index;
 				d["emissiveTexture"] = et;
 			}
+		}
+		if (material->get_feature(SpatialMaterial::FEATURE_EMISSION)) {
+			Color c = material->get_emission();
+			c.r *= material->get_emission_energy();
+			c.g *= material->get_emission_energy();
+			c.b *= material->get_emission_energy();
+			Array arr;
+			arr.push_back(c.r);
+			arr.push_back(c.g);
+			arr.push_back(c.b);
+			d["emissiveFactor"] = arr;
 		}
 		const bool ds = material->get_cull_mode() == SpatialMaterial::CULL_DISABLED;
 		if (ds) {
@@ -3401,10 +3404,24 @@ Error GLTFDocument::_parse_materials(GLTFState &state) {
 		if (d.has("emissiveFactor")) {
 			const Array &arr = d["emissiveFactor"];
 			ERR_FAIL_COND_V(arr.size() != 3, ERR_PARSE_ERROR);
-			const Color c = Color(arr[0], arr[1], arr[2]).to_srgb();
-			material->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
+			Color c = Color(arr[0], arr[1], arr[2]);
+			float factor = c.r;
+			if (c.r > c.g) {
+				factor = c.r;
+			} else {
+				factor = c.g;
+			}
 
-			material->set_emission(c);
+			if (factor > c.b) {
+				factor = c.b;
+			}
+			material->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
+			if (factor > 1.0f) {
+				material->set_emission(Color(c.r / factor, c.g / factor, c.b / factor));
+				material->set_emission_energy(factor);
+			} else {
+				material->set_emission(c);
+			}
 		}
 
 		if (d.has("emissiveTexture")) {
@@ -3412,7 +3429,6 @@ Error GLTFDocument::_parse_materials(GLTFState &state) {
 			if (bct.has("index")) {
 				material->set_texture(SpatialMaterial::TEXTURE_EMISSION, _get_texture(state, bct["index"]));
 				material->set_feature(SpatialMaterial::FEATURE_EMISSION, true);
-				material->set_emission(Color(0, 0, 0));
 			}
 		}
 
