@@ -554,7 +554,7 @@ void CSGShape::_notification(int p_what) {
 }
 
 Ref<Mesh> CSGShape::get_calculated_mesh() {
-	_update_shape();
+	_make_dirty();
 	return root_mesh;
 }
 
