@@ -88,16 +88,17 @@ void SceneExporterGLTF::save_scene(Node *p_node, const String &p_path, const Str
 	}
 
 	for (int32_t i = 0; i < csg_items.size(); i++) {
-		Ref<Mesh> mesh = csg_items[i]->get_calculated_mesh();
-		if (mesh.is_null()) {
+		Array mesh_arr = csg_items[i]->get_meshes();
+		if (!mesh_arr.size()) {
 			continue;
 		}
+		Ref<Mesh> mesh = mesh_arr[1];
 		MeshInfo mesh_info;
 		for (int32_t material_i = 0; material_i < mesh->get_surface_count(); material_i++) {
 			mesh_info.materials.push_back(mesh->surface_get_material(material_i));
 		}
-		mesh_info.mesh = mesh;
 		mesh_info.transform = csg_items[i]->get_transform();
+		mesh_info.mesh = mesh;
 		mesh_info.name = csg_items[i]->get_name();
 		mesh_info.original_node = csg_items[i];
 		meshes.push_back(mesh_info);
@@ -180,7 +181,7 @@ void SceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_c
 
 void SceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner) {
 	CSGShape *csg = Object::cast_to<CSGShape>(p_current_node);
-	if (csg && csg->is_root_shape() && csg->get_calculated_mesh().is_valid()) {
+	if (csg && csg->is_root_shape() && !(csg->get_parent() && Object::cast_to<CSGShape>(csg->get_parent()))) {
 		r_items.push_back(csg);
 	}
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
