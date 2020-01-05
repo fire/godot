@@ -128,6 +128,14 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		return Error::FAILED;
 	}
 
+	const String texture_transform = "KHR_texture_transform";
+	Array extensions_used;
+	extensions_used.push_back(texture_transform);
+	state.json["extensionsUsed"] = extensions_used;
+	Array extensions_required;
+	extensions_required.push_back(texture_transform);
+	state.json["extensionsRequired"] = extensions_required;
+
 	const String version = "2.0";
 	state.major_version = version.get_slice(".", 0).to_int();
 	state.minor_version = version.get_slice(".", 1).to_int();
@@ -3327,13 +3335,13 @@ Error GLTFDocument::_parse_materials(GLTFState &state) {
 					if (extensions.has("KHR_texture_transform")) {
 						const Dictionary &texture_transform = extensions["KHR_texture_transform"];
 						const Array &offset_arr = texture_transform["offset"];
-						ERR_FAIL_COND_V(offset_arr.size() != 3, ERR_PARSE_ERROR);
-						const Vector3 offset_vector3 = Vector3(offset_arr[0], offset_arr[1], offset_arr[2]);
+						ERR_FAIL_COND_V(offset_arr.size() != 2, ERR_PARSE_ERROR);
+						const Vector3 offset_vector3 = Vector3(offset_arr[0], offset_arr[1], 0.0f);
 						material->set_uv1_offset(offset_vector3);
 
 						const Array &scale_arr = texture_transform["scale"];
-						ERR_FAIL_COND_V(scale_arr.size() != 3, ERR_PARSE_ERROR);
-						const Vector3 scale_vector3 = Vector3(scale_arr[0], scale_arr[1], scale_arr[2]);
+						ERR_FAIL_COND_V(scale_arr.size() != 2, ERR_PARSE_ERROR);
+						const Vector3 scale_vector3 = Vector3(scale_arr[0], scale_arr[1], 1.0f);
 						material->set_uv1_scale(scale_vector3);
 					}
 				}

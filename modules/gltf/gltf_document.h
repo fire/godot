@@ -448,16 +448,14 @@ private:
 
 			Dictionary texture_transform;
 			Array offset;
-			offset.resize(3);
+			offset.resize(2);
 			offset[0] = mat->get_uv1_offset().x;
 			offset[1] = mat->get_uv1_offset().y;
-			offset[2] = mat->get_uv1_offset().z;
 			texture_transform["offset"] = offset;
 			Array scale;
-			scale.resize(3);
+			scale.resize(2);
 			scale[0] = mat->get_uv1_scale().x;
 			scale[1] = mat->get_uv1_scale().y;
-			scale[2] = mat->get_uv1_scale().z;
 			texture_transform["scale"] = scale;
 			// Godot doesn't support texture rotation
 			extension["KHR_texture_transform"] = texture_transform;
