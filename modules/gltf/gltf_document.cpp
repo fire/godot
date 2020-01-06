@@ -2511,7 +2511,7 @@ Error GLTFDocument::_serialize_meshes(GLTFState &state) {
 						Array attribs;
 						attribs.resize(ret_size);
 						for (int i = 0; i < ret_size; i++) {
-							attribs[i] = Vector3(tarr[(i * 4) + 0], tarr[(i * 4) + 1], tarr[(i * 4) + 2]);
+							attribs[i] = Vector3(tarr[(i * 4) + 0], tarr[(i * 4) + 1], tarr[(i * 4) + 2]).normalized();
 						}
 						t["TANGENT"] = _encode_accessor_as_vec3(state, attribs, true);
 					}
