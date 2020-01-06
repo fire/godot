@@ -181,7 +181,7 @@ void SceneExporterGLTF::_find_all_gridmaps(Vector<GridMap *> &r_items, Node *p_c
 
 void SceneExporterGLTF::_find_all_csg_roots(Vector<CSGShape *> &r_items, Node *p_current_node, const Node *p_owner) {
 	CSGShape *csg = Object::cast_to<CSGShape>(p_current_node);
-	if (csg && csg->is_root_shape() && !(csg->get_parent() && Object::cast_to<CSGShape>(csg->get_parent()))) {
+	if (csg && csg->is_root_shape()) {
 		r_items.push_back(csg);
 	}
 	for (int32_t i = 0; i < p_current_node->get_child_count(); i++) {
