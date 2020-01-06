@@ -3160,6 +3160,15 @@ Error GLTFDocument::_serialize_materials(GLTFState &state) {
 				}
 				orm_image->create(width, height, false, Image::FORMAT_RGBA8);
 				orm_image->lock();
+				if (ao_image.is_valid() && ao_image->get_size() != Vector2(width, height)) {
+					ao_image->resize(width, height, Image::INTERPOLATE_LANCZOS);
+				}
+				if (roughness_image.is_valid() && roughness_image->get_size() != Vector2(width, height)) {
+					roughness_image->resize(width, height, Image::INTERPOLATE_LANCZOS);
+				}
+				if (metallness_image.is_valid() && metallness_image->get_size() != Vector2(width, height)) {
+					metallness_image->resize(width, height, Image::INTERPOLATE_LANCZOS);
+				}
 				for (int32_t h = 0; h < height; h++) {
 					for (int32_t w = 0; w < height; w++) {
 						Color c;
