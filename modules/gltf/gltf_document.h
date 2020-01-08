@@ -335,34 +335,24 @@ public:
 private:
 	String _get_component_type_name(const uint32_t p_component);
 	int _get_component_type_size(const int component_type);
-
 	Error _parse_scenes(GLTFState &state);
-
 	Error _parse_nodes(GLTFState &state);
-
 	String _get_type_name(const GLTFType p_component);
 	String _get_accessor_type_name(const GLTFDocument::GLTFType p_type);
-
 	String _sanitize_scene_name(const String &name);
 	String _gen_unique_name(GLTFState &state, const String &p_name);
-
 	String _sanitize_bone_name(const String &name);
 	String _gen_unique_bone_name(GLTFState &state, const GLTFDocument::GLTFSkeletonIndex skel_i, const String &p_name);
-
 	GLTFTextureIndex _set_texture(GLTFState &state, Ref<Texture> p_texture);
 	Ref<Texture> _get_texture(GLTFState &state, const GLTFDocument::GLTFTextureIndex p_texture);
-
 	Error _parse_json(const String &p_path, GLTFState &state);
 	Error _parse_glb(const String &p_path, GLTFState &state);
-
 	void _compute_node_heights(GLTFState &state);
-
 	Error _parse_buffers(GLTFState &state, const String &p_base_path);
 	Error _parse_buffer_views(GLTFState &state);
 	GLTFType _get_type_from_str(const String &p_string);
 	Error _parse_accessors(GLTFState &state);
 	Error _decode_buffer_view(GLTFState &state, double *dst, const GLTFBufferViewIndex p_buffer_view, const int skip_every, const int skip_bytes, const int element_size, const int count, const GLTFType type, const int component_count, const int component_type, const int component_size, const bool normalized, const int byte_offset, const bool for_vertex);
-
 	Vector<double> _decode_accessor(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	PoolVector<float> _decode_accessor_as_floats(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	PoolVector<int> _decode_accessor_as_ints(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
@@ -373,50 +363,37 @@ private:
 	Vector<Transform2D> _decode_accessor_as_xform2d(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	Vector<Basis> _decode_accessor_as_basis(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
 	Vector<Transform> _decode_accessor_as_xform(GLTFState &state, const GLTFAccessorIndex p_accessor, const bool p_for_vertex);
-
 	Error _parse_meshes(GLTFState &state);
 	Error _serialize_textures(GLTFState &state);
 	Error _serialize_images(GLTFState &state, const String &p_path);
 	Error _parse_images(GLTFState &state, const String &p_base_path);
 	Error _parse_textures(GLTFState &state);
-
 	Error _parse_materials(GLTFState &state);
-
 	GLTFNodeIndex _find_highest_node(GLTFState &state, const Vector<GLTFNodeIndex> &subset);
-
 	bool _capture_nodes_in_skin(GLTFState &state, GLTFSkin &skin, const GLTFNodeIndex node_index);
 	void _capture_nodes_for_multirooted_skin(GLTFState &state, GLTFSkin &skin);
 	Error _expand_skin(GLTFState &state, GLTFSkin &skin);
 	Error _verify_skin(GLTFState &state, GLTFSkin &skin);
 	Error _parse_skins(GLTFState &state);
-
 	Error _determine_skeletons(GLTFState &state);
 	Error _reparent_non_joint_skeleton_subtrees(GLTFState &state, GLTFSkeleton &skeleton, const Vector<GLTFNodeIndex> &non_joints);
 	Error _reparent_to_fake_joint(GLTFState &state, GLTFSkeleton &skeleton, const GLTFNodeIndex node_index);
 	Error _determine_skeleton_roots(GLTFState &state, const GLTFSkeletonIndex skel_i);
-
 	Error _create_skeletons(GLTFState &state);
 	Error _map_skin_joints_indices_to_skeleton_bone_indices(GLTFState &state);
 	Error _serialize_skins(GLTFState &state);
 	Error _create_skins(GLTFState &state);
 	bool _skins_are_same(const Ref<Skin> &skin_a, const Ref<Skin> &skin_b);
 	void _remove_duplicate_skins(GLTFState &state);
-
 	Error _serialize_cameras(GLTFState &state);
-
 	Error _parse_cameras(GLTFState &state);
-
 	Error _parse_animations(GLTFState &state);
-
 	Error _serialize_animations(GLTFState &state);
-
 	BoneAttachment *_generate_bone_attachment(GLTFState &state, Skeleton *skeleton, const GLTFNodeIndex node_index);
 	MeshInstance *_generate_mesh_instance(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Camera *_generate_camera(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Spatial *_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
-
 	void _assign_scene_names(GLTFState &state);
-
 	template <class T>
 	T _interpolate_track(const Vector<float> &p_times, const Vector<T> &p_values, const float p_time, const GLTFAnimation::Interpolation p_interp);
 	GLTFAccessorIndex _encode_accessor_as_quats(GLTFState &state, const Vector<Quat> p_attribs, const bool p_for_vertex);
@@ -429,7 +406,6 @@ private:
 	GLTFAccessorIndex _encode_accessor_as_ints(GLTFState &state, const Array p_attribs, const bool p_for_vertex);
 	GLTFAccessorIndex _encode_accessor_as_xform(GLTFState &state, const Vector<Transform> p_attribs, const bool p_for_vertex);
 	Error _encode_buffer_view(GLTFState &state, const double *src, const int count, const GLTFType type, const int component_type, const bool normalized, const int byte_offset, const bool for_vertex, GLTFBufferViewIndex &r_accessor);
-
 	Error _encode_accessors(GLTFDocument::GLTFState &state);
 	Error _encode_buffer_views(GLTFState &state);
 	Error _serialize_materials(GLTFState &state);
@@ -441,51 +417,11 @@ private:
 	Error _encode_buffer_bins(GLTFState &state, const String &p_path);
 	Error _encode_buffer_glb(GLTFState &state, const String &p_path);
 	Error _serialize_bone_attachment(GLTFState &state);
-	Dictionary _serialize_texture_transform_uv1(Ref<Material> p_material) {
-		Dictionary extension;
-		Ref<SpatialMaterial> mat = p_material;
-		if (mat.is_valid()) {
-
-			Dictionary texture_transform;
-			Array offset;
-			offset.resize(2);
-			offset[0] = mat->get_uv1_offset().x;
-			offset[1] = mat->get_uv1_offset().y;
-			texture_transform["offset"] = offset;
-			Array scale;
-			scale.resize(2);
-			scale[0] = mat->get_uv1_scale().x;
-			scale[1] = mat->get_uv1_scale().y;
-			texture_transform["scale"] = scale;
-			// Godot doesn't support texture rotation
-			extension["KHR_texture_transform"] = texture_transform;
-		}
-		return extension;
-	}
-
-	Dictionary _serialize_texture_transform_uv2(Ref<Material> p_material) {
-		Dictionary extension;
-		Ref<SpatialMaterial> mat = p_material;
-		if (mat.is_valid()) {
-
-			Dictionary texture_transform;
-			Array offset;
-			offset.resize(3);
-			offset[0] = mat->get_uv2_offset().x;
-			offset[1] = mat->get_uv2_offset().y;
-			offset[2] = mat->get_uv2_offset().z;
-			texture_transform["offset"] = offset;
-			Array scale;
-			scale.resize(3);
-			scale[0] = mat->get_uv2_scale().x;
-			scale[1] = mat->get_uv2_scale().y;
-			scale[2] = mat->get_uv2_scale().z;
-			texture_transform["scale"] = scale;
-			// Godot doesn't support texture rotation
-			extension["KHR_texture_transform"] = texture_transform;
-		}
-		return extension;
-	}
+	Dictionary _serialize_texture_transform_uv1(Ref<Material> p_material);
+	Dictionary _serialize_texture_transform_uv2(Ref<Material> p_material);
+	Error _serialize_version(GLTFState &state);
+	Error _serialize_file(GLTFState &state, const String p_path);
+	Error _serialize_extensions(GLTFState &state) const;
 
 public:
 	void

@@ -128,6 +128,28 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 		return Error::FAILED;
 	}
 
+	/* STEP 13 SERIALIZE EXTENSIONS */
+	err = _serialize_extensions(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 14 SERIALIZE VERSION */
+	err = _serialize_version(state);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	/* STEP 15 SERIALIZE FILE */
+	err = _serialize_file(state, p_path);
+	if (err != OK) {
+		return Error::FAILED;
+	}
+
+	return OK;
+}
+
+Error GLTFDocument::_serialize_extensions(GLTFState &state) const {
 	const String texture_transform = "KHR_texture_transform";
 	Array extensions_used;
 	extensions_used.push_back(texture_transform);
@@ -135,73 +157,6 @@ Error GLTFDocument::serialize(GLTFState &state, const String &p_path) {
 	Array extensions_required;
 	extensions_required.push_back(texture_transform);
 	state.json["extensionsRequired"] = extensions_required;
-
-	const String version = "2.0";
-	state.major_version = version.get_slice(".", 0).to_int();
-	state.minor_version = version.get_slice(".", 1).to_int();
-	Dictionary asset;
-	asset["version"] = version;
-
-	String hash = VERSION_HASH;
-	asset["generator"] = String(VERSION_FULL_NAME) + String("@") + (hash.length() == 0 ? String("unknown") : hash);
-	state.json["asset"] = asset;
-	ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
-	ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
-
-	if (p_path.to_lower().ends_with("glb")) {
-		err = _encode_buffer_glb(state, p_path);
-		ERR_FAIL_COND_V(err != OK, err);
-		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
-		ERR_FAIL_COND_V(!f, FAILED);
-
-		String json = JSON::print(state.json);
-
-		const uint32_t magic = 0x46546C67; // GLTF
-		const int32_t header_size = 12;
-		const int32_t chunk_header_size = 8;
-
-		for (int32_t pad_i = 0; pad_i < (chunk_header_size + json.utf8().length()) % 4; pad_i++) {
-			json += " ";
-		}
-		CharString cs = json.utf8();
-		const uint32_t text_chunk_length = cs.length();
-
-		const uint32_t text_chunk_type = 0x4E4F534A; //JSON
-		int32_t binary_data_length = 0;
-		if (state.buffers.size()) {
-			binary_data_length = state.buffers[0].size();
-		}
-		const int32_t binary_chunk_length = binary_data_length;
-		const int32_t binary_chunk_type = 0x004E4942; //BIN
-
-		f->create(FileAccess::ACCESS_RESOURCES);
-		f->store_32(magic);
-		f->store_32(state.major_version); // version
-		f->store_32(header_size + chunk_header_size + text_chunk_length + chunk_header_size + binary_data_length); // length
-		f->store_32(text_chunk_length);
-		f->store_32(text_chunk_type);
-		f->store_buffer((uint8_t *)&cs[0], cs.length());
-		if (binary_chunk_length) {
-			f->store_32(binary_chunk_length);
-			f->store_32(binary_chunk_type);
-			f->store_buffer(state.buffers[0].ptr(), binary_data_length);
-		}
-
-		f->close();
-
-	} else {
-
-		err = _encode_buffer_bins(state, p_path);
-		ERR_FAIL_COND_V(err != OK, err);
-		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
-		ERR_FAIL_COND_V(!f, FAILED);
-
-		f->create(FileAccess::ACCESS_RESOURCES);
-		String json = JSON::print(state.json);
-		f->store_string(json);
-		f->close();
-	}
-
 	return OK;
 }
 
@@ -5801,4 +5756,125 @@ Error GLTFDocument::parse(GLTFDocument::GLTFState *state, String p_path) {
 	_assign_scene_names(*state);
 
 	return OK;
+}
+
+Dictionary GLTFDocument::_serialize_texture_transform_uv2(Ref<Material> p_material) {
+	Dictionary extension;
+	Ref<SpatialMaterial> mat = p_material;
+	if (mat.is_valid()) {
+
+		Dictionary texture_transform;
+		Array offset;
+		offset.resize(3);
+		offset[0] = mat->get_uv2_offset().x;
+		offset[1] = mat->get_uv2_offset().y;
+		offset[2] = mat->get_uv2_offset().z;
+		texture_transform["offset"] = offset;
+		Array scale;
+		scale.resize(3);
+		scale[0] = mat->get_uv2_scale().x;
+		scale[1] = mat->get_uv2_scale().y;
+		scale[2] = mat->get_uv2_scale().z;
+		texture_transform["scale"] = scale;
+		// Godot doesn't support texture rotation
+		extension["KHR_texture_transform"] = texture_transform;
+	}
+	return extension;
+}
+
+Dictionary GLTFDocument::_serialize_texture_transform_uv1(Ref<Material> p_material) {
+	Dictionary extension;
+	Ref<SpatialMaterial> mat = p_material;
+	if (mat.is_valid()) {
+
+		Dictionary texture_transform;
+		Array offset;
+		offset.resize(3);
+		offset[0] = mat->get_uv1_offset().x;
+		offset[1] = mat->get_uv1_offset().y;
+		offset[2] = mat->get_uv1_offset().z;
+		texture_transform["offset"] = offset;
+		Array scale;
+		scale.resize(3);
+		scale[0] = mat->get_uv1_scale().x;
+		scale[1] = mat->get_uv1_scale().y;
+		scale[2] = mat->get_uv1_scale().z;
+		texture_transform["scale"] = scale;
+		// Godot doesn't support texture rotation
+		extension["KHR_texture_transform"] = texture_transform;
+	}
+	return extension;
+}
+
+Error GLTFDocument::_serialize_version(GLTFDocument::GLTFState &state) {
+	const String version = "2.0";
+	state.major_version = version.get_slice(".", 0).to_int();
+	state.minor_version = version.get_slice(".", 1).to_int();
+	Dictionary asset;
+	asset["version"] = version;
+
+	String hash = VERSION_HASH;
+	asset["generator"] = String(VERSION_FULL_NAME) + String("@") + (hash.length() == 0 ? String("unknown") : hash);
+	state.json["asset"] = asset;
+	ERR_FAIL_COND_V(!asset.has("version"), Error::FAILED);
+	ERR_FAIL_COND_V(!state.json.has("asset"), Error::FAILED);
+	return OK;
+}
+
+Error GLTFDocument::_serialize_file(GLTFDocument::GLTFState &state, const String p_path) {
+	Error err = FAILED;
+	if (p_path.to_lower().ends_with("glb")) {
+		err = _encode_buffer_glb(state, p_path);
+		ERR_FAIL_COND_V(err != OK, err);
+		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
+		ERR_FAIL_COND_V(!f, FAILED);
+
+		String json = JSON::print(state.json);
+
+		const uint32_t magic = 0x46546C67; // GLTF
+		const int32_t header_size = 12;
+		const int32_t chunk_header_size = 8;
+
+		for (int32_t pad_i = 0; pad_i < (chunk_header_size + json.utf8().length()) % 4; pad_i++) {
+			json += " ";
+		}
+		CharString cs = json.utf8();
+		const uint32_t text_chunk_length = cs.length();
+
+		const uint32_t text_chunk_type = 0x4E4F534A; //JSON
+		int32_t binary_data_length = 0;
+		if (state.buffers.size()) {
+			binary_data_length = state.buffers[0].size();
+		}
+		const int32_t binary_chunk_length = binary_data_length;
+		const int32_t binary_chunk_type = 0x004E4942; //BIN
+
+		f->create(FileAccess::ACCESS_RESOURCES);
+		f->store_32(magic);
+		f->store_32(state.major_version); // version
+		f->store_32(header_size + chunk_header_size + text_chunk_length + chunk_header_size + binary_data_length); // length
+		f->store_32(text_chunk_length);
+		f->store_32(text_chunk_type);
+		f->store_buffer((uint8_t *)&cs[0], cs.length());
+		if (binary_chunk_length) {
+			f->store_32(binary_chunk_length);
+			f->store_32(binary_chunk_type);
+			f->store_buffer(state.buffers[0].ptr(), binary_data_length);
+		}
+
+		f->close();
+
+	} else {
+
+		err = _encode_buffer_bins(state, p_path);
+		ERR_FAIL_COND_V(err != OK, err);
+		FileAccessRef f = FileAccess::open(p_path, FileAccess::WRITE, &err);
+		ERR_FAIL_COND_V(!f, FAILED);
+
+		f->create(FileAccess::ACCESS_RESOURCES);
+		String json = JSON::print(state.json);
+		f->store_string(json);
+		f->close();
+	}
+	return err;
 }
