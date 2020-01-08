@@ -5327,7 +5327,7 @@ void GLTFDocument::_convert_skeletons(GLTFState &state) {
 		GLTFNodeIndex skeleton_node = state.skeleton_to_node[skeleton_i];
 		for (int32_t bone_i = 0; bone_i < state.skeletons[skeleton_i].godot_skeleton->get_bone_count(); bone_i++) {
 			GLTFNode *node = memnew(GLTFNode);
-			node->name = _gen_unique_bone_name(state, skeleton_i, state.skeletons[skeleton_i].godot_skeleton->get_bone_name(bone_i));
+			node->name = _gen_unique_name(state, state.skeletons[skeleton_i].godot_skeleton->get_bone_name(bone_i));
 
 			Transform xform = state.skeletons[skeleton_i].godot_skeleton->get_bone_rest(bone_i);
 			node->scale = xform.basis.get_scale();
