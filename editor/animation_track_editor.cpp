@@ -1433,6 +1433,10 @@ void AnimationTimelineEdit::_anim_length_changed(double p_new_len) {
 }
 
 void AnimationTimelineEdit::_anim_loop_pressed() {
+	if (!animation->is_local_to_scene()) {
+		animation->set_loop(animation->has_loop());
+		ERR_FAIL_MSG("Scene was automatically imported, so it can't be modified.\nTo make changes to it, make the scene local.");
+	}
 
 	undo_redo->create_action(TTR("Change Animation Loop"));
 	undo_redo->add_do_method(animation.ptr(), "set_loop", loop->is_pressed());
