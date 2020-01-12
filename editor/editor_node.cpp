@@ -60,7 +60,6 @@
 #include "editor/editor_spin_slider.h"
 #include "editor/editor_themes.h"
 #include "editor/import/editor_import_collada.h"
-#include "editor/import/editor_scene_importer_gltf.h"
 #include "editor/import/resource_importer_bitmask.h"
 #include "editor/import/resource_importer_csv.h"
 #include "editor/import/resource_importer_csv_translation.h"
@@ -5651,10 +5650,6 @@ EditorNode::EditorNode() {
 			Ref<EditorOBJImporter> import_obj2;
 			import_obj2.instance();
 			import_scene->add_importer(import_obj2);
-
-			Ref<EditorSceneImporterGLTF> import_gltf;
-			import_gltf.instance();
-			import_scene->add_importer(import_gltf);
 
 			Ref<EditorSceneImporterESCN> import_escn;
 			import_escn.instance();
