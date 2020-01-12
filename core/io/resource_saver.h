@@ -31,6 +31,8 @@
 #ifndef RESOURCE_SAVER_H
 #define RESOURCE_SAVER_H
 
+#include "core/io/resource_saver.h"
+#include "core/os/file_access.h"
 #include "core/resource.h"
 
 class ResourceFormatSaver : public Reference {
@@ -42,6 +44,7 @@ protected:
 public:
 	virtual Error save(const String &p_path, const RES &p_resource, uint32_t p_flags = 0);
 	virtual bool recognize(const RES &p_resource) const;
+	virtual bool recognize_path(const String &p_path) const;
 	virtual void get_recognized_extensions(const RES &p_resource, List<String> *p_extensions) const;
 
 	virtual ~ResourceFormatSaver() {}
@@ -49,8 +52,8 @@ public:
 
 typedef void (*ResourceSavedCallback)(Ref<Resource> p_resource, const String &p_path);
 
-class ResourceSaver {
-
+class ResourceSaver : public Reference {
+	GDCLASS(ResourceSaver, Reference);
 	enum {
 		MAX_SAVERS = 64
 	};
