@@ -32,6 +32,8 @@
 #define GLTF_DOCUMENT_H
 
 #include "editor/import/resource_importer_scene.h"
+#include "scene/resources/texture.h"
+#include "scene/resources/material.h"
 #include "scene/3d/skeleton.h"
 #include "scene/3d/spatial.h"
 
@@ -283,16 +285,16 @@ public:
 		Vector<GLTFAccessor> accessors;
 
 		Vector<GLTFMesh> meshes; //meshes are loaded directly, no reason not to.
-
+        
 		Vector<AnimationPlayer *> animation_players;
-		Map<Ref<Material>, GLTFMaterialIndex> material_cache;
-		Vector<Ref<Material> > materials;
+		Map<Ref<StandardMaterial3D>, GLTFMaterialIndex> material_cache;
+		Vector<Ref<StandardMaterial3D> > materials;
 
 		String scene_name;
 		Vector<int> root_nodes;
 
 		Vector<GLTFTexture> textures;
-		Vector<Ref<Texture> > images;
+		Vector<Ref<Texture2D> > images;
 
 		Vector<GLTFSkin> skins;
 		Vector<GLTFCamera> cameras;
@@ -343,8 +345,10 @@ private:
 	String _gen_unique_name(GLTFState &state, const String &p_name);
 	String _sanitize_bone_name(const String &name);
 	String _gen_unique_bone_name(GLTFState &state, const GLTFDocument::GLTFSkeletonIndex skel_i, const String &p_name);
-	GLTFTextureIndex _set_texture(GLTFState &state, Ref<Texture> p_texture);
-	Ref<Texture> _get_texture(GLTFState &state, const GLTFDocument::GLTFTextureIndex p_texture);
+
+	GLTFTextureIndex _set_texture(GLTFState &state, Ref<Texture2D> p_texture);
+	Ref<Texture2D> _get_texture(GLTFState &state, const GLTFDocument::GLTFTextureIndex p_texture);
+
 	Error _parse_json(const String &p_path, GLTFState &state);
 	Error _parse_glb(const String &p_path, GLTFState &state);
 	void _compute_node_heights(GLTFState &state);
