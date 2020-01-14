@@ -4233,6 +4233,35 @@ RID RasterizerStorageRD::render_target_get_back_buffer_uniform_set(RID p_render_
 	return rt->backbuffer_uniform_set;
 }
 
+void RasterizerStorageRD::render_target_set_screen_lut(RID p_render_target, const Ref<Image> &p_lut, int p_h_slices, int p_v_slices) {
+	RenderTarget *rt = render_target_owner.getornull(p_render_target);
+	ERR_FAIL_COND(!rt);
+
+	if (rt->screen_lut.is_valid()) {
+		free(rt->screen_lut);
+		rt->screen_lut = RID();
+	}
+
+	if (p_lut.is_null() || p_lut->empty())
+		return;
+
+	int slice_w = p_lut->get_width() / p_h_slices;
+	int slice_h = p_lut->get_height() / p_v_slices;
+
+	Vector<Ref<Image> > layers;
+	for (int i = 0; i < p_v_slices; i++) {
+		for (int j = 0; j < p_h_slices; j++) {
+			int x = slice_w * j;
+			int y = slice_h * i;
+			layers.push_back(p_lut->get_rect(Rect2(x, y, slice_w, slice_h)));
+		}
+	}
+
+	RID texture = texture_3d_create(layers);
+	rt->screen_lut = texture;
+	rt->lut_texel_count = Vector3(slice_w, slice_h, p_h_slices * p_v_slices);
+}
+
 void RasterizerStorageRD::base_update_dependency(RID p_base, RasterizerScene::InstanceBase *p_instance) {
 	if (mesh_owner.owns(p_base)) {
 		Mesh *mesh = mesh_owner.getornull(p_base);
