@@ -348,12 +348,19 @@ void RasterizerEffectsRD::tonemapper(RID p_source_color, RID p_dst_framebuffer, 
 
 	tonemap.push_constant.use_color_correction = p_settings.use_color_correction;
 
+	tonemap.push_constant.use_screen_lut = p_settings.use_screen_lut;
+
+	tonemap.push_constant.lut_texel_count[0] = p_settings.lut_texel_count.x;
+	tonemap.push_constant.lut_texel_count[1] = p_settings.lut_texel_count.y;
+	tonemap.push_constant.lut_texel_count[2] = p_settings.lut_texel_count.z;
+	
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(p_dst_framebuffer, RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_DISCARD);
 	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, tonemap.pipelines[mode].get_render_pipeline(RD::INVALID_ID, RD::get_singleton()->framebuffer_get_format(p_dst_framebuffer)));
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_source_color), 0);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.exposure_texture), 1);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.glow_texture, true), 2);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.color_correction_texture), 3);
+	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.lut), 4);
 	RD::get_singleton()->draw_list_bind_index_array(draw_list, index_array);
 
 	RD::get_singleton()->draw_list_set_push_constant(draw_list, &tonemap.push_constant, sizeof(TonemapPushConstant));
@@ -593,7 +600,7 @@ RasterizerEffectsRD::RasterizerEffectsRD() {
 			bokeh.pipelines[i] = RD::get_singleton()->compute_pipeline_create(bokeh.shader.version_get_shader(bokeh.shader_version, i));
 		}
 	}
-
+	
 	RD::SamplerState sampler;
 	sampler.mag_filter = RD::SAMPLER_FILTER_LINEAR;
 	sampler.min_filter = RD::SAMPLER_FILTER_LINEAR;

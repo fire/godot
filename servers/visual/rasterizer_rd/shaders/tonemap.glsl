@@ -29,6 +29,7 @@ layout(set = 0, binding = 0) uniform sampler2D source_color;
 layout(set = 1, binding = 0) uniform sampler2D source_auto_exposure;
 layout(set = 2, binding = 0) uniform sampler2D source_glow;
 layout(set = 3, binding = 0) uniform sampler3D color_correction;
+layout(set = 4, binding = 0) uniform sampler3D screen_lut;
 
 layout(push_constant, binding = 1, std430) uniform Params {
 	vec3 bcs;
@@ -48,6 +49,9 @@ layout(push_constant, binding = 1, std430) uniform Params {
 	float exposure;
 	float white;
 	float auto_exposure_grey;
+	
+	vec3 lut_texel_count;
+	bool use_screen_lut;
 } params;
 
 layout(location = 0) out vec4 frag_color;
@@ -254,6 +258,11 @@ vec3 apply_color_correction(vec3 color, sampler3D correction_tex) {
 	return texture(correction_tex, color).rgb;
 }
 
+vec3 apply_screen_lut(vec3 color, vec3 lut_texel_count) {
+	vec3 coords = clamp(color.rgb, 0.0, 1.0) * (1.0 - 1.0 / lut_texel_count) + 0.5 / lut_texel_count;
+	return texture(screen_lut, coords).rgb;
+}
+
 void main() {
 	vec3 color = textureLod(source_color, uv_interp, 0.0f).rgb;
 
@@ -275,8 +284,12 @@ void main() {
 	}
 
 	color = apply_tonemapping(color, params.white);
-
+	
 	color = linear_to_srgb(color); // regular linear -> SRGB conversion
+	
+	if (params.use_screen_lut) {
+		color = apply_screen_lut(color, params.lut_texel_count);
+	}
 
 	// Glow
 

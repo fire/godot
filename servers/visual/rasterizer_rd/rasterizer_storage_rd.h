@@ -36,7 +36,6 @@
 #include "servers/visual/rasterizer_rd/rasterizer_effects_rd.h"
 #include "servers/visual/rasterizer_rd/shader_compiler_rd.h"
 #include "servers/visual/rasterizer_rd/shaders/giprobe_sdf.glsl.gen.h"
-#include "servers/visual/rasterizer_rd/shaders/lut_transform.glsl.gen.h"
 #include "servers/visual/rendering_device.h"
 
 class RasterizerStorageRD : public RasterizerStorage {
@@ -96,6 +95,14 @@ public:
 		DEFAULT_RD_BUFFER_WEIGHTS,
 		DEFAULT_RD_BUFFER_MAX,
 	};
+
+	RID get_screen_lut() {
+		return screen_lut;
+	}
+
+	Vector3 get_lut_texel_count() {
+		return lut_texel_count;
+	}
 
 private:
 	/* TEXTURE API */
@@ -440,6 +447,9 @@ private:
 		RasterizerScene::InstanceDependency instance_dependency;
 	};
 
+	RID screen_lut;
+	Vector3 lut_texel_count;
+
 	GiprobeSdfShaderRD giprobe_sdf_shader;
 	RID giprobe_sdf_shader_version;
 	RID giprobe_sdf_shader_version_shader;
@@ -482,12 +492,7 @@ private:
 		//clear request
 		bool clear_requested;
 		Color clear_color;
-
-		RID screen_lut;
-		Vector3 lut_texel_count;
 	};
-
-	LutTransformShaderRD lut_shader;
 
 	RID_Owner<RenderTarget> render_target_owner;
 
@@ -1093,7 +1098,6 @@ public:
 	void render_target_set_as_unused(RID p_render_target);
 	void render_target_copy_to_back_buffer(RID p_render_target, const Rect2i &p_region);
 	RID render_target_get_back_buffer_uniform_set(RID p_render_target, RID p_base_shader);
-	void render_target_set_screen_lut(RID p_render_target, const Ref<Image> &p_lut, int p_h_slices, int p_v_slices);
 
 	virtual void render_target_request_clear(RID p_render_target, const Color &p_clear_color);
 	virtual bool render_target_is_clear_requested(RID p_render_target);
@@ -1105,6 +1109,8 @@ public:
 	RID render_target_get_rd_framebuffer(RID p_render_target);
 
 	VS::InstanceType get_base_type(RID p_rid) const;
+
+	void set_screen_lut(const Ref<Image> &p_lut, int p_h_slices, int p_v_slices);
 
 	bool free(RID p_rid);
 

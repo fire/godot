@@ -160,6 +160,7 @@ class RasterizerEffectsRD {
 		uint32_t use_glow;
 		uint32_t use_auto_exposure;
 		uint32_t use_color_correction;
+
 		uint32_t tonemapper;
 
 		uint32_t glow_texture_size[2];
@@ -171,10 +172,12 @@ class RasterizerEffectsRD {
 		float exposure;
 		float white;
 		float auto_exposure_grey;
+
+		float lut_texel_count[3];
+		uint32_t use_screen_lut;
 	};
 
 	struct Tonemap {
-
 		TonemapPushConstant push_constant;
 		TonemapShaderRD shader;
 		RID shader_version;
@@ -308,6 +311,10 @@ public:
 		float exposure = 1.0;
 		float white = 1.0;
 
+		bool use_screen_lut = false;
+		RID lut;
+		Vector3 lut_texel_count;
+
 		bool use_auto_exposure = false;
 		float auto_exposure_grey = 0.5;
 		RID exposure_texture;
@@ -319,7 +326,7 @@ public:
 
 		bool use_color_correction = false;
 		RID color_correction_texture;
-	};
+	};	
 
 	void tonemapper(RID p_source_color, RID p_dst_framebuffer, const TonemapSettings &p_settings);
 
