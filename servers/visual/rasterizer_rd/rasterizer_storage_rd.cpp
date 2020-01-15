@@ -613,8 +613,77 @@ RID RasterizerStorageRD::texture_2d_layered_create(const Vector<Ref<Image> > &p_
 	return RID();
 }
 RID RasterizerStorageRD::texture_3d_create(const Vector<Ref<Image> > &p_slices) {
+	ERR_FAIL_COND_V(p_slices.empty(), RID());
+	for (int32_t slice_i = 0; slice_i < p_slices.size(); slice_i++) {
+		ERR_FAIL_COND_V(p_slices[slice_i].is_null(), RID());
+	}
 
-	return RID();
+	TextureToRDFormat ret_format;
+	//Only validates the first slice
+	Ref<Image> image = _validate_texture_format(p_slices[0], ret_format);
+	Texture texture;
+
+	texture.type = Texture::TYPE_3D;
+
+	texture.width = image->get_width();
+	texture.height = image->get_height();
+	texture.depth = p_slices.size();
+	texture.layers = 1;
+	//texture.mipmaps = p_image->get_mipmap_count() + 1;
+	texture.format = image->get_format();
+	texture.validated_format = image->get_format();
+
+	texture.rd_type = RD::TEXTURE_TYPE_3D;
+	texture.rd_format = ret_format.format;
+	texture.rd_format_srgb = ret_format.format_srgb;
+
+	RD::TextureFormat rd_format;
+	RD::TextureView rd_view;
+	{ //attempt register
+		rd_format.format = texture.rd_format;
+		rd_format.width = texture.width;
+		rd_format.height = texture.height;
+		rd_format.depth = texture.depth;
+		rd_format.array_layers = 1;
+		rd_format.mipmaps = texture.mipmaps;
+		rd_format.type = texture.rd_type;
+		rd_format.samples = RD::TEXTURE_SAMPLES_1;
+		rd_format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_UPDATE_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT;
+		if (texture.rd_format_srgb != RD::DATA_FORMAT_MAX) {
+			rd_format.shareable_formats.push_back(texture.rd_format);
+			rd_format.shareable_formats.push_back(texture.rd_format_srgb);
+		}
+	}
+	{
+		rd_view.swizzle_r = ret_format.swizzle_r;
+		rd_view.swizzle_g = ret_format.swizzle_g;
+		rd_view.swizzle_b = ret_format.swizzle_b;
+		rd_view.swizzle_a = ret_format.swizzle_a;
+	}
+	Vector<PoolVector<uint8_t> > data_slices;
+	for (int32_t layer_i = 0; layer_i < p_slices.size(); layer_i++) {
+		PoolVector<uint8_t> data = p_slices[layer_i]->get_data(); //use image data
+		data_slices.push_back(data);
+	}
+	texture.rd_texture = RD::get_singleton()->texture_create(rd_format, rd_view, data_slices);
+	ERR_FAIL_COND_V(texture.rd_texture.is_null(), RID());
+	if (texture.rd_format_srgb != RD::DATA_FORMAT_MAX) {
+		rd_view.format_override = texture.rd_format_srgb;
+		texture.rd_texture_srgb = RD::get_singleton()->texture_create_shared(rd_view, texture.rd_texture);
+		if (texture.rd_texture_srgb.is_null()) {
+			RD::get_singleton()->free(texture.rd_texture);
+			ERR_FAIL_COND_V(texture.rd_texture_srgb.is_null(), RID());
+		}
+	}
+
+	texture.width = texture.width;
+	texture.height = texture.height;
+	texture.depth = texture.depth;
+	texture.is_render_target = false;
+	texture.rd_view = rd_view;
+	texture.is_proxy = false;
+
+	return texture_owner.make_rid(texture);
 }
 
 RID RasterizerStorageRD::texture_proxy_create(RID p_base) {
@@ -4292,8 +4361,9 @@ void RasterizerStorageRD::set_screen_lut(const Ref<Image> &p_lut, int p_h_slices
 		screen_lut = RID();
 	}
 
-	if (p_lut.is_null() || p_lut->empty())
+	if (p_lut.is_null() || p_lut->empty()) {
 		return;
+	}
 
 	int slice_w = p_lut->get_width() / p_h_slices;
 	int slice_h = p_lut->get_height() / p_v_slices;

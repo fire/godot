@@ -2405,6 +2405,7 @@ void RasterizerSceneRD::_render_buffers_post_process_and_tonemap(RID p_render_bu
 			tonemap.lut = storage->get_screen_lut();
 			tonemap.lut_texel_count = storage->get_lut_texel_count();
 		} else {
+			tonemap.use_screen_lut = false;
 			tonemap.lut = storage->texture_rd_get_default(RasterizerStorageRD::DEFAULT_RD_TEXTURE_BLACK);
 			tonemap.lut_texel_count = storage->get_lut_texel_count();
 		}
