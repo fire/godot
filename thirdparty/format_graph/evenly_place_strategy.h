@@ -11,9 +11,8 @@ class GraphNodeFormatEvenlyPlaceStrategy : public GraphNodeFormatPositionStrateg
 	GDCLASS(GraphNodeFormatEvenlyPlaceStrategy, GraphNodeFormatPositionStrategy);
 
 private:
-	Rect2 PlaceNodeInLayer(Vector<Ref<GraphNodeFormatNode> > &r_layer, const Rect2 &p_prebound);
-	Ref<GraphNodeFormatNode> FindFirstNodeInLayeredList(Vector<Vector<Ref<GraphNodeFormatNode> > > &InLayeredNodes);
-	
+	Rect2 place_node_in_layer(Vector<Ref<GraphNodeFormatNode> > &r_layer, const Rect2 &p_prebound);
+	Ref<GraphNodeFormatNode> find_first_node_in_layered_list(Vector<Vector<Ref<GraphNodeFormatNode> > > &InLayeredNodes);
 
 public:
 	GraphNodeFormatEvenlyPlaceStrategy() {}

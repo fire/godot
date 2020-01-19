@@ -17,5 +17,5 @@ public:
 	}
 	GraphNodeFormatPositionStrategy() {}
 	virtual ~GraphNodeFormatPositionStrategy() {}
-	Rect2 GetTotalBound() const { return total_bound; }
+	Rect2 get_total_bound() const { return total_bound; }
 };

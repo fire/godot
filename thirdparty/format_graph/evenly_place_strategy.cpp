@@ -7,7 +7,7 @@
 #include "FormatterGraph.h"
 #include "FormatterSettings.h"
 
-Rect2 GraphNodeFormatEvenlyPlaceStrategy::PlaceNodeInLayer(Vector<Ref<GraphNodeFormatNode> > &Layer, const Rect2 &p_prebound) {
+Rect2 GraphNodeFormatEvenlyPlaceStrategy::place_node_in_layer(Vector<Ref<GraphNodeFormatNode> > &Layer, const Rect2 &p_prebound) {
 	Rect2 Bound;
 	const GraphNodeFormatSettings settings; // TODO Use unique settings
 	Vector2 position;
@@ -33,7 +33,7 @@ Rect2 GraphNodeFormatEvenlyPlaceStrategy::PlaceNodeInLayer(Vector<Ref<GraphNodeF
 	return Bound;
 }
 
-Ref<GraphNodeFormatNode> GraphNodeFormatEvenlyPlaceStrategy::FindFirstNodeInLayeredList(Vector<Vector<Ref<GraphNodeFormatNode> > > &InLayeredNodes) {
+Ref<GraphNodeFormatNode> GraphNodeFormatEvenlyPlaceStrategy::find_first_node_in_layered_list(Vector<Vector<Ref<GraphNodeFormatNode> > > &InLayeredNodes) {
 	for (const auto &Layer : InLayeredNodes) {
 		for (int32_t node_i = 0; node_i < Layer.size(); node_i++) {
 			Ref<GraphNodeFormatNode> node = Layer[node_i];
@@ -46,7 +46,7 @@ Ref<GraphNodeFormatNode> GraphNodeFormatEvenlyPlaceStrategy::FindFirstNodeInLaye
 GraphNodeFormatEvenlyPlaceStrategy::GraphNodeFormatEvenlyPlaceStrategy(Vector<Vector<Ref<GraphNodeFormatNode> > > &InLayeredNodes) :
 		IPositioningStrategy(InLayeredNodes) {
 	Vector2 StartPosition;
-	Ref<GraphNodeFormatNode> FirstNode = FindFirstNodeInLayeredList(InLayeredNodes);
+	Ref<GraphNodeFormatNode> FirstNode = find_first_node_in_layered_list(InLayeredNodes);
 	if (FirstNode != nullptr) {
 		StartPosition = FirstNode->GetPosition();
 	}
@@ -55,7 +55,7 @@ GraphNodeFormatEvenlyPlaceStrategy::GraphNodeFormatEvenlyPlaceStrategy(Vector<Ve
 	Rect2 PreBound;
 	Vector<Rect2> Bounds;
 	for (auto &Layer : InLayeredNodes) {
-		PreBound = PlaceNodeInLayer(Layer, PreBound);
+		PreBound = place_node_in_layer(Layer, PreBound);
 		Bounds.Add(PreBound);
 		if (TotalBound.IsValid()) {
 			TotalBound = TotalBound.Expand(PreBound);
