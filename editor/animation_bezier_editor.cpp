@@ -268,6 +268,7 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 		int vofs = vsep;
 		int margin = 0;
 		Set<String> drawn_base_paths;
+		Set<String> drawn_base_headers;
 
 		// RELATED TRACKS TITLES
 		Map<int, Color> subtrack_colors;
@@ -297,7 +298,7 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 
 				int h = font->get_height();
 
-				if (node) {
+				if (node && !drawn_base_headers.has(node->get_name())) {
 					int ofs = 0;
 
 					Ref<Texture> icon = EditorNode::get_singleton()->get_object_icon(node, "Node");
@@ -317,40 +318,39 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 					draw_string(font, string_pos, text, color, limit - ofs - hsep);
 
 					vofs += h + vsep;
+					drawn_base_headers.insert(text);
 				}
 
-				for (int i = 0; i < animation->get_track_count(); i++) {
-					if (animation->track_get_type(i) != Animation::TYPE_BEZIER)
-						continue;
-					String path = animation->track_get_path(i);
-					if (!path.begins_with(base_path))
-						continue; //another node
-					path = path.replace_first(base_path, "");
+				{
+					String path = animation->track_get_path(track_i);
+					if (path.begins_with(base_path)) {
+						path = path.replace_first(base_path, "");
 
-					Color cc = color;
-					Rect2 rect = Rect2(margin, vofs, limit - margin - hsep, font->get_height() + vsep);
-					if (i != track_i) {
-						cc.a *= 0.7;
-						uint32_t hash = path.hash();
-						hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
-						hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
-						hash = (hash >> 16) ^ hash;
-						float h = (hash % 65535) / 65536.0;
-						Color subcolor;
-						subcolor.set_hsv(h, 0.2, 0.8);
-						subcolor.a = 0.5;
-						draw_rect(Rect2(0, vofs + font->get_height() * 0.1, margin - hsep, font->get_height() * 0.8), subcolor);
-						subtrack_colors[i] = subcolor;
+						Color cc = color;
+						Rect2 rect = Rect2(margin, vofs, limit - margin - hsep, font->get_height() + vsep);
+						if (track_i != track) {
+							cc.a *= 0.7;
+							uint32_t hash = path.hash();
+							hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+							hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+							hash = (hash >> 16) ^ hash;
+							float h = (hash % 65535) / 65536.0;
+							Color subcolor;
+							subcolor.set_hsv(h, 0.2, 0.8);
+							subcolor.a = 0.5;
+							draw_rect(Rect2(0, vofs + font->get_height() * 0.1, margin - hsep, font->get_height() * 0.8), subcolor);
+							subtrack_colors[track_i] = subcolor;
 
-						subtracks[i] = rect;
-					} else {
-						Color ac = get_color("accent_color", "Editor");
-						ac.a = 0.5;
-						draw_rect(rect, ac);
+							subtracks[track_i] = rect;
+						} else {
+							Color ac = get_color("accent_color", "Editor");
+							ac.a = 0.5;
+							draw_rect(rect, ac);
+						}
+						draw_string(font, Point2(margin, vofs + font->get_ascent()), path, cc, limit - margin - hsep);
+
+						vofs += font->get_height() + vsep;
 					}
-					draw_string(font, Point2(margin, vofs + font->get_ascent()), path, cc, limit - margin - hsep);
-
-					vofs += font->get_height() + vsep;
 				}
 				{ //draw OTHER curves
 
@@ -538,10 +538,14 @@ void AnimationBezierTrackEdit::set_animation_and_track(const Ref<Animation> &p_a
 	update();
 }
 
-void AnimationBezierTrackEdit::set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_tracks) {
+void AnimationBezierTrackEdit::set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_tracks, int p_selected_track /*= -1*/) {
 	animation = p_animation;
 	ERR_FAIL_INDEX(0, p_tracks.size());
-	track = p_tracks[0];
+	if (p_selected_track == -1) {
+		track = p_tracks[0];
+	} else {
+		track = p_selected_track;
+	}
 	available_tracks = p_tracks;
 	if (is_connected("select_key", editor, "_key_selected"))
 		disconnect("select_key", editor, "_key_selected");
@@ -717,7 +721,7 @@ void AnimationBezierTrackEdit::_gui_input(const Ref<InputEvent> &p_event) {
 		}
 		for (Map<int, Rect2>::Element *E = subtracks.front(); E; E = E->next()) {
 			if (E->get().has_point(mb->get_position())) {
-				set_animation_and_track(animation, E->key());
+				set_animation_and_multi_track(animation, available_tracks, E->key());
 				_clear_selection();
 				return;
 			}

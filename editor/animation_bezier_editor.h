@@ -151,7 +151,7 @@ public:
 	Ref<Animation> get_animation() const;
 
 	void set_animation_and_track(const Ref<Animation> &p_animation, int p_track);
-	void set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_track);
+	void set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_tracks, int p_selected_track = -1);
 	virtual Size2 get_minimum_size() const;
 
 	void set_undo_redo(UndoRedo *p_undo_redo);
