@@ -439,8 +439,8 @@ Vector<GraphNodeFormatEdge> GraphNodeFormatGraph::GetEdgeForNode(Ref<GraphNodeFo
 					if (InnerSelectedNodes.Contains(LinkedToNode) || !SelectedNodes.Contains(LinkedToNode)) {
 						continue;
 					}
-					GraphNodeFormatSlot From = OriginalPinsMap[Pin];
-					GraphNodeFormatSlot To = OriginalPinsMap[LinkedToPin];
+					GraphNodeFormatSlot From = OriginalSlotMap[Pin];
+					GraphNodeFormatSlot To = OriginalSlotMap[LinkedToPin];
 					Result.Add(GraphNodeFormatEdge{ From, To });
 				}
 			}
@@ -452,8 +452,8 @@ Vector<GraphNodeFormatEdge> GraphNodeFormatGraph::GetEdgeForNode(Ref<GraphNodeFo
 				if (!SelectedNodes.Contains(LinkedToNode)) {
 					continue;
 				}
-				GraphNodeFormatSlot From = OriginalPinsMap[Pin];
-				GraphNodeFormatSlot To = OriginalPinsMap[LinkedToPin];
+				GraphNodeFormatSlot From = OriginalSlotMap[Pin];
+				GraphNodeFormatSlot To = OriginalSlotMap[LinkedToPin];
 				Result.Add(GraphNodeFormatEdge{ From, To });
 			}
 		}
@@ -565,8 +565,8 @@ void GraphNodeFormatGraph::RemoveCycle() {
 	}
 	while (auto MedianNode = ClonedGraph->FindMedianNode()) {
 		for (auto Edge : MedianNode->in_edges) {
-			GraphNodeFormatSlot From = PinsMap[Edge->From->Guid];
-			GraphNodeFormatSlot To = PinsMap[Edge->To->Guid];
+			GraphNodeFormatSlot From = SlotMap[Edge->From->Guid];
+			GraphNodeFormatSlot To = SlotMap[Edge->To->Guid];
 			NodesMap[MedianNode->id]->Disconnect(From, To);
 			To->owning_node->Disconnect(To, From);
 		}
@@ -756,13 +756,13 @@ GraphNodeFormatGraph::GraphNodeFormatGraph(const GraphNodeFormatGraph &Other) {
 	}
 	for (auto Node : Other->Nodes) {
 		for (auto Edge : Node->InEdges) {
-			GraphNodeFormatSlot From = PinsMap[Edge->From->id];
-			GraphNodeFormatSlot To = PinsMap[Edge->To->id];
+			GraphNodeFormatSlot From = SlotMap[Edge->From->id];
+			GraphNodeFormatSlot To = SlotMap[Edge->To->id];
 			NodesMap[Node->Guid]->Connect(From, To);
 		}
 		for (auto Edge : Node->OutEdges) {
-			GraphNodeFormatSlot From = PinsMap[Edge->From->id];
-			GraphNodeFormatSlot To = PinsMap[Edge->To->id];
+			GraphNodeFormatSlot From = SlotMap[Edge->From->id];
+			GraphNodeFormatSlot To = SlotMap[Edge->To->id];
 			NodesMap[Node->Guid]->Connect(From, To);
 		}
 	}
@@ -806,15 +806,15 @@ void GraphNodeFormatGraph::AddNode(Ref<GraphNodeFormatNode> InNode) {
 	}
 	for (auto Pin : InNode->in_slots) {
 		if (Pin->OriginalPin != nullptr) {
-			OriginalPinsMap.Add(Pin->OriginalPin, Pin);
+			OriginalSlotMap.Add(Pin->OriginalPin, Pin);
 		}
-		PinsMap.Add(Pin->Guid, Pin);
+		SlotMap.Add(Pin->Guid, Pin);
 	}
 	for (auto Pin : InNode->out_slots) {
 		if (Pin->OriginalPin != nullptr) {
-			OriginalPinsMap.Add(Pin->OriginalPin, Pin);
+			OriginalSlotMap.Add(Pin->OriginalPin, Pin);
 		}
-		PinsMap.Add(Pin->Guid, Pin);
+		SlotMap.Add(Pin->Guid, Pin);
 	}
 }
 
@@ -831,12 +831,12 @@ void GraphNodeFormatGraph::RemoveNode(Ref<GraphNodeFormatNode> NodeToRemove) {
 	NodesMap.Remove(NodeToRemove->id);
 	SubGraphs.Remove(NodeToRemove->id);
 	for (auto Pin : NodeToRemove->in_slots) {
-		OriginalPinsMap.Remove(Pin->OriginalPin);
-		PinsMap.Remove(Pin->Guid);
+		OriginalSlotMap.Remove(Pin->OriginalPin);
+		SlotMap.Remove(Pin->Guid);
 	}
 	for (auto Pin : NodeToRemove->out_slots) {
-		OriginalPinsMap.Remove(Pin->OriginalPin);
-		PinsMap.Remove(Pin->Guid);
+		OriginalSlotMap.Remove(Pin->OriginalPin);
+		SlotMap.Remove(Pin->Guid);
 	}
 	delete NodeToRemove;
 }

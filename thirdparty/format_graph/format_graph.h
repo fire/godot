@@ -134,8 +134,8 @@ private:
 	Vector<Ref<GraphNodeFormatNode> > Nodes;
 	Map<NodePath, Ref<GraphNodeFormatNode> > NodesMap;
 	Map<NodePath, Ref<GraphNodeFormatGraph> > SubGraphs;
-	Map<NodePath, Ref<GraphNodeFormatSlot> > PinsMap;
-	Map<GraphPort, Ref<GraphNodeFormatSlot> > OriginalPinsMap;
+	Map<NodePath, Ref<GraphNodeFormatSlot> > SlotMap;
+	Map<GraphPort, Ref<GraphNodeFormatSlot> > OriginalSlotMap;
 	Set<GraphNode *> PickedNodes;
 	Vector<Vector<Ref<GraphNodeFormatNode> > > LayeredList;
 	Vector<Ref<GraphNodeFormatGraph> > IsolatedGraphs;
