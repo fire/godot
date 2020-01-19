@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-#include "FormatGraph.h"
+#include "format_graph.h"
 
 bool GraphNodeFormatEdge::IsCrossing(const Ref<GraphNodeFormatEdge> Edge) const {
 	return (From->IndexInLayer < Edge->From->IndexInLayer && To->IndexInLayer > Edge->To->IndexInLayer) || (From->IndexInLayer > Edge->From->IndexInLayer && To->IndexInLayer < Edge->To->IndexInLayer);

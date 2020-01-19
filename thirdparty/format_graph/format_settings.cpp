@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-#include "FormatterSettings.h"
+#include "format_settings.h"
 
 GraphNodeFormatSettings::PositioningAlgorithm GraphNodeFormatSettings::get_positioning_algorithm() const {
 	return positioning_algorithm;

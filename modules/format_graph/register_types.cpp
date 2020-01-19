@@ -32,8 +32,8 @@
 
 #include "core/engine.h"
 #include "core/io/resource_loader.h"
-#include "thirdparty/format_graph/FormatterSettings.h"
-#include "thirdparty/format_graph/FormatGraph.h"
+#include "thirdparty/format_graph/format_settings.h"
+#include "thirdparty/format_graph/format_graph.h"
 
 void register_format_graph_types() {
 	ClassDB::register_class<GraphNodeFormatSlot>();
