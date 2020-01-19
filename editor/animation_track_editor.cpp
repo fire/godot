@@ -5186,6 +5186,21 @@ void AnimationTrackEditor::_bezier_edit(int p_for_track) {
 	//search everything within the track and curve- edit it
 }
 
+void AnimationTrackEditor::_bezier_edit_all() {
+	_clear_selection(); //bezier probably wants to use a separate selection mode
+	bezier_edit->set_root(root);
+	Vector<int> beziers;
+	for (int32_t track_i = 0; track_i < animation->get_track_count(); track_i++) {
+		if (animation->track_get_type(track_i) == Animation::TYPE_BEZIER) {
+			beziers.push_back(track_i);
+		}
+	}
+	bezier_edit->set_animation_and_multi_track(animation, beziers);
+	scroll->hide();
+	bezier_edit->show();
+	//search everything within the track and curve- edit it
+}
+
 void AnimationTrackEditor::_anim_duplicate_keys(bool transpose) {
 	//duplicait!
 	if (selection.size() && animation.is_valid() && (!transpose || (_get_track_selected() >= 0 && _get_track_selected() < animation->get_track_count()))) {
@@ -5786,6 +5801,7 @@ void AnimationTrackEditor::_bind_methods() {
 	ClassDB::bind_method("_scroll_input", &AnimationTrackEditor::_scroll_input);
 	ClassDB::bind_method("_box_selection_draw", &AnimationTrackEditor::_box_selection_draw);
 	ClassDB::bind_method("_bezier_edit", &AnimationTrackEditor::_bezier_edit);
+	ClassDB::bind_method("_bezier_edit_all", &AnimationTrackEditor::_bezier_edit_all);
 	ClassDB::bind_method("_cancel_bezier_edit", &AnimationTrackEditor::_cancel_bezier_edit);
 	ClassDB::bind_method("_edit_menu_pressed", &AnimationTrackEditor::_edit_menu_pressed);
 	ClassDB::bind_method("_view_group_toggle", &AnimationTrackEditor::_view_group_toggle);

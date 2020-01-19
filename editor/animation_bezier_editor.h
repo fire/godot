@@ -60,6 +60,7 @@ class AnimationBezierTrackEdit : public Control {
 
 	Ref<Animation> animation;
 	int track;
+	Vector<int> available_tracks;
 
 	Vector<Rect2> view_rects;
 
@@ -150,6 +151,7 @@ public:
 	Ref<Animation> get_animation() const;
 
 	void set_animation_and_track(const Ref<Animation> &p_animation, int p_track);
+	void set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_track);
 	virtual Size2 get_minimum_size() const;
 
 	void set_undo_redo(UndoRedo *p_undo_redo);

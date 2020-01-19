@@ -127,6 +127,7 @@ void AnimationPlayerEditor::_notification(int p_what) {
 
 			onion_toggle->set_icon(get_icon("Onion", "EditorIcons"));
 			onion_skinning->set_icon(get_icon("GuiTabMenu", "EditorIcons"));
+			bezier_toggle->set_icon(get_icon("EditBezier", "EditorIcons"));
 
 			pin->set_icon(get_icon("Pin", "EditorIcons"));
 
@@ -365,6 +366,18 @@ void AnimationPlayerEditor::_animation_load() {
 	current_option = RESOURCE_LOAD;
 }
 
+void AnimationPlayerEditor::_bezier_editing(bool p_button_pressed, int p_which) {
+	if (animation->get_item_count() == 0) {
+		bezier_toggle->set_pressed(false);
+		return;
+	}
+	if (p_button_pressed) {
+		track_editor->call("_bezier_edit_all");
+	} else {
+		track_editor->call("_cancel_bezier_edit");
+	}
+}
+
 void AnimationPlayerEditor::_animation_save_in_path(const Ref<Resource> &p_resource, const String &p_path) {
 
 	int flg = 0;
@@ -385,7 +398,6 @@ void AnimationPlayerEditor::_animation_save_in_path(const Ref<Resource> &p_resou
 }
 
 void AnimationPlayerEditor::_animation_save(const Ref<Resource> &p_resource) {
-
 	if (p_resource->get_path().is_resource_file()) {
 		_animation_save_in_path(p_resource, p_resource->get_path());
 	} else {
@@ -1559,8 +1571,9 @@ void AnimationPlayerEditor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_animation_duplicate"), &AnimationPlayerEditor::_animation_duplicate);
 	ClassDB::bind_method(D_METHOD("_blend_editor_next_changed"), &AnimationPlayerEditor::_blend_editor_next_changed);
 	ClassDB::bind_method(D_METHOD("_unhandled_key_input"), &AnimationPlayerEditor::_unhandled_key_input);
-	ClassDB::bind_method(D_METHOD("_animation_tool_menu"), &AnimationPlayerEditor::_animation_tool_menu);
 
+	ClassDB::bind_method(D_METHOD("_animation_tool_menu"), &AnimationPlayerEditor::_animation_tool_menu);
+	ClassDB::bind_method(D_METHOD("_bezier_editing"), &AnimationPlayerEditor::_bezier_editing);
 	ClassDB::bind_method(D_METHOD("_onion_skinning_menu"), &AnimationPlayerEditor::_onion_skinning_menu);
 	ClassDB::bind_method(D_METHOD("_editor_visibility_changed"), &AnimationPlayerEditor::_editor_visibility_changed);
 	ClassDB::bind_method(D_METHOD("_prepare_onion_layers_1"), &AnimationPlayerEditor::_prepare_onion_layers_1);
@@ -1682,6 +1695,12 @@ AnimationPlayerEditor::AnimationPlayerEditor(EditorNode *p_editor, AnimationPlay
 	onion_toggle->set_tooltip(TTR("Enable Onion Skinning"));
 	onion_toggle->connect("pressed", this, "_onion_skinning_menu", varray(ONION_SKINNING_ENABLE));
 	hb->add_child(onion_toggle);
+
+	bezier_toggle = memnew(ToolButton);
+	bezier_toggle->set_toggle_mode(true);
+	bezier_toggle->set_tooltip(TTR("Enable Bezier Editing"));
+	bezier_toggle->connect("toggled", this, "_bezier_editing", varray(BEZIER_EDITING_ENABLE));
+	hb->add_child(bezier_toggle);
 
 	onion_skinning = memnew(MenuButton);
 	onion_skinning->set_tooltip(TTR("Onion Skinning Options"));

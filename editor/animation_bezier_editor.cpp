@@ -264,92 +264,122 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 		close_icon_rect.size = close_icon->get_size();
 		draw_texture(close_icon, close_icon_rect.position);
 
-		String base_path = animation->track_get_path(track);
-		int end = base_path.find(":");
-		if (end != -1) {
-			base_path = base_path.substr(0, end + 1);
-		}
-
 		// NAMES AND ICON
 		int vofs = vsep;
 		int margin = 0;
-
-		{
-			NodePath path = animation->track_get_path(track);
-
-			Node *node = NULL;
-
-			if (root && root->has_node(path)) {
-				node = root->get_node(path);
-			}
-
-			String text;
-
-			int h = font->get_height();
-
-			if (node) {
-				int ofs = 0;
-
-				Ref<Texture> icon = EditorNode::get_singleton()->get_object_icon(node, "Node");
-
-				h = MAX(h, icon->get_height());
-
-				draw_texture(icon, Point2(ofs, vofs + int(h - icon->get_height()) / 2));
-
-				margin = icon->get_width();
-
-				text = node->get_name();
-				ofs += hsep;
-				ofs += icon->get_width();
-
-				Vector2 string_pos = Point2(ofs, vofs + (h - font->get_height()) / 2 + font->get_ascent());
-				string_pos = string_pos.floor();
-				draw_string(font, string_pos, text, color, limit - ofs - hsep);
-
-				vofs += h + vsep;
-			}
-		}
+		Set<String> drawn_base_paths;
 
 		// RELATED TRACKS TITLES
-
 		Map<int, Color> subtrack_colors;
 		subtracks.clear();
 
-		for (int i = 0; i < animation->get_track_count(); i++) {
-			if (animation->track_get_type(i) != Animation::TYPE_BEZIER)
+		for (int32_t track_i = 0; track_i < available_tracks.size(); track_i++) {
+			String base_path = animation->track_get_path(track_i);
+			if (drawn_base_paths.has(base_path)) {
 				continue;
-			String path = animation->track_get_path(i);
-			if (!path.begins_with(base_path))
-				continue; //another node
-			path = path.replace_first(base_path, "");
-
-			Color cc = color;
-			Rect2 rect = Rect2(margin, vofs, limit - margin - hsep, font->get_height() + vsep);
-			if (i != track) {
-				cc.a *= 0.7;
-				uint32_t hash = path.hash();
-				hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
-				hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
-				hash = (hash >> 16) ^ hash;
-				float h = (hash % 65535) / 65536.0;
-				Color subcolor;
-				subcolor.set_hsv(h, 0.2, 0.8);
-				subcolor.a = 0.5;
-				draw_rect(Rect2(0, vofs + font->get_height() * 0.1, margin - hsep, font->get_height() * 0.8), subcolor);
-				subtrack_colors[i] = subcolor;
-
-				subtracks[i] = rect;
-			} else {
-				Color ac = get_color("accent_color", "Editor");
-				ac.a = 0.5;
-				draw_rect(rect, ac);
 			}
-			draw_string(font, Point2(margin, vofs + font->get_ascent()), path, cc, limit - margin - hsep);
 
-			vofs += font->get_height() + vsep;
+			int end = base_path.find(":");
+			if (end != -1) {
+				base_path = base_path.substr(0, end + 1);
+			}
+
+			{
+				NodePath path = animation->track_get_path(track_i);
+
+				Node *node = NULL;
+
+				if (root && root->has_node(path)) {
+					node = root->get_node(path);
+				}
+
+				String text;
+
+				int h = font->get_height();
+
+				if (node) {
+					int ofs = 0;
+
+					Ref<Texture> icon = EditorNode::get_singleton()->get_object_icon(node, "Node");
+
+					h = MAX(h, icon->get_height());
+
+					draw_texture(icon, Point2(ofs, vofs + int(h - icon->get_height()) / 2));
+
+					margin = icon->get_width();
+
+					text = node->get_name();
+					ofs += hsep;
+					ofs += icon->get_width();
+
+					Vector2 string_pos = Point2(ofs, vofs + (h - font->get_height()) / 2 + font->get_ascent());
+					string_pos = string_pos.floor();
+					draw_string(font, string_pos, text, color, limit - ofs - hsep);
+
+					vofs += h + vsep;
+				}
+
+				for (int i = 0; i < animation->get_track_count(); i++) {
+					if (animation->track_get_type(i) != Animation::TYPE_BEZIER)
+						continue;
+					String path = animation->track_get_path(i);
+					if (!path.begins_with(base_path))
+						continue; //another node
+					path = path.replace_first(base_path, "");
+
+					Color cc = color;
+					Rect2 rect = Rect2(margin, vofs, limit - margin - hsep, font->get_height() + vsep);
+					if (i != track_i) {
+						cc.a *= 0.7;
+						uint32_t hash = path.hash();
+						hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+						hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+						hash = (hash >> 16) ^ hash;
+						float h = (hash % 65535) / 65536.0;
+						Color subcolor;
+						subcolor.set_hsv(h, 0.2, 0.8);
+						subcolor.a = 0.5;
+						draw_rect(Rect2(0, vofs + font->get_height() * 0.1, margin - hsep, font->get_height() * 0.8), subcolor);
+						subtrack_colors[i] = subcolor;
+
+						subtracks[i] = rect;
+					} else {
+						Color ac = get_color("accent_color", "Editor");
+						ac.a = 0.5;
+						draw_rect(rect, ac);
+					}
+					draw_string(font, Point2(margin, vofs + font->get_ascent()), path, cc, limit - margin - hsep);
+
+					vofs += font->get_height() + vsep;
+				}
+				{ //draw OTHER curves
+
+					float scale = timeline->get_zoom_scale();
+					Ref<Texture> point = get_icon("KeyValue", "EditorIcons");
+					for (Map<int, Color>::Element *E = subtrack_colors.front(); E; E = E->next()) {
+
+						_draw_track(E->key(), E->get());
+
+						for (int i = 0; i < animation->track_get_key_count(E->key()); i++) {
+
+							float offset = animation->track_get_key_time(E->key(), i);
+							float value = animation->bezier_track_get_key_value(E->key(), i);
+
+							Vector2 pos((offset - timeline->get_value()) * scale + limit, _bezier_h_to_pixel(value));
+
+							if (pos.x >= limit && pos.x <= right_limit) {
+								draw_texture(point, pos - point->get_size() / 2, E->get());
+							}
+						}
+					}
+
+					//draw edited curve
+					const Color highlight = get_color("highlight_color", "Editor");
+					_draw_track(track_i, highlight);
+				}
+			}
+			drawn_base_paths.insert(base_path);
 		}
-
-		Color accent = get_color("accent_color", "Editor");
 
 		{ //guides
 			float min_left_scale = font->get_height() + vsep;
@@ -388,32 +418,7 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 			}
 		}
 
-		{ //draw OTHER curves
-
-			float scale = timeline->get_zoom_scale();
-			Ref<Texture> point = get_icon("KeyValue", "EditorIcons");
-			for (Map<int, Color>::Element *E = subtrack_colors.front(); E; E = E->next()) {
-
-				_draw_track(E->key(), E->get());
-
-				for (int i = 0; i < animation->track_get_key_count(E->key()); i++) {
-
-					float offset = animation->track_get_key_time(E->key(), i);
-					float value = animation->bezier_track_get_key_value(E->key(), i);
-
-					Vector2 pos((offset - timeline->get_value()) * scale + limit, _bezier_h_to_pixel(value));
-
-					if (pos.x >= limit && pos.x <= right_limit) {
-						draw_texture(point, pos - point->get_size() / 2, E->get());
-					}
-				}
-			}
-
-			//draw edited curve
-			const Color highlight = get_color("highlight_color", "Editor");
-			_draw_track(track, highlight);
-		}
-
+		Color accent = get_color("accent_color", "Editor");
 		//draw editor handles
 		{
 
@@ -522,12 +527,28 @@ void AnimationBezierTrackEdit::set_animation_and_track(const Ref<Animation> &p_a
 
 	animation = p_animation;
 	track = p_track;
+	available_tracks.clear();
+	available_tracks.push_back(p_track);
 	if (is_connected("select_key", editor, "_key_selected"))
 		disconnect("select_key", editor, "_key_selected");
 	if (is_connected("deselect_key", editor, "_key_deselected"))
 		disconnect("deselect_key", editor, "_key_deselected");
 	connect("select_key", editor, "_key_selected", varray(p_track), CONNECT_DEFERRED);
 	connect("deselect_key", editor, "_key_deselected", varray(p_track), CONNECT_DEFERRED);
+	update();
+}
+
+void AnimationBezierTrackEdit::set_animation_and_multi_track(const Ref<Animation> &p_animation, Vector<int> p_tracks) {
+	animation = p_animation;
+	ERR_FAIL_INDEX(0, p_tracks.size());
+	track = p_tracks[0];
+	available_tracks = p_tracks;
+	if (is_connected("select_key", editor, "_key_selected"))
+		disconnect("select_key", editor, "_key_selected");
+	if (is_connected("deselect_key", editor, "_key_deselected"))
+		disconnect("deselect_key", editor, "_key_deselected");
+	connect("select_key", editor, "_key_selected", varray(p_tracks), CONNECT_DEFERRED);
+	connect("deselect_key", editor, "_key_deselected", varray(p_tracks), CONNECT_DEFERRED);
 	update();
 }
 

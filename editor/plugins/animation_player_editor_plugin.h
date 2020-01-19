@@ -78,6 +78,10 @@ class AnimationPlayerEditor : public VBoxContainer {
 	};
 
 	enum {
+		BEZIER_EDITING_ENABLE
+	};
+
+	enum {
 		ANIM_OPEN,
 		ANIM_SAVE,
 		ANIM_SAVE_AS
@@ -99,6 +103,7 @@ class AnimationPlayerEditor : public VBoxContainer {
 	MenuButton *tool_anim;
 	ToolButton *onion_toggle;
 	MenuButton *onion_skinning;
+	ToolButton *bezier_toggle;
 	ToolButton *pin;
 	SpinBox *frame;
 	LineEdit *scale;
@@ -174,6 +179,8 @@ class AnimationPlayerEditor : public VBoxContainer {
 	void _animation_rename();
 	void _animation_name_edited();
 	void _animation_load();
+
+	void _bezier_editing(bool p_button_pressed, int p_which);
 
 	void _animation_save_in_path(const Ref<Resource> &p_resource, const String &p_path);
 	void _animation_save(const Ref<Resource> &p_resource);

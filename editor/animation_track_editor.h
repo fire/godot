@@ -435,6 +435,8 @@ class AnimationTrackEditor : public VBoxContainer {
 	void _cancel_bezier_edit();
 	void _bezier_edit(int p_for_track);
 
+	void _bezier_edit_all();
+
 	////////////// edit menu stuff
 
 	ConfirmationDialog *optimize_dialog;
