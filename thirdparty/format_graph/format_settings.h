@@ -22,7 +22,7 @@ public:
 		set_comment_border(45);
 		set_horizontal_spacing(100);
 		set_vertical_spacing(80);
-		set_max_ordering_iterations(10);
+		set_max_ordering_repetitions(10);
 	}
 
 	~GraphNodeFormatSettings() {
@@ -41,8 +41,8 @@ public:
 	int32_t get_vertical_spacing() const;
 	void set_vertical_spacing(int32_t val);
 	/** Vertex ordering max iterations */
-	int32_t get_max_ordering_iterations() const;
-	void set_max_ordering_iterations(int32_t val);
+	int32_t get_max_ordering_repetitions() const;
+	void set_max_ordering_repetitions(int32_t val);
 
 protected:
 	static void _bind_methods() {
@@ -52,8 +52,8 @@ protected:
 		ClassDB::bind_method(D_METHOD("get_comment_border"), &GraphNodeFormatSettings::get_comment_border);
 		ClassDB::bind_method(D_METHOD("set_horizontal_spacing", "horizontal_spacing"), &GraphNodeFormatSettings::set_horizontal_spacing);
 		ClassDB::bind_method(D_METHOD("get_horizontal_spacing"), &GraphNodeFormatSettings::get_horizontal_spacing);
-		ClassDB::bind_method(D_METHOD("set_max_ordering_iterations", "max_ordering_iterations"), &GraphNodeFormatSettings::set_max_ordering_iterations);
-		ClassDB::bind_method(D_METHOD("get_max_ordering_iterations"), &GraphNodeFormatSettings::get_max_ordering_iterations);
+		ClassDB::bind_method(D_METHOD("set_max_ordering_repetitions", "max_ordering_iterations"), &GraphNodeFormatSettings::set_max_ordering_repetitions);
+		ClassDB::bind_method(D_METHOD("get_max_ordering_repetitions"), &GraphNodeFormatSettings::get_max_ordering_repetitions);
 		ClassDB::bind_method(D_METHOD("set_vertical_spacing", "vertical_spacing"), &GraphNodeFormatSettings::set_vertical_spacing);
 		ClassDB::bind_method(D_METHOD("get_vertical_spacing"), &GraphNodeFormatSettings::get_vertical_spacing);
 
@@ -63,18 +63,18 @@ protected:
 		BIND_CONSTANT(GraphNodeFormatSettings::GRAPH_FORMAT_ALGORITHM_LAYER_SWEEP);
 
 		ADD_PROPERTY(PropertyInfo(Variant::INT, "positioning_algorithm", PROPERTY_HINT_ENUM, "Position Evenly In Layer,Fast and Simple Method Top,Fast and Simple Method Median,Layer Sweep"), "set_positioning_algorithm", "get_positioning_algorithm");
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "comment_border", PROPERTY_HINT_RANGE, "45,,1"), "set_positioning_algorithm", "get_positioning_algorithm");
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "horizontal_spacing", PROPERTY_HINT_RANGE, "0,,1"), "set_positioning_algorithm", "get_positioning_algorithm");
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "max_ordering_iterations", PROPERTY_HINT_RANGE, "0,100,1"), "set_positioning_algorithm", "get_positioning_algorithm");
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "vertical_spacing", PROPERTY_HINT_RANGE, "0,,1"), "set_positioning_algorithm", "get_positioning_algorithm");
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "comment_border", PROPERTY_HINT_RANGE, "45,,1"), "set_comment_border", "get_comment_border");
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "horizontal_spacing", PROPERTY_HINT_RANGE, "0,,1"), "set_horizontal_spacing", "get_horizontal_spacing");
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "max_ordering_repetitions", PROPERTY_HINT_RANGE, "0,100,1"), "set_max_ordering_repetitions", "get_max_ordering_repetitions");
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "vertical_spacing", PROPERTY_HINT_RANGE, "0,,1"), "set_vertical_spacing", "get_vertical_spacing");
 	}
 
 private:
 	PositioningAlgorithm positioning_algorithm;
-	int32_t CommentBorder;
-	int32_t HorizontalSpacing;
-	int32_t VerticalSpacing;
-	int32_t MaxOrderingIterations;
+	int32_t comment_border;
+	int32_t horizontal_spacing;
+	int32_t vertical_spacing;
+	int32_t max_ordering_repetitions;
 };
 VARIANT_ENUM_CAST(GraphNodeFormatSettings::PositioningAlgorithm);
 #endif // FORMATTER_SETTINGS_H

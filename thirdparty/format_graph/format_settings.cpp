@@ -14,33 +14,33 @@ void GraphNodeFormatSettings::set_positioning_algorithm(GraphNodeFormatSettings:
 }
 
 int32_t GraphNodeFormatSettings::get_comment_border() const {
-	return CommentBorder;
+	return comment_border;
 }
 
 void GraphNodeFormatSettings::set_comment_border(int32_t val) {
-	CommentBorder = val;
+	comment_border = val;
 }
 
 int32_t GraphNodeFormatSettings::get_horizontal_spacing() const {
-	return HorizontalSpacing;
+	return horizontal_spacing;
 }
 
 void GraphNodeFormatSettings::set_horizontal_spacing(int32_t val) {
-	HorizontalSpacing = val;
+	horizontal_spacing = val;
 }
 
 int32_t GraphNodeFormatSettings::get_vertical_spacing() const {
-	return VerticalSpacing;
+	return vertical_spacing;
 }
 
 void GraphNodeFormatSettings::set_vertical_spacing(int32_t val) {
-	VerticalSpacing = val;
+	vertical_spacing = val;
 }
 
-int32_t GraphNodeFormatSettings::get_max_ordering_iterations() const {
-	return MaxOrderingIterations;
+int32_t GraphNodeFormatSettings::get_max_ordering_repetitions() const {
+	return max_ordering_repetitions;
 }
 
-void GraphNodeFormatSettings::set_max_ordering_iterations(int32_t val) {
-	MaxOrderingIterations = val;
+void GraphNodeFormatSettings::set_max_ordering_repetitions(int32_t val) {
+	max_ordering_repetitions = val;
 }
