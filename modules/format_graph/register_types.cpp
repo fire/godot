@@ -32,6 +32,7 @@
 
 #include "core/engine.h"
 #include "core/io/resource_loader.h"
+#include "thirdparty/format_graph/FormatterSettings.h"
 #include "thirdparty/format_graph/FormatGraph.h"
 
 void register_format_graph_types() {
