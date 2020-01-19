@@ -40,7 +40,7 @@ public:
 	/** Spacing between two nodes */
 	int32_t get_vertical_spacing() const;
 	void set_vertical_spacing(int32_t val);
-	/** Vertex ordering max iterations */
+	/** Vertex ordering max repetitions */
 	int32_t get_max_ordering_repetitions() const;
 	void set_max_ordering_repetitions(int32_t val);
 
