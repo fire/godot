@@ -31,20 +31,20 @@ public:
 		FORMAT_SLOT_INPUT,
 		FORMAT_SLOT_OUTPUT
 	};
-	GraphPort OriginalSlot{ -1 };
-	GraphPortDirection Direction{ FORMAT_SLOT_INPUT };
-	Ref<GraphNodeFormatNode> OwningNode;
-	Vector2 NodeOffset;
-	int32_t IndexInLayer{ -1 };
+	GraphPort original_slot{ -1 };
+	GraphPortDirection direction{ FORMAT_SLOT_INPUT };
+	Ref<GraphNodeFormatNode> owning_node;
+	Vector2 node_offset;
+	int32_t index_in_layer{ -1 };
 };
 
 class GraphNodeFormatEdge : public Reference {
 	GDCLASS(GraphNodeFormatEdge, Reference);
 
 public:
-	Ref<GraphNodeFormatSlot> From;
-	Ref<GraphNodeFormatSlot> To;
-	bool IsCrossing(const Ref<GraphNodeFormatEdge> Edge) const;
+	Ref<GraphNodeFormatSlot> from;
+	Ref<GraphNodeFormatSlot> to;
+	bool IsCrossing(const Ref<GraphNodeFormatEdge> edge) const;
 
 	bool IsInnerSegment();
 };
@@ -54,15 +54,15 @@ class GraphNodeFormatNode : public Reference {
 
 public:
 	NodePath id;
-	GraphNode *OriginalNode;
-	Ref<GraphNodeFormatGraph> SubGraph;
-	Vector2 Size;
-	Vector<Ref<GraphNodeFormatEdge> > InEdges;
-	Vector<Ref<GraphNodeFormatEdge> > OutEdges;
-	Vector<Ref<GraphNodeFormatSlot> > InSlots;
-	Vector<Ref<GraphNodeFormatSlot> > OutSlots;
-	int32_t PathDepth;
-	int32_t PositioningPriority;
+	GraphNode *original_node;
+	Ref<GraphNodeFormatGraph> subgraph;
+	Vector2 size;
+	Vector<Ref<GraphNodeFormatEdge> > in_edges;
+	Vector<Ref<GraphNodeFormatEdge> > out_edges;
+	Vector<Ref<GraphNodeFormatSlot> > in_slots;
+	Vector<Ref<GraphNodeFormatSlot> > out_slots;
+	int32_t path_depth;
+	int32_t position_priority;
 	GraphNodeFormatNode(Ref<GraphNode> InNode);
 	GraphNodeFormatNode(const Ref<GraphNodeFormatNode> &Other);
 	~GraphNodeFormatNode() {}

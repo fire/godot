@@ -34,11 +34,15 @@
 #include "core/io/resource_loader.h"
 #include "thirdparty/format_graph/format_settings.h"
 #include "thirdparty/format_graph/format_graph.h"
+#include "thirdparty/format_graph/position_strategy.h"
+#include "thirdparty/format_graph/evenly_place_strategy.h"
 
 void register_format_graph_types() {
 	ClassDB::register_class<GraphNodeFormatSlot>();
 	ClassDB::register_class<GraphNodeFormatEdge>();
 	ClassDB::register_class<GraphNodeFormatNode>();
+	ClassDB::register_virtual_class<GraphNodeFormatPositionStrategy>();
+	ClassDB::register_class<GraphNodeFormatEvenlyPlaceStrategy>();
 	ClassDB::register_class<GraphNodeFormatGraph>();
 }
 

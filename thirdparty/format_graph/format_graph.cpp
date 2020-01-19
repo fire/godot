@@ -6,115 +6,115 @@
 #include "format_graph.h"
 
 bool GraphNodeFormatEdge::IsCrossing(const Ref<GraphNodeFormatEdge> Edge) const {
-	return (From->IndexInLayer < Edge->From->IndexInLayer && To->IndexInLayer > Edge->To->IndexInLayer) || (From->IndexInLayer > Edge->From->IndexInLayer && To->IndexInLayer < Edge->To->IndexInLayer);
+	return (from->index_in_layer < Edge->from->index_in_layer && to->index_in_layer > Edge->to->index_in_layer) || (from->index_in_layer > Edge->from->index_in_layer && to->index_in_layer < Edge->to->index_in_layer);
 }
 
 bool GraphNodeFormatEdge::IsInnerSegment() {
-	return From->OwningNode->OriginalNode == nullptr && To->OwningNode->OriginalNode == nullptr;
+	return from->owning_node->original_node == nullptr && to->owning_node->original_node == nullptr;
 }
 
 GraphNodeFormatNode::GraphNodeFormatNode(const Ref<GraphNodeFormatNode> Other) :
-		id(Other->id), OriginalNode(Other->OriginalNode), Size(Other->Size), PathDepth(Other->PathDepth), Position(Other->Position) {
-	if (Other->SubGraph.is_valid()) {
-		SubGraph = Other->SubGraph;
+		id(Other->id), original_node(Other->original_node), size(Other->size), path_depth(Other->path_depth), Position(Other->Position) {
+	if (Other->subgraph.is_valid()) {
+		subgraph = Other->subgraph;
 	}
-	for (int32_t slot_i = 0; slot_i < Other->InSlots.size(); slot_i++) {
+	for (int32_t slot_i = 0; slot_i < Other->in_slots.size(); slot_i++) {
 		Ref<GraphNodeFormatSlot> NewPin;
 		NewPin.instance();
-		Ref<GraphNodeFormatSlot> Pin = Other->InSlots[slot_i];
-		NewPin->OriginalSlot = Pin->OriginalSlot;
-		NewPin->Direction = Pin->Direction;
-		NewPin->OwningNode = Ref<GraphNodeFormatNode>(this);
-		NewPin->NodeOffset = Pin->NodeOffset;
-		InSlots.push_back(NewPin);
+		Ref<GraphNodeFormatSlot> Pin = Other->in_slots[slot_i];
+		NewPin->original_slot = Pin->original_slot;
+		NewPin->direction = Pin->direction;
+		NewPin->owning_node = Ref<GraphNodeFormatNode>(this);
+		NewPin->node_offset = Pin->node_offset;
+		in_slots.push_back(NewPin);
 	}
-	for (int32_t slot_i = 0; slot_i < Other->OutSlots.size(); slot_i++) {
+	for (int32_t slot_i = 0; slot_i < Other->out_slots.size(); slot_i++) {
 		Ref<GraphNodeFormatSlot> NewPin;
 		NewPin.instance();
-		Ref<GraphNodeFormatSlot> Pin = Other->InSlots[slot_i];
-		NewPin->OriginalSlot = Pin->OriginalSlot;
-		NewPin->Direction = Pin->Direction;
-		NewPin->OwningNode = Ref<GraphNodeFormatNode>(this);
-		NewPin->NodeOffset = Pin->NodeOffset;
-		OutSlots.push_back(NewPin);
+		Ref<GraphNodeFormatSlot> Pin = Other->in_slots[slot_i];
+		NewPin->original_slot = Pin->original_slot;
+		NewPin->direction = Pin->direction;
+		NewPin->owning_node = Ref<GraphNodeFormatNode>(this);
+		NewPin->node_offset = Pin->node_offset;
+		out_slots.push_back(NewPin);
 	}
 }
 GraphNodeFormatNode::GraphNodeFormatNode(const Ref<GraphNodeFormatNode> &Other) :
-		id(InNode->get_path()), OriginalNode(InNode), SubGraph(nullptr), Size(Vector2()), PathDepth(0), Position(InNode->get_global_position()) {
+		id(InNode->get_path()), original_node(InNode), subgraph(nullptr), size(Vector2()), path_depth(0), Position(InNode->get_global_position()) {
 	for (int32_t input_i = 0; input_i < InNode->get_connection_input_count(); input_i++) {
 		Ref<GraphNodeFormatSlot> NewSlot;
 		NewSlot.instance();
-		NewSlot->OriginalSlot = input_i;
-		NewSlot->Direction = GraphNodeFormatSlot::FORMAT_SLOT_INPUT;
-		NewSlot->OwningNode = Ref<GraphNodeFormatNode>(this);
-		InSlots.push_back(NewSlot);
+		NewSlot->original_slot = input_i;
+		NewSlot->direction = GraphNodeFormatSlot::FORMAT_SLOT_INPUT;
+		NewSlot->owning_node = Ref<GraphNodeFormatNode>(this);
+		in_slots.push_back(NewSlot);
 	}
 	for (int32_t output_i = 0; output_i < InNode->get_connection_output_count(); output_i++) {
 		Ref<GraphNodeFormatSlot> NewSlot;
 		NewSlot.instance();
-		NewSlot->OriginalSlot = output_i;
-		NewSlot->Direction = GraphNodeFormatSlot::FORMAT_SLOT_OUTPUT;
-		NewSlot->OwningNode = Ref<GraphNodeFormatNode>(this);
-		OutSlots.push_back(NewSlot);
+		NewSlot->original_slot = output_i;
+		NewSlot->direction = GraphNodeFormatSlot::FORMAT_SLOT_OUTPUT;
+		NewSlot->owning_node = Ref<GraphNodeFormatNode>(this);
+		out_slots.push_back(NewSlot);
 	}
 }
 
 void GraphNodeFormatNode::Connect(GraphNodeFormatSlot SourcePin, GraphNodeFormatSlot TargetPin) {
 	Ref<GraphNodeFormatEdge> Edge;
 	Edge.instance();
-	Edge->From = SourcePin;
-	Edge->To = TargetPin;
-	if (SourcePin->Direction == GraphNodeFormatSlot::FORMAT_SLOT_OUTPUT) {
-		OutEdges.push_back(Edge);
+	Edge->from = SourcePin;
+	Edge->to = TargetPin;
+	if (SourcePin->direction == GraphNodeFormatSlot::FORMAT_SLOT_OUTPUT) {
+		out_edges.push_back(Edge);
 	} else {
-		InEdges.push_back(Edge);
+		in_edges.push_back(Edge);
 	}
 }
 
 void GraphNodeFormatNode::Disconnect(GraphNodeFormatSlot SourcePin, GraphNodeFormatSlot TargetPin) {
 	const auto Predicate = [SourcePin, TargetPin](const Ref<GraphNodeFormatEdge> Edge) {
-		return Edge->From == SourcePin && Edge->To == TargetPin;
+		return Edge->from == SourcePin && Edge->to == TargetPin;
 	};
-	if (SourcePin->Direction == EGPD_Output) {
-		const auto Index = OutEdges.IndexOfByPredicate(Predicate);
+	if (SourcePin->direction == EGPD_Output) {
+		const auto Index = out_edges.IndexOfByPredicate(Predicate);
 		if (Index != -1) {
-			OutEdges.RemoveAt(Index);
+			out_edges.RemoveAt(Index);
 		}
 	} else {
-		const auto Index = InEdges.IndexOfByPredicate(Predicate);
+		const auto Index = in_edges.IndexOfByPredicate(Predicate);
 		if (Index != -1) {
-			InEdges.RemoveAt(Index);
+			in_edges.RemoveAt(Index);
 		}
 	}
 }
 
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatNode::GetSuccessors() const {
 	Vector<Ref<GraphNodeFormatNode> > Result;
-	for (auto Edge : OutEdges) {
-		Result.Add(Edge->To->OwningNode);
+	for (auto Edge : out_edges) {
+		Result.Add(Edge->to->OwningNode);
 	}
 	return Result;
 }
 
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatNode::GetPredecessors() const {
 	Vector<Ref<GraphNodeFormatNode> > Result;
-	for (auto Edge : InEdges) {
-		Result.Add(Edge->To->OwningNode);
+	for (auto Edge : in_edges) {
+		Result.Add(Edge->to->OwningNode);
 	}
 	return Result;
 }
 
 bool GraphNodeFormatNode::IsSource() const {
-	return InEdges.size() == 0;
+	return in_edges.size() == 0;
 }
 
 bool GraphNodeFormatNode::IsSink() const {
-	return OutEdges.size() == 0;
+	return out_edges.size() == 0;
 }
 
 bool GraphNodeFormatNode::AnySuccessorPathDepthEqu0() const {
-	for (auto OutEdge : OutEdges) {
-		if (OutEdge->To->OwningNode->PathDepth == 0) {
+	for (auto OutEdge : out_edges) {
+		if (OutEdge->To->OwningNode->path_depth == 0) {
 			return true;
 		}
 	}
@@ -122,7 +122,7 @@ bool GraphNodeFormatNode::AnySuccessorPathDepthEqu0() const {
 }
 
 float GraphNodeFormatNode::GetLinkedPositionToNode(const Ref<GraphNodeFormatNode> Node, int32_t Direction, bool IsHorizontalDirection) {
-	auto &Edges = Direction == EGPD_Input ? InEdges : OutEdges;
+	auto &Edges = Direction == EGPD_Input ? in_edges : out_edges;
 	float MedianPosition = 0.0f;
 	int32_t Count = 0;
 	for (auto Edge : Edges) {
@@ -156,7 +156,7 @@ bool GraphNodeFormatNode::IsCrossingInnerSegment(const Vector<Ref<GraphNodeForma
 
 Ref<GraphNodeFormatNode> GraphNodeFormatNode::GetMedianUpper() const {
 	Vector<Ref<GraphNodeFormatNode> > UpperNodes;
-	for (auto InEdge : InEdges) {
+	for (auto InEdge : in_edges) {
 		if (!UpperNodes.Contains(InEdge->To->OwningNode)) {
 			UpperNodes.Add(InEdge->To->OwningNode);
 		}
@@ -170,9 +170,10 @@ Ref<GraphNodeFormatNode> GraphNodeFormatNode::GetMedianUpper() const {
 
 Ref<GraphNodeFormatNode> GraphNodeFormatNode::GetMedianLower() const {
 	Vector<Ref<GraphNodeFormatNode> > LowerNodes;
-	for (auto OutEdge : OutEdges) {
-		if (!LowerNodes.Contains(OutEdge->To->OwningNode)) {
-			LowerNodes.Add(OutEdge->To->OwningNode);
+	for (int32_t edge_i = 0; edge_i < out_edges.size(); edge_i++) {
+		Ref<GraphNodeFormatEdge> out_edge = out_edges[edge_i];
+		if (LowerNodes.find(out_edge->to->owning_node) == -1) {
+			LowerNodes.Add(out_edge->to->owning_node);
 		}
 	}
 	if (LowerNodes.size() > 0) {
@@ -184,42 +185,53 @@ Ref<GraphNodeFormatNode> GraphNodeFormatNode::GetMedianLower() const {
 
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatNode::GetUppers() const {
 	Set<Ref<GraphNodeFormatNode> > UpperNodes;
-	for (auto InEdge : InEdges) {
-		UpperNodes.Add(InEdge->To->OwningNode);
+	for (int32_t edge_i = 0; edge_i < in_edges.size(); edge_i++) {
+		Ref<GraphNodeFormatEdge> InEdge = in_edges[edge_i];
+		UpperNodes.Add(InEdge->to->owning_node);
 	}
-	return UpperNodes.Array();
+	Vector<Ref<GraphNodeFormatNode> > UpperNodesVector;
+	for (Set<Ref<GraphNodeFormatNode> >::Element *E = UpperNodes.front(); E; E = E->next()) {
+		UpperNodesVector.push_back(E->get());
+	}
+	return UpperNodesVector;
 }
 
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatNode::GetLowers() const {
-	Set<Ref<GraphNodeFormatNode> > LowerNodes;
-	for (auto OutEdge : OutEdges) {
-		LowerNodes.Add(OutEdge->To->OwningNode);
+	Set<Ref<GraphNodeFormatNode> > lower_nodes;
+	for (int32_t edge_i = 0; edge_i < out_edges.size(); edge_i++) {
+		Ref<GraphNodeFormatEdge> out_edge = out_edges[edge_i];
+		lower_nodes.Add(out_edge->to->owning_node);
 	}
-	return LowerNodes.Array();
+	Vector<Ref<GraphNodeFormatNode> > LowerNodesVector;
+	for (Set<Ref<GraphNodeFormatNode> >::Element *E = lower_nodes.front(); E;E =E->next()) {
+		LowerNodesVector.push_back(E->get());
+	}
+
+	return lower_nodes.Array();
 }
 
 int32_t GraphNodeFormatNode::GetInputPinCount() const {
-	return InSlots.size();
+	return in_slots.size();
 }
 
 int32_t GraphNodeFormatNode::GetInputPinIndex(GraphNodeFormatSlot InputPin) const {
-	return InSlots.Find(InputPin);
+	return in_slots.Find(InputPin);
 }
 
 int32_t GraphNodeFormatNode::GetOutputPinCount() const {
-	return OutSlots.size();
+	return out_slots.size();
 }
 
 int32_t GraphNodeFormatNode::GetOutputPinIndex(GraphNodeFormatSlot OutputPin) const {
-	return OutSlots.Find(OutputPin);
+	return out_slots.Find(OutputPin);
 }
 
 Vector<Ref<GraphNodeFormatEdge> > GraphNodeFormatNode::GetEdgeLinkedToLayer(const Vector<Ref<GraphNodeFormatNode> > &Layer, int32_t Direction) const {
 	Vector<Ref<GraphNodeFormatEdge> > Result;
-	const Vector<Ref<GraphNodeFormatEdge> > &Edges = Direction == EGPD_Output ? OutEdges : InEdges;
+	const Vector<Ref<GraphNodeFormatEdge> > &Edges = Direction == EGPD_Output ? out_edges : in_edges;
 	for (auto Edge : Edges) {
 		for (auto NextLayerNode : Layer) {
-			if (Edge->To->OwningNode == NextLayerNode) {
+			if (Edge->To->owning_node == NextLayerNode) {
 				Result.Add(Edge);
 			}
 		}
@@ -234,16 +246,16 @@ float GraphNodeFormatNode::CalcBarycenter(const Vector<Ref<GraphNodeFormatNode> 
 	}
 	float Sum = 0.0f;
 	for (auto Edge : Edges) {
-		Sum += Edge->To->IndexInLayer;
+		Sum += Edge->To->index_in_layer;
 	}
 	return Sum / Edges.size();
 }
 
 int32_t GraphNodeFormatNode::CalcPriority(int32_t Direction) const {
-	if (OriginalNode == nullptr) {
+	if (original_node == nullptr) {
 		return 0;
 	}
-	return Direction == EGPD_Output ? OutEdges.size() : InEdges.size();
+	return Direction == EGPD_Output ? out_edges.size() : in_edges.size();
 }
 
 void GraphNodeFormatNode::InitPosition(Vector2 InPosition) {
@@ -253,8 +265,8 @@ void GraphNodeFormatNode::InitPosition(Vector2 InPosition) {
 void GraphNodeFormatNode::SetPosition(Vector2 InPosition) {
 	const Vector2 Offset = InPosition - Position;
 	Position = InPosition;
-	if (SubGraph != nullptr) {
-		SubGraph->OffsetBy(Offset);
+	if (subgraph != nullptr) {
+		subgraph->OffsetBy(Offset);
 	}
 }
 
@@ -263,46 +275,46 @@ Vector2 GraphNodeFormatNode::GetPosition() const {
 }
 
 void GraphNodeFormatNode::SetSubGraph(Ref<GraphNodeFormatGraph> InSubGraph) {
-	SubGraph = InSubGraph;
-	auto SubGraphInPins = SubGraph->GetInputPins();
-	auto SubGraphOutPins = SubGraph->GetOutputPins();
+	subgraph = InSubGraph;
+	auto SubGraphInPins = subgraph->GetInputPins();
+	auto SubGraphOutPins = subgraph->GetOutputPins();
 	for (auto Pin : SubGraphInPins) {
 		auto NewPin = new FFormatterPin();
 		NewPin->Guid = Pin->Guid;
-		NewPin->OwningNode = this;
+		NewPin->owning_node = this;
 		NewPin->Direction = Pin->Direction;
 		NewPin->NodeOffset = Pin->NodeOffset;
 		NewPin->OriginalPin = Pin->OriginalPin;
-		InSlots.Add(NewPin);
+		in_slots.Add(NewPin);
 	}
 	for (auto Pin : SubGraphOutPins) {
 		auto NewPin = new FFormatterPin();
 		NewPin->Guid = Pin->Guid;
-		NewPin->OwningNode = this;
+		NewPin->owning_node = this;
 		NewPin->Direction = Pin->Direction;
 		NewPin->NodeOffset = Pin->NodeOffset;
 		NewPin->OriginalPin = Pin->OriginalPin;
-		OutSlots.Add(NewPin);
+		out_slots.Add(NewPin);
 	}
 }
 
 void GraphNodeFormatNode::UpdatePinsOffset() {
-	if (SubGraph != nullptr) {
-		auto PinsOffset = SubGraph->GetPinsOffset();
-		for (auto Pin : InSlots) {
+	if (subgraph != nullptr) {
+		auto PinsOffset = subgraph->GetPinsOffset();
+		for (auto Pin : in_slots) {
 			if (PinsOffset.Contains(Pin->OriginalPin)) {
 				Pin->NodeOffset = PinsOffset[Pin->OriginalPin];
 			}
 		}
-		for (auto Pin : OutSlots) {
+		for (auto Pin : out_slots) {
 			if (PinsOffset.Contains(Pin->OriginalPin)) {
 				Pin->NodeOffset = PinsOffset[Pin->OriginalPin];
 			}
 		}
-		InSlots.Sort([](const FFormatterPin &A, const FFormatterPin &B) {
+		in_slots.Sort([](const FFormatterPin &A, const FFormatterPin &B) {
 			return A.NodeOffset.Y < B.NodeOffset.Y;
 		});
-		OutSlots.Sort([](const FFormatterPin &A, const FFormatterPin &B) {
+		out_slots.Sort([](const FFormatterPin &A, const FFormatterPin &B) {
 			return A.NodeOffset.Y < B.NodeOffset.Y;
 		});
 	}
@@ -335,9 +347,9 @@ Vector<Set<GraphNode *> > GraphNodeFormatGraph::FindIsolated(GraphEdit *InGraph,
 		Set<GraphNode *> IsolatedNodes;
 		while (Stack.size() != 0) {
 			Ref<GraphNodeFormatNode> Top = Stack.Pop();
-			IsolatedNodes.Add(Top->OriginalNode);
-			if (Top->SubGraph != nullptr) {
-				IsolatedNodes.Append(Top->SubGraph->GetOriginalNodes());
+			IsolatedNodes.Add(Top->original_node);
+			if (Top->subgraph != nullptr) {
+				IsolatedNodes.Append(Top->subgraph->GetOriginalNodes());
 			}
 			Vector<Ref<GraphNodeFormatNode> > ConnectedNodes = Top->GetSuccessors();
 			Vector<Ref<GraphNodeFormatNode> > Predecessors = Top->GetPredecessors();
@@ -417,7 +429,7 @@ Vector<GraphNode *> GraphNodeFormatGraph::GetSortedCommentNodes(GraphEdit *InGra
 
 Vector<GraphNodeFormatEdge> GraphNodeFormatGraph::GetEdgeForNode(Ref<GraphNodeFormatNode> Node, Set<GraphNode *> SelectedNodes) {
 	Vector<GraphNodeFormatEdge> Result;
-	auto OriginalNode = Node->OriginalNode;
+	auto OriginalNode = Node->original_node;
 	if (SubGraphs.Contains(OriginalNode->get_path())) {
 		const Set<GraphNode *> InnerSelectedNodes = SubGraphs[OriginalNode->NodePath]->GetOriginalNodes();
 		for (auto SelectedNode : InnerSelectedNodes) {
@@ -453,8 +465,8 @@ Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatGraph::GetSuccessorsForNodes(Se
 	Vector<Ref<GraphNodeFormatNode> > Result;
 	for (auto Node : Nodes) {
 		for (auto outEdge : Node->OutEdges) {
-			if (!Nodes.Contains(outEdge->To->OwningNode)) {
-				Result.Add(outEdge->To->OwningNode);
+			if (!Nodes.Contains(outEdge->To->owning_node)) {
+				Result.Add(outEdge->To->owning_node);
 			}
 		}
 	}
@@ -464,7 +476,7 @@ Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatGraph::GetSuccessorsForNodes(Se
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatGraph::GetNodesGreaterThan(int32_t i, Set<Ref<GraphNodeFormatNode> > &Excluded) {
 	Vector<Ref<GraphNodeFormatNode> > Result;
 	for (auto Node : Nodes) {
-		if (!Excluded.Contains(Node) && Node->PathDepth >= i) {
+		if (!Excluded.Contains(Node) && Node->path_depth >= i) {
 			Result.Add(Node);
 		}
 	}
@@ -552,11 +564,11 @@ void GraphNodeFormatGraph::RemoveCycle() {
 		ClonedGraph->RemoveNode(SinkNode);
 	}
 	while (auto MedianNode = ClonedGraph->FindMedianNode()) {
-		for (auto Edge : MedianNode->InEdges) {
+		for (auto Edge : MedianNode->in_edges) {
 			GraphNodeFormatSlot From = PinsMap[Edge->From->Guid];
 			GraphNodeFormatSlot To = PinsMap[Edge->To->Guid];
 			NodesMap[MedianNode->id]->Disconnect(From, To);
-			To->OwningNode->Disconnect(To, From);
+			To->owning_node->Disconnect(To, From);
 		}
 		ClonedGraph->RemoveNode(MedianNode);
 	}
@@ -570,7 +582,7 @@ void GraphNodeFormatGraph::AddDummyNodes() {
 		for (auto Node : Layer) {
 			Vector<Ref<GraphNodeFormatEdge> > LongEdges;
 			for (auto Edge : Node->OutEdges) {
-				if (!NextLayer.Contains(Edge->To->OwningNode)) {
+				if (!NextLayer.Contains(Edge->To->owning_node)) {
 					LongEdges.Add(Edge);
 				}
 			}
@@ -578,11 +590,11 @@ void GraphNodeFormatGraph::AddDummyNodes() {
 				Node->Disconnect(Edge->From, Edge->To);
 				auto dummyNode = new GraphNodeFormatNode();
 				AddNode(dummyNode);
-				Node->Connect(Edge->From, dummyNode->InSlots[0]);
-				dummyNode->Connect(dummyNode->InSlots[0], Edge->From);
-				dummyNode->Connect(dummyNode->OutSlots[0], Edge->To);
-				Edge->To->OwningNode->Disconnect(Edge->To, Edge->From);
-				Edge->To->OwningNode->Connect(Edge->To, dummyNode->OutSlots[0]);
+				Node->Connect(Edge->From, dummyNode->in_slots[0]);
+				dummyNode->Connect(dummyNode->in_slots[0], Edge->From);
+				dummyNode->Connect(dummyNode->out_slots[0], Edge->To);
+				Edge->To->owning_node->Disconnect(Edge->To, Edge->From);
+				Edge->To->owning_node->Connect(Edge->To, dummyNode->out_slots[0]);
 				NextLayer.Add(dummyNode);
 			}
 		}
@@ -698,7 +710,7 @@ GraphNodeFormatNode GraphNodeFormatGraph::FindMedianNode() const {
 Vector<Ref<GraphNodeFormatNode> > GraphNodeFormatGraph::GetLeavesWidthPathDepthEqu0() const {
 	Vector<Ref<GraphNodeFormatNode> > Result;
 	for (auto Node : Nodes) {
-		if (Node->PathDepth != 0 || Node->AnySuccessorPathDepthEqu0()) {
+		if (Node->path_depth != 0 || Node->AnySuccessorPathDepthEqu0()) {
 			continue;
 		}
 		Result.Add(Node);
@@ -714,7 +726,7 @@ int32_t GraphNodeFormatGraph::CalculateLongestPath() const {
 			break;
 		}
 		for (auto leaf : Leaves) {
-			leaf->PathDepth = LongestPath;
+			leaf->path_depth = LongestPath;
 		}
 		LongestPath++;
 	}
@@ -789,16 +801,16 @@ GraphNodeFormatGraph::~GraphNodeFormatGraph() {
 void GraphNodeFormatGraph::AddNode(Ref<GraphNodeFormatNode> InNode) {
 	Nodes.Add(InNode);
 	NodesMap.Add(InNode->id, InNode);
-	if (InNode->SubGraph != nullptr) {
-		SubGraphs.Add(InNode->id, InNode->SubGraph);
+	if (InNode->subgraph != nullptr) {
+		SubGraphs.Add(InNode->id, InNode->subgraph);
 	}
-	for (auto Pin : InNode->InSlots) {
+	for (auto Pin : InNode->in_slots) {
 		if (Pin->OriginalPin != nullptr) {
 			OriginalPinsMap.Add(Pin->OriginalPin, Pin);
 		}
 		PinsMap.Add(Pin->Guid, Pin);
 	}
-	for (auto Pin : InNode->OutSlots) {
+	for (auto Pin : InNode->out_slots) {
 		if (Pin->OriginalPin != nullptr) {
 			OriginalPinsMap.Add(Pin->OriginalPin, Pin);
 		}
@@ -807,22 +819,22 @@ void GraphNodeFormatGraph::AddNode(Ref<GraphNodeFormatNode> InNode) {
 }
 
 void GraphNodeFormatGraph::RemoveNode(Ref<GraphNodeFormatNode> NodeToRemove) {
-	Vector<Ref<GraphNodeFormatEdge> > Edges = NodeToRemove->InEdges;
+	Vector<Ref<GraphNodeFormatEdge> > Edges = NodeToRemove->in_edges;
 	for (auto Edge : Edges) {
-		Edge->To->OwningNode->Disconnect(Edge->To, Edge->From);
+		Edge->To->owning_node->Disconnect(Edge->To, Edge->From);
 	}
-	Edges = NodeToRemove->OutEdges;
+	Edges = NodeToRemove->out_edges;
 	for (auto Edge : Edges) {
-		Edge->To->OwningNode->Disconnect(Edge->To, Edge->From);
+		Edge->To->owning_node->Disconnect(Edge->To, Edge->From);
 	}
 	Nodes.Remove(NodeToRemove);
 	NodesMap.Remove(NodeToRemove->id);
 	SubGraphs.Remove(NodeToRemove->id);
-	for (auto Pin : NodeToRemove->InSlots) {
+	for (auto Pin : NodeToRemove->in_slots) {
 		OriginalPinsMap.Remove(Pin->OriginalPin);
 		PinsMap.Remove(Pin->Guid);
 	}
-	for (auto Pin : NodeToRemove->OutSlots) {
+	for (auto Pin : NodeToRemove->out_slots) {
 		OriginalPinsMap.Remove(Pin->OriginalPin);
 		PinsMap.Remove(Pin->Guid);
 	}
@@ -856,7 +868,7 @@ void GraphNodeFormatGraph::Format() {
 			Node->UpdatePinsOffset();
 			auto Bound = SubGraph->GetTotalBound();
 			Node->InitPosition(Bound.GetTopLeft() - Vector2(Settings.CommentBorder, Settings.CommentBorder));
-			Node->Size = SubGraph->GetTotalBound().GetSize() + Vector2(Settings.CommentBorder * 2, Settings.CommentBorder * 2);
+			Node->size = SubGraph->GetTotalBound().GetSize() + Vector2(Settings.CommentBorder * 2, Settings.CommentBorder * 2);
 		}
 		if (Nodes.size() > 0) {
 			RemoveCycle();
@@ -1049,10 +1061,10 @@ void GraphNodeFormatGraph::CalculatePinsIndex(const Vector<Vector<Ref<GraphNodeF
 void GraphNodeFormatGraph::CalculatePinsIndexInLayer(const Vector<Ref<GraphNodeFormatNode> > &Layer) {
 	int32_t InPinStartIndex = 0, OutPinStartIndex = 0;
 	for (int32_t j = 0; j < Layer.size(); j++) {
-		for (auto InPin : Layer[j]->InSlots) {
+		for (auto InPin : Layer[j]->in_slots) {
 			InPin->IndexInLayer = InPinStartIndex + Layer[j]->GetInputPinIndex(InPin);
 		}
-		for (auto OutPin : Layer[j]->OutSlots) {
+		for (auto OutPin : Layer[j]->out_slots) {
 			OutPin->IndexInLayer = OutPinStartIndex + Layer[j]->GetOutputPinIndex(OutPin);
 		}
 		OutPinStartIndex += Layer[j]->GetOutputPinCount();
