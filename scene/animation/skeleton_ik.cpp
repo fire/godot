@@ -353,53 +353,6 @@ void SkeletonIK::_validate_property(PropertyInfo &property) const {
 }
 
 void SkeletonIK::_bind_methods() {
-
-	ClassDB::bind_method(D_METHOD("set_root_bone", "root_bone"), &SkeletonIK::set_root_bone);
-	ClassDB::bind_method(D_METHOD("get_root_bone"), &SkeletonIK::get_root_bone);
-
-	ClassDB::bind_method(D_METHOD("set_tip_bone", "tip_bone"), &SkeletonIK::set_tip_bone);
-	ClassDB::bind_method(D_METHOD("get_tip_bone"), &SkeletonIK::get_tip_bone);
-
-	ClassDB::bind_method(D_METHOD("set_interpolation", "interpolation"), &SkeletonIK::set_interpolation);
-	ClassDB::bind_method(D_METHOD("get_interpolation"), &SkeletonIK::get_interpolation);
-
-	ClassDB::bind_method(D_METHOD("set_target_transform", "target"), &SkeletonIK::set_target_transform);
-	ClassDB::bind_method(D_METHOD("get_target_transform"), &SkeletonIK::get_target_transform);
-
-	ClassDB::bind_method(D_METHOD("set_target_node", "node"), &SkeletonIK::set_target_node);
-	ClassDB::bind_method(D_METHOD("get_target_node"), &SkeletonIK::get_target_node);
-
-	ClassDB::bind_method(D_METHOD("set_override_tip_basis", "override"), &SkeletonIK::set_override_tip_basis);
-	ClassDB::bind_method(D_METHOD("is_override_tip_basis"), &SkeletonIK::is_override_tip_basis);
-
-	ClassDB::bind_method(D_METHOD("set_use_magnet", "use"), &SkeletonIK::set_use_magnet);
-	ClassDB::bind_method(D_METHOD("is_using_magnet"), &SkeletonIK::is_using_magnet);
-
-	ClassDB::bind_method(D_METHOD("set_magnet_position", "local_position"), &SkeletonIK::set_magnet_position);
-	ClassDB::bind_method(D_METHOD("get_magnet_position"), &SkeletonIK::get_magnet_position);
-
-	ClassDB::bind_method(D_METHOD("get_parent_skeleton"), &SkeletonIK::get_parent_skeleton);
-	ClassDB::bind_method(D_METHOD("is_running"), &SkeletonIK::is_running);
-
-	ClassDB::bind_method(D_METHOD("set_min_distance", "min_distance"), &SkeletonIK::set_min_distance);
-	ClassDB::bind_method(D_METHOD("get_min_distance"), &SkeletonIK::get_min_distance);
-
-	ClassDB::bind_method(D_METHOD("set_max_iterations", "iterations"), &SkeletonIK::set_max_iterations);
-	ClassDB::bind_method(D_METHOD("get_max_iterations"), &SkeletonIK::get_max_iterations);
-
-	ClassDB::bind_method(D_METHOD("start", "one_time"), &SkeletonIK::start, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("stop"), &SkeletonIK::stop);
-
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_bone"), "set_root_bone", "get_root_bone");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "tip_bone"), "set_tip_bone", "get_tip_bone");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "interpolation", PROPERTY_HINT_RANGE, "0,1,0.001"), "set_interpolation", "get_interpolation");
-	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM, "target"), "set_target_transform", "get_target_transform");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "override_tip_basis"), "set_override_tip_basis", "is_override_tip_basis");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_magnet"), "set_use_magnet", "is_using_magnet");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "magnet"), "set_magnet_position", "get_magnet_position");
-	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "target_node"), "set_target_node", "get_target_node");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "min_distance"), "set_min_distance", "get_min_distance");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_iterations"), "set_max_iterations", "get_max_iterations");
 }
 
 void SkeletonIK::_notification(int p_what) {

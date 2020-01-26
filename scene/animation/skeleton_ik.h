@@ -39,6 +39,7 @@
 
 #include "core/math/transform.h"
 #include "scene/3d/skeleton.h"
+#include "scene/animation/skeleton_ik_object.h"
 
 class FabrikInverseKinematic {
 
@@ -140,9 +141,8 @@ public:
 	static void make_goal(Task *p_task, const Transform &p_inverse_transf, real_t blending_delta);
 	static void solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position);
 };
-
-class SkeletonIK : public Node {
-	GDCLASS(SkeletonIK, Node);
+class SkeletonIK : public SkeletonIKObject {
+	GDCLASS(SkeletonIK, SkeletonIKObject);
 
 	StringName root_bone;
 	StringName tip_bone;

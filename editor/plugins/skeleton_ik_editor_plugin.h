@@ -34,13 +34,13 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 
-class SkeletonIK;
+class SkeletonIKObject;
 
 class SkeletonIKEditorPlugin : public EditorPlugin {
 
 	GDCLASS(SkeletonIKEditorPlugin, EditorPlugin);
 
-	SkeletonIK *skeleton_ik;
+	SkeletonIKObject *skeleton_ik;
 
 	Button *play_btn;
 	EditorNode *editor;
@@ -51,7 +51,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	virtual String get_name() const { return "SkeletonIK"; }
+	virtual String get_name() const { return "SkeletonIKBase"; }
 	bool has_main_screen() const { return false; }
 	virtual void edit(Object *p_object);
 	virtual bool handles(Object *p_object) const;
