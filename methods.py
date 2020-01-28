@@ -5,7 +5,6 @@ import glob
 import subprocess
 from compat import iteritems, isbasestring, decode_utf8
 
-
 def add_source_files(self, sources, files, warn_duplicates=True):
     # Convert string to list of absolute paths (including expanding wildcard)
     if isbasestring(files):
@@ -23,10 +22,12 @@ def add_source_files(self, sources, files, warn_duplicates=True):
     for path in files:
         obj = self.Object(path)
         if obj in sources:
+            
             if warn_duplicates:
                 print("WARNING: Object \"{}\" already included in environment sources.".format(obj))
             else:
                 continue
+        self.Alias('core-sources', obj)
         sources.append(obj)
 
 
@@ -459,15 +460,15 @@ def generate_vs_project(env, num_jobs):
                                     'call "' + batch_file + '" !plat!']
 
             result = " ^& ".join(common_build_prefix + [commands])
-            return result
-
+            return register_module_types
+            
         env.AddToVSProject(env.core_sources)
         env.AddToVSProject(env.main_sources)
         env.AddToVSProject(env.modules_sources)
         env.AddToVSProject(env.scene_sources)
         env.AddToVSProject(env.servers_sources)
         env.AddToVSProject(env.editor_sources)
-
+        
         # windows allows us to have spaces in paths, so we need
         # to double quote off the directory. However, the path ends
         # in a backslash, so we need to remove this, lest it escape the

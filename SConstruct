@@ -82,6 +82,7 @@ env_base.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 env_base.__class__.add_shared_library = methods.add_shared_library
 env_base.__class__.add_library = methods.add_library
 env_base.__class__.add_program = methods.add_program
+
 env_base.__class__.CommandNoCache = methods.CommandNoCache
 env_base.__class__.disable_warnings = methods.disable_warnings
 
@@ -257,7 +258,7 @@ if selected_platform in platform_list:
         env = detect.create(env_base)
     else:
         env = env_base.Clone()
-
+    
     if env['dev']:
         env['verbose'] = True
         env['warnings'] = "extra"
@@ -523,6 +524,62 @@ if selected_platform in platform_list:
 
     SConscript("platform/" + selected_platform + "/SCsub")  # build selected platform
 
+    env["NINJA_SYNTAX"] = "#site_scons/third_party/ninja_syntax.py"
+    env.Tool("ninja")
+    ninja_builder = Tool("ninja")
+    ninja_builder.generate(env)  
+    ninja_build = env.Ninja(
+            target="build.ninja",
+            source=[
+                env_base.Alias("core-sources")
+            ],
+        )
+
+    # import core.core_builders as core_builders
+    # import core.make_binders as make_binders
+    # command = "python core/make_certs_header.py --target core/io/certs_compressed.gen.h --source thirdparty/certs/ca-certificates.crt "
+    # if env['system_certs_path']:
+    #     command += " --system_certs_path " + env['system_certs_path']
+    # if env['builtin_certs']:
+    #     command += " --builtin_certs " + str(env['builtin_certs'])
+    # env.NinjaRule(
+    #     rule="MAKE_CERT_HEADER",
+    #     command=command,
+    # )
+    # def make_certs_header_in_ninja(env, node):
+    #     """Custom command"""
+    #     return {
+    #         "outputs": [node.get_path()],
+    #         "rule": "MAKE_CERT_HEADER",
+    #         "implicit": [
+    #             str(s)  for s in node.sources
+    #         ],
+    #     }
+
+    # env.NinjaRegisterFunctionHandler("make_certs_header", make_certs_header_in_ninja)
+
+    # env.NinjaRegisterFunctionHandler("run", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_app_icon", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_splash", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_splash_editor", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_default_controller_mappings", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_editor_icons_action", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_translations_header", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("build_gdnative_api_struct", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("build_gles2_headers", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("build_gles3_headers", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_doc_header", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_fonts_header", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_authors_header", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_donors_header", fakelib_in_ninja)
+    # env.NinjaRegisterFunctionHandler("make_license_header", fakelib_in_ninja)
+           
+    env.Alias('core-sources', env.core_sources)
+    env.Alias('core-sources', env.main_sources)
+    env.Alias('core-sources', env.modules_sources)
+    env.Alias('core-sources', env.scene_sources)
+    env.Alias('core-sources', env.servers_sources)
+    env.Alias('core-sources', env.editor_sources)
     # Microsoft Visual Studio Project Generation
     if env['vsproj']:
         env['CPPPATH'] = [Dir(path) for path in env['CPPPATH']]

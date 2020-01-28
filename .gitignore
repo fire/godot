@@ -346,3 +346,9 @@ compile_commands.json
 
 # Cppcheck
 *.cppcheck
+
+.ninja_deps
+
+.ninja_log
+
+build.ninja
