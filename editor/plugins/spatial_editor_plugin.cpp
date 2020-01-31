@@ -288,8 +288,9 @@ void SpatialEditorViewport::_select(Node *p_node, bool p_append, bool p_single) 
 	}
 
 	if (p_single) {
-		if (Engine::get_singleton()->is_editor_hint())
+		if (Engine::get_singleton()->is_editor_hint()) {
 			editor->call("edit_node", p_node);
+		}
 	}
 }
 
@@ -356,9 +357,32 @@ ObjectID SpatialEditorViewport::_select_ray(const Point2 &p_pos, bool p_append, 
 		return 0;
 
 	if (!editor_selection->is_selected(item) || (r_gizmo_handle && selected_handle >= 0)) {
-
-		if (r_gizmo_handle)
+		if (r_gizmo_handle) {
 			*r_gizmo_handle = selected_handle;
+		}
+	}
+
+	/*
+		Given any unselected objects, clicking on one will select it and it will not be moved.
+		Given selected objects, clicking on any unselected object will select it and it will not be moved.
+		Given selected objects, shift clicking on any unselected object will add to selection and it will not be moved.
+		Given one or more selected object, with shift clicking on an selected object will cause all objects to be moved.
+		Given any objects and one is selected, clicking on the unselected object will cause it to be selected and not moved.
+		Given selected objects, clicking on any selected object will move the group.
+		@item is not added to the editor selection yet	
+	*/
+	if (old_select) {
+		is_selected_mode = true;
+	} else if (editor_selection->get_selected_nodes().size() == 0) {
+		is_selected_mode = false;
+	} else if (editor_selection->is_selected(item) && p_alt_select) {
+		is_selected_mode = true;
+	} else if (editor_selection->get_selected_nodes().size() > 0 && !editor_selection->is_selected(item) && !p_alt_select) {
+		is_selected_mode = false;
+	} else if (editor_selection->get_selected_nodes().size() > 0 && !editor_selection->is_selected(item) && p_alt_select) {
+		is_selected_mode = true;
+	} else {
+		is_selected_mode = true;
 	}
 
 	return closest;
@@ -792,6 +816,7 @@ bool SpatialEditorViewport::_gizmo_select(const Vector2 &p_screenpos, bool p_hig
 				_compute_edit(Point2(p_screenpos.x, p_screenpos.y));
 				_edit.plane = TransformPlane(TRANSFORM_X_AXIS + col_axis + (is_plane_scale ? 3 : 0));
 			}
+
 			return true;
 		}
 	}
@@ -1116,8 +1141,9 @@ void SpatialEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 
 					if (!clicked) {
 
-						if (!clicked_wants_append)
+						if (!clicked_wants_append) {
 							_clear_selected();
+						}
 
 						//default to regionselect
 						cursor.region_select = true;
@@ -1281,6 +1307,10 @@ void SpatialEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 				Vector3 ray = _get_ray(m->get_position());
 				float snap = EDITOR_GET("interface/inspector/default_float_step");
 				int snap_step_decimals = Math::range_step_decimals(snap);
+
+				if (!is_selected_mode) {
+					return;
+				}
 
 				switch (_edit.mode) {
 
@@ -3141,6 +3171,7 @@ void SpatialEditorViewport::reset() {
 	cursor.region_select = false;
 	cursor.pos = Vector3();
 	_update_name();
+	is_selected_mode = false;
 }
 
 void SpatialEditorViewport::focus_selection() {

@@ -266,6 +266,8 @@ private:
 	bool clicked_wants_append;
 
 	PopupMenu *selection_menu;
+	bool old_select = false;
+	bool is_selected_mode = false;
 
 	enum NavigationZoomStyle {
 		NAVIGATION_ZOOM_VERTICAL,
