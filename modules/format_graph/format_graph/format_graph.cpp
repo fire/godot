@@ -430,7 +430,7 @@ Vector<GraphNode *> GraphNodeFormatGraph::GetSortedCommentNodes(GraphEdit *InGra
 Vector<GraphNodeFormatEdge> GraphNodeFormatGraph::GetEdgeForNode(Ref<GraphNodeFormatNode> Node, Set<GraphNode *> SelectedNodes) {
 	Vector<GraphNodeFormatEdge> Result;
 	auto OriginalNode = Node->original_node;
-	if (SubGraphs.Contains(OriginalNode->get_path())) {
+	if (SubGraphs.find(OriginalNode->get_path()) != -1) {
 		const Set<GraphNode *> InnerSelectedNodes = SubGraphs[OriginalNode->NodePath]->GetOriginalNodes();
 		for (auto SelectedNode : InnerSelectedNodes) {
 			for (auto Pin : SelectedNode->Pins) {

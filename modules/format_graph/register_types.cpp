@@ -32,10 +32,10 @@
 
 #include "core/engine.h"
 #include "core/io/resource_loader.h"
-#include "thirdparty/format_graph/format_settings.h"
-#include "thirdparty/format_graph/format_graph.h"
-#include "thirdparty/format_graph/position_strategy.h"
-#include "thirdparty/format_graph/evenly_place_strategy.h"
+#include "format_graph/format_settings.h"
+#include "format_graph/format_graph.h"
+#include "format_graph/position_strategy.h"
+#include "format_graph/evenly_place_strategy.h"
 
 void register_format_graph_types() {
 	ClassDB::register_class<GraphNodeFormatSlot>();
