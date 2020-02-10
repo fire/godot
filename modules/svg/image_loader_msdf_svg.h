@@ -44,7 +44,7 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	bool outputSpecified = false;
 	int svgPathIndex = 0;
 
-	int width = 64, height = 64;
+	int width = 128, height = 128;
 	height = height * p_scale.y;
 	width = width * p_scale.x;
 	bool autoFrame = false;
