@@ -147,11 +147,11 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 			print_line("ResourceImporterMSDF advance is " + rtos(glyphAdvance));
 		if (autoFrame) {
 			if (!scaleSpecified)
-				print_line("scale is " + rtos(avgScale));
-			print_line("translate is " + rtos(translate.x) + ", " + rtos(translate.y));
+				print_line("ResourceImporterMSDF scale is " + rtos(avgScale));
+			print_line("ResourceImporterMSDF translate is " + rtos(translate.x) + ", " + rtos(translate.y));
 		}
 		if (rangeMode == RANGE_PX)
-			print_line("range is " + rtos(range));
+			print_line("ResourceImporterMSDF range is " + rtos(range));
 	}
 
 	msdfgen::Bitmap<float, 3> msdf;
