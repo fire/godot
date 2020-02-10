@@ -258,7 +258,7 @@ void ResourceImporterMSDF::get_recognized_extensions(List<String> *p_extensions)
 }
 
 String ResourceImporterMSDF::get_save_extension() const {
-	return "stex";
+	return "res";
 }
 
 String ResourceImporterMSDF::get_resource_type() const {
@@ -306,7 +306,7 @@ Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_
 	Ref<ImageTexture> tex;
 	tex.instance();
 	tex->create_from_image(image);
-	return ResourceSaver::save(p_save_path + ".stex", tex, ResourceSaver::FLAG_CHANGE_PATH);
+	return ResourceSaver::save(p_save_path + ".res", tex, ResourceSaver::FLAG_CHANGE_PATH);
 }
 
 ResourceImporterMSDF::ResourceImporterMSDF() {
