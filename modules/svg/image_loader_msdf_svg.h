@@ -41,13 +41,10 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	bool scanlinePass = true;
 	msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 	Format format = AUTO;
-	const char *output = "output.png";
-	const char *testRender = NULL;
-	const char *testRenderMulti = NULL;
 	bool outputSpecified = false;
 	int svgPathIndex = 0;
 
-	int width = 128, height = 128;
+	int width = 64, height = 64;
 	height = height * p_scale.y;
 	width = width * p_scale.x;
 	bool autoFrame = false;
@@ -146,28 +143,21 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 
 	// Print metrics
 	if (printMetrics) {
-		FILE *out = stdout;
-		if (outputSpecified)
-			out = fopen(output, "w");
-		if (!out)
-			ERR_FAIL_V_MSG(FAILED, "Failed to write output file.");
 		if (shape.inverseYAxis)
-			fprintf(out, "inverseY = true\n");
+			print_line("ResourceImporterMSDF inverseY is true");
 		if (bounds.r >= bounds.l && bounds.t >= bounds.b)
-			fprintf(out, "bounds = %.12g, %.12g, %.12g, %.12g\n", bounds.l, bounds.b, bounds.r, bounds.t);
+			print_line("ResourceImporterMSDF bounds are " + rtos(bounds.l) + ", " + rtos(bounds.b) + ", " + rtos(bounds.r) + ", " + rtos(bounds.t));
 		if (svgDims.x != 0 && svgDims.y != 0)
-			fprintf(out, "dimensions = %.12g, %.12g\n", svgDims.x, svgDims.y);
+			print_line("ResourceImporterMSDF dimensions are " + rtos(svgDims.x) + ", " + rtos(svgDims.y));
 		if (glyphAdvance != 0)
-			fprintf(out, "advance = %.12g\n", glyphAdvance);
+			print_line("ResourceImporterMSDF advance is " + rtos(glyphAdvance));
 		if (autoFrame) {
 			if (!scaleSpecified)
-				fprintf(out, "scale = %.12g\n", avgScale);
-			fprintf(out, "translate = %.12g, %.12g\n", translate.x, translate.y);
+				print_line("scale is " + rtos(avgScale));
+			print_line("translate is " + rtos(translate.x) + ", " + rtos(translate.y));
 		}
 		if (rangeMode == RANGE_PX)
-			fprintf(out, "range = %.12g\n", range);
-		if (outputSpecified)
-			fclose(out);
+			print_line("range is " + rtos(range));
 	}
 
 	msdfgen::Bitmap<float, 3> msdf;
@@ -201,25 +191,22 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 		}
 	}
 
-    const msdfgen::BitmapConstRef<float, 3> pixel = msdf;
+	const msdfgen::BitmapConstRef<float, 3> pixel = msdf;
 	r_image->create(width, height, false, Image::Format::FORMAT_RGBA8);
 	r_image->resize(width, height);
 	r_image->lock();
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			Color c;
-            const float* split_pixel = pixel(j,i);
-            c.r = split_pixel[0];
-            c.g = split_pixel[1];
-            c.b = split_pixel[2];
+			const float *split_pixel = pixel(j, i);
+			c.r = split_pixel[0];
+			c.g = split_pixel[1];
+			c.b = split_pixel[2];
 			r_image->set_pixel(j, i, c);
 		}
 	}
-    r_image->unlock();
+	r_image->unlock();
 
-	if (is8bitFormat(format) && (testRenderMulti || testRender || estimateError)) {
-		msdfgen::simulate8bit(msdf);
-    }
 	if (estimateError) {
 		double sdfError = estimateSDFError(msdf, shape, scale, translate, SDF_ERROR_ESTIMATE_PRECISION, fillRule);
 		printf("SDF error ~ %e\n", sdfError);
@@ -230,6 +217,7 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 class ResourceImporterMSDF : public ResourceImporter {
 	GDCLASS(ResourceImporterMSDF, ResourceImporter);
 	Vector2 scale = Vector2(1.0f, 1.0f);
+
 public:
 	Vector2 get_scale() const {
 		return scale;
@@ -270,7 +258,7 @@ void ResourceImporterMSDF::get_recognized_extensions(List<String> *p_extensions)
 }
 
 String ResourceImporterMSDF::get_save_extension() const {
-	return "tex";
+	return "stex";
 }
 
 String ResourceImporterMSDF::get_resource_type() const {
@@ -318,7 +306,7 @@ Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_
 	Ref<ImageTexture> tex;
 	tex.instance();
 	tex->create_from_image(image);
-	return ResourceSaver::save(p_save_path + ".tex", tex, ResourceSaver::FLAG_CHANGE_PATH);
+	return ResourceSaver::save(p_save_path + ".stex", tex, ResourceSaver::FLAG_CHANGE_PATH);
 }
 
 ResourceImporterMSDF::ResourceImporterMSDF() {
