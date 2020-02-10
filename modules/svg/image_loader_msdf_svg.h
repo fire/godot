@@ -51,7 +51,7 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	msdfgen::Vector2 translate;
 	msdfgen::Vector2 scale = 1;
 	bool scaleSpecified = false;
-	double angleThreshold = 3;
+	double angleThreshold = M_PI;
 	double edgeThreshold = 1.001;
 	bool yFlip = false;
 	bool printMetrics = false;
