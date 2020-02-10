@@ -25,10 +25,6 @@ enum Format {
 	PNG
 };
 
-static bool is8bitFormat(Format format) {
-	return format == PNG;
-}
-
 template <int N>
 static void invertColor(const msdfgen::BitmapRef<float, N> &bitmap) {
 	const float *end = bitmap.pixels + N * bitmap.width * bitmap.height;
@@ -40,8 +36,6 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	bool overlapSupport = true;
 	bool scanlinePass = true;
 	msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
-	Format format = AUTO;
-	bool outputSpecified = false;
 	int svgPathIndex = 0;
 
 	int width = 128, height = 128;
