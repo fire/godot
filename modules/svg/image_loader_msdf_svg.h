@@ -47,7 +47,9 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	bool outputSpecified = false;
 	int svgPathIndex = 0;
 
-	int width = 64, height = 64;
+	int width = 128, height = 128;
+	height = height * p_scale.y;
+	width = width * p_scale.x;
 	bool autoFrame = false;
 	enum {
 		RANGE_UNIT,
@@ -57,8 +59,6 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	double pxRange = 2;
 	msdfgen::Vector2 translate;
 	msdfgen::Vector2 scale = 1;
-	scale.x = scale.x * p_scale.x;
-	scale.y = scale.y * p_scale.y;
 	bool scaleSpecified = false;
 	double angleThreshold = 3;
 	double edgeThreshold = 1.001;
@@ -170,12 +170,12 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 			fclose(out);
 	}
 
-	// Compute output
 	msdfgen::Bitmap<float, 3> msdf;
 
 	if (!skipColoring)
 		msdfgen::edgeColoringSimple(shape, angleThreshold, coloringSeed);
 	msdf = msdfgen::Bitmap<float, 3>(width, height);
+
 	msdfgen::generateMSDF(msdf, shape, range, scale, translate, scanlinePass ? 0 : edgeThreshold, overlapSupport);
 
 	if (orientation == GUESS) {
