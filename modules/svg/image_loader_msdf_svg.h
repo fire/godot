@@ -36,7 +36,7 @@ static void invertColor(const msdfgen::BitmapRef<float, N> &bitmap) {
 		*p = 1.f - *p;
 }
 
-Error msdf_output(char *p_input, Ref< ::Image> &r_image) {
+Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 	bool overlapSupport = true;
 	bool scanlinePass = true;
 	msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
@@ -57,6 +57,8 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image) {
 	double pxRange = 2;
 	msdfgen::Vector2 translate;
 	msdfgen::Vector2 scale = 1;
+	scale.x = scale.x * p_scale.x;
+	scale.y = scale.y * p_scale.y;
 	bool scaleSpecified = false;
 	double angleThreshold = 3;
 	double edgeThreshold = 1.001;
@@ -227,8 +229,14 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image) {
 
 class ResourceImporterMSDF : public ResourceImporter {
 	GDCLASS(ResourceImporterMSDF, ResourceImporter);
-
+	Vector2 scale = Vector2(1.0f, 1.0f);
 public:
+	Vector2 get_scale() const {
+		return scale;
+	}
+	void set_scale(const Vector2 p_scale) {
+		scale = p_scale;
+	}
 	virtual String get_importer_name() const;
 	virtual String get_visible_name() const;
 	virtual void get_recognized_extensions(List<String> *p_extensions) const;
@@ -283,10 +291,11 @@ String ResourceImporterMSDF::get_preset_name(int p_idx) const {
 }
 
 void ResourceImporterMSDF::get_import_options(List<ImportOption> *r_options, int p_preset) const {
-	//TODO Choose svg shape index
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_NONE), Vector2(1.0f, 1.0f)));
 }
 
 Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+	Vector2 scale = p_options["scale"];
 
 	Error err;
 	FileAccess *f = FileAccess::open(p_source_file, FileAccess::READ, &err);
@@ -304,7 +313,7 @@ Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_
 
 	Ref<Image> image;
 	image.instance();
-	msdf_output((char *)src_w.ptr(), image);
+	msdf_output((char *)src_w.ptr(), image, scale);
 	Ref<ImageTexture> tex;
 	tex.instance();
 	tex->create_from_image(image);
