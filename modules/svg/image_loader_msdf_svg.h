@@ -261,15 +261,16 @@ String ResourceImporterMSDF::get_importer_name() const {
 
 String ResourceImporterMSDF::get_visible_name() const {
 
-	return "MSDF";
+	return "MSDFTexture";
 }
 
 void ResourceImporterMSDF::get_recognized_extensions(List<String> *p_extensions) const {
 	p_extensions->push_back("svg");
+	p_extensions->push_back("svgz");
 }
 
 String ResourceImporterMSDF::get_save_extension() const {
-	return "res";
+	return "tex";
 }
 
 String ResourceImporterMSDF::get_resource_type() const {
@@ -317,7 +318,7 @@ Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_
 	Ref<ImageTexture> tex;
 	tex.instance();
 	tex->create_from_image(image);
-	return ResourceSaver::save(p_save_path + ".res", tex);
+	return ResourceSaver::save(p_save_path + ".tex", tex, ResourceSaver::FLAG_CHANGE_PATH);
 }
 
 ResourceImporterMSDF::ResourceImporterMSDF() {
