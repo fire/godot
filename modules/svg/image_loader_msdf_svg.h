@@ -274,7 +274,7 @@ String ResourceImporterMSDF::get_preset_name(int p_idx) const {
 }
 
 void ResourceImporterMSDF::get_import_options(List<ImportOption> *r_options, int p_preset) const {
-	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_RANGE, "0.001,128,0.01"), Vector2(1.0f, 1.0f)));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_RANGE, "0.01,32.0,0.01"), Vector2(1.0f, 1.0f)));
 }
 
 Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
