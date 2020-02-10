@@ -238,12 +238,12 @@ public:
 
 String ResourceImporterMSDF::get_importer_name() const {
 
-	return "svgmsdf";
+	return "distancefield";
 }
 
 String ResourceImporterMSDF::get_visible_name() const {
 
-	return "TextureMSDF";
+	return "TextureDistanceField";
 }
 
 void ResourceImporterMSDF::get_recognized_extensions(List<String> *p_extensions) const {
@@ -274,7 +274,7 @@ String ResourceImporterMSDF::get_preset_name(int p_idx) const {
 }
 
 void ResourceImporterMSDF::get_import_options(List<ImportOption> *r_options, int p_preset) const {
-	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_NONE), Vector2(1.0f, 1.0f)));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_RANGE, "0.001,,0.001"), Vector2(1.0f, 1.0f)));
 }
 
 Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
