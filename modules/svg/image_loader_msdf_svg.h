@@ -10,6 +10,7 @@
 #include "core/io/resource_importer.h"
 #include "core/io/resource_saver.h"
 #include "core/os/file_access.h"
+#include "editor/editor_file_system.h"
 #include "scene/resources/texture.h"
 
 #include "msdfgen.h"
@@ -32,15 +33,21 @@ static void invertColor(const msdfgen::BitmapRef<float, N> &bitmap) {
 		*p = 1.f - *p;
 }
 
-Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
+struct MSDFState {
+	Vector2 size = Vector2(1.0f, 1.0f);
+	Vector2 scale = Vector2(1.0f, 1.0f);
+	Vector2 translate;
+	real_t range = 1.0;
+	bool auto_frame = false;
+};
+
+Error msdf_output(char *p_input, Ref< ::Image> &r_image, MSDFState &p_state) {
 	bool overlapSupport = true;
 	bool scanlinePass = true;
 	msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 	int svgPathIndex = 0;
 
-	int width = 128, height = 128;
-	height = height * p_scale.y;
-	width = width * p_scale.x;
+	int width = 256, height = 256;
 	bool autoFrame = false;
 	enum {
 		RANGE_UNIT,
@@ -66,7 +73,18 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 
 	// Custom settings
 	{
-		autoFrame = true;
+		width = p_state.size.x;
+		height = p_state.size.y;
+		orientation = GUESS;
+
+		scale.x = p_state.scale.y;
+		scale.y = p_state.scale.x;
+		scaleSpecified = !p_state.auto_frame;
+		range = p_state.range;
+		rangeMode = RANGE_UNIT;
+		translate.x = p_state.translate.x;
+		translate.y = p_state.translate.y;
+		autoFrame = p_state.auto_frame;
 		yFlip = true;
 		printMetrics = true;
 		estimateError = true;
@@ -211,14 +229,9 @@ Error msdf_output(char *p_input, Ref< ::Image> &r_image, Vector2 p_scale) {
 class ResourceImporterMSDF : public ResourceImporter {
 	GDCLASS(ResourceImporterMSDF, ResourceImporter);
 	Vector2 scale = Vector2(1.0f, 1.0f);
+	bool auto_frame = false;
 
 public:
-	Vector2 get_scale() const {
-		return scale;
-	}
-	void set_scale(const Vector2 p_scale) {
-		scale = p_scale;
-	}
 	virtual String get_importer_name() const;
 	virtual String get_visible_name() const;
 	virtual void get_recognized_extensions(List<String> *p_extensions) const;
@@ -257,7 +270,7 @@ String ResourceImporterMSDF::get_save_extension() const {
 
 String ResourceImporterMSDF::get_resource_type() const {
 
-	return "Image";
+	return "ImageTexture";
 }
 
 bool ResourceImporterMSDF::get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const {
@@ -274,12 +287,20 @@ String ResourceImporterMSDF::get_preset_name(int p_idx) const {
 }
 
 void ResourceImporterMSDF::get_import_options(List<ImportOption> *r_options, int p_preset) const {
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "size", PROPERTY_HINT_RANGE, "1,512,64"), Vector2(128.0f, 128.0f)));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_RANGE, "0.01,32.0,0.01"), Vector2(1.0f, 1.0f)));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "translate", PROPERTY_HINT_RANGE, "0,65536,0.01"), Vector2(0.0f, 0.0f)));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "range", PROPERTY_HINT_RANGE, "0,2,0.01"), 1.0f));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "auto_frame", PROPERTY_HINT_NONE), true));
 }
 
 Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	Vector2 scale = p_options["scale"];
-
+	MSDFState state;
+	state.size = p_options["size"];
+	state.scale = p_options["scale"];
+	state.translate = p_options["translate"];
+	state.range = p_options["range"];
+	state.auto_frame = p_options["auto_frame"];
 	Error err;
 	FileAccess *f = FileAccess::open(p_source_file, FileAccess::READ, &err);
 	if (!f) {
@@ -296,13 +317,13 @@ Error ResourceImporterMSDF::import(const String &p_source_file, const String &p_
 
 	Ref<Image> image;
 	image.instance();
-	msdf_output((char *)src_w.ptr(), image, scale);
-	Ref<ImageTexture> tex;
-	tex.instance();
-	tex->create_from_image(image);
-	err = ResourceSaver::save(p_save_path + ".res", tex, ResourceSaver::FLAG_CHANGE_PATH);
-	_change_notify();
-	return err;
+	msdf_output((char *)src_w.ptr(), image, state);
+	Ref<ImageTexture> image_texture;
+	image_texture.instance();
+	image_texture->create_from_image(image);
+	String save_path = p_save_path + ".res";
+	r_gen_files->push_back(save_path);
+	return ResourceSaver::save(save_path, image_texture);
 }
 
 ResourceImporterMSDF::ResourceImporterMSDF() {
