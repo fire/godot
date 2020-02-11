@@ -340,6 +340,7 @@ if selected_platform in platform_list:
         # Force to use Unicode encoding
         env.Append(MSVC_FLAGS=['/utf8'])
     else: # Rest of the world
+    
         shadow_local_warning = []
         all_plus_warnings = ['-Wwrite-strings']
 
@@ -535,45 +536,45 @@ if selected_platform in platform_list:
             ],
         )
 
-    # import core.core_builders as core_builders
-    # import core.make_binders as make_binders
-    # command = "python core/make_certs_header.py --target core/io/certs_compressed.gen.h --source thirdparty/certs/ca-certificates.crt "
-    # if env['system_certs_path']:
-    #     command += " --system_certs_path " + env['system_certs_path']
-    # if env['builtin_certs']:
-    #     command += " --builtin_certs " + str(env['builtin_certs'])
-    # env.NinjaRule(
-    #     rule="MAKE_CERT_HEADER",
-    #     command=command,
-    # )
-    # def make_certs_header_in_ninja(env, node):
-    #     """Custom command"""
-    #     return {
-    #         "outputs": [node.get_path()],
-    #         "rule": "MAKE_CERT_HEADER",
-    #         "implicit": [
-    #             str(s)  for s in node.sources
-    #         ],
-    #     }
+    env.NinjaRule(
+        rule="SCONSBUILD",
+        command="scons p=x11 generate_sources=yes CXX=echo CC=echo LINK=touch",
+    )
 
-    # env.NinjaRegisterFunctionHandler("make_certs_header", make_certs_header_in_ninja)
+    env.NinjaRule(
+        rule="LINK",
+        command="gcc -o godot.binary $in -lstdc++ -lm -pthread -ldl",
+    )
 
-    # env.NinjaRegisterFunctionHandler("run", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_app_icon", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_splash", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_splash_editor", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_default_controller_mappings", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_editor_icons_action", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_translations_header", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("build_gdnative_api_struct", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("build_gles2_headers", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("build_gles3_headers", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_doc_header", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_fonts_header", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_authors_header", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_donors_header", fakelib_in_ninja)
-    # env.NinjaRegisterFunctionHandler("make_license_header", fakelib_in_ninja)
+    def fakelib_in_ninja(env, node):
+        """Custom command"""
+        return {
+            "outputs": [node.get_path()],
+            "rule": "SCONSBUILD",
+            "implicit": [
+                str(s)  for s in node.sources
+            ],
+        }
+
+    env.NinjaRegisterFunctionHandler("make_certs_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("run", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_app_icon", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_splash", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_splash_editor", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_default_controller_mappings", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_editor_icons_action", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_translations_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("build_gdnative_api_struct", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("build_gles2_headers", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("build_gles3_headers", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_doc_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_fonts_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_authors_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_donors_header", fakelib_in_ninja)
+    env.NinjaRegisterFunctionHandler("make_license_header", fakelib_in_ninja)
            
+    # Create ninja rule in the ninja.build
+
     env.Alias('core-sources', env.core_sources)
     env.Alias('core-sources', env.main_sources)
     env.Alias('core-sources', env.modules_sources)
