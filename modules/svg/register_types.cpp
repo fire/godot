@@ -37,7 +37,7 @@
 static ImageLoaderSVG *image_loader_svg = NULL;
 
 static void _editor_init() {
-	Ref<ResourceImporterMSDF> msdf_loader;
+	Ref<ResourceImporterSVGDistanceField> msdf_loader;
 	msdf_loader.instance();
 	ResourceFormatImporter::get_singleton()->add_importer(msdf_loader);
 }
