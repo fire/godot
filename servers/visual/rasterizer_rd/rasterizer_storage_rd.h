@@ -96,6 +96,14 @@ public:
 		DEFAULT_RD_BUFFER_MAX,
 	};
 
+	RID get_screen_lut() {
+		return screen_lut;
+	}
+
+	Vector3 get_lut_texel_count() {
+		return lut_texel_count;
+	}
+
 private:
 	/* TEXTURE API */
 	struct Texture {
@@ -438,6 +446,9 @@ private:
 
 		RasterizerScene::InstanceDependency instance_dependency;
 	};
+
+	RID screen_lut;
+	Vector3 lut_texel_count;
 
 	GiprobeSdfShaderRD giprobe_sdf_shader;
 	RID giprobe_sdf_shader_version;
@@ -1098,6 +1109,8 @@ public:
 	RID render_target_get_rd_framebuffer(RID p_render_target);
 
 	VS::InstanceType get_base_type(RID p_rid) const;
+
+	void set_screen_lut(const Ref<Image> &p_lut, int p_h_slices, int p_v_slices);
 
 	bool free(RID p_rid);
 
