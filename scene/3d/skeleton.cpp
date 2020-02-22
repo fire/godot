@@ -66,8 +66,36 @@ SkinReference::~SkinReference() {
 }
 
 bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
-
 	String path = p_path;
+	NodePath node_path = path;
+
+	String bone_name = path.get_slicec('/', 0);
+	BoneId bone = find_bone(bone_name);
+	if (bone != -1) {
+		StringName property = path.get_slicec('/', 1);
+		if (property == "translation") {
+			ERR_FAIL_INDEX_V(bone, bones.size(), false);
+			Transform pose = bones[bone].pose;
+			pose.origin = p_value;
+			bones.write[bone].pose = pose;
+		} else if (property == "rotation_quat") {
+			ERR_FAIL_INDEX_V(bone, bones.size(), false);
+			Transform pose = bones[bone].pose;
+			Vector3 scale = pose.basis.get_scale();
+			pose.basis.set_quat_scale(p_value, scale);
+			bones.write[bone].pose = pose;
+		} else if (property == "scale") {
+			ERR_FAIL_INDEX_V(bone, bones.size(), false);
+			Transform pose = bones[bone].pose;
+			Quat quat = pose.basis.get_rotation_quat();
+			pose.basis.set_quat_scale(quat, p_value);
+			bones.write[bone].pose = pose;
+		}
+		if (is_inside_tree()) {
+			_make_dirty();
+		}
+		return true;
+	}
 
 	if (!path.begins_with("bones/"))
 		return false;
@@ -114,8 +142,24 @@ bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
 }
 
 bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
-
 	String path = p_path;
+	NodePath node_path = path;
+
+	String bone_name = path.get_slicec('/', 0);
+	BoneId bone = find_bone(bone_name);
+	if (bone != -1) {
+		StringName property = path.get_slicec('/', 1);
+		if (property == "translation") {
+			r_ret = bones[bone].pose.origin;
+			return true;
+		} else if (property == "rotation_quat") {
+			r_ret = bones[bone].pose.basis.get_rotation_quat();
+			return true;
+		} else if (property == "scale") {
+			r_ret = bones[bone].pose.basis.get_scale();
+			return true;
+		}
+	}
 
 	if (!path.begins_with("bones/"))
 		return false;
