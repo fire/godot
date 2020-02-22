@@ -1317,6 +1317,13 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 	if (bool(p_options["skins/use_named_skins"]))
 		import_flags |= EditorSceneImporter::IMPORT_USE_NAMED_SKIN_BINDS;
 
+	bool use_convert_bezier = p_options["animation/optimizer/convert_bezier/enabled"];
+
+	if(use_convert_bezier) {
+		fps *= 1.05;
+		fps *= 2.0f;
+	}
+
 	Error err = OK;
 	List<String> missing_deps; // for now, not much will be done with this
 	Node *scene = importer->import_scene(src_path, import_flags, fps, &missing_deps, &err);

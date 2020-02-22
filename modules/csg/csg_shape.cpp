@@ -577,8 +577,9 @@ void CSGShape::_validate_property(PropertyInfo &property) const {
 	}
 }
 
-Array CSGShape::get_meshes() const {
-
+Array CSGShape::get_meshes() {
+	dirty = true;
+	_update_shape();
 	if (root_mesh.is_valid()) {
 		Array arr;
 		arr.resize(2);

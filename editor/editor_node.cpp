@@ -90,7 +90,6 @@
 #include "editor/export_template_manager.h"
 #include "editor/filesystem_dock.h"
 #include "editor/import/editor_import_collada.h"
-#include "editor/import/editor_scene_importer_gltf.h"
 #include "editor/import/resource_importer_bitmask.h"
 #include "editor/import/resource_importer_csv.h"
 #include "editor/import/resource_importer_csv_translation.h"
@@ -2266,7 +2265,6 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 
 			project_export->popup_export();
 		} break;
-
 		case FILE_EXPORT_MESH_LIBRARY: {
 
 			if (!editor_data.get_edited_scene_root()) {
@@ -2689,6 +2687,27 @@ void EditorNode::_tool_menu_option(int p_idx) {
 				if (ce.error != Callable::CallError::CALL_OK) {
 					String err = Variant::get_call_error_text(handler, callback, (const Variant **)&ud, 1, ce);
 					ERR_PRINT("Error calling function from tool menu: " + err);
+				}
+			} // else it's a submenu so don't do anything.
+		} break;
+	}
+}
+
+void EditorNode::_scene_export_menu_option(int p_idx) {
+	switch (scene_export->get_item_id(p_idx)) {
+		case SCENE_EXPORT_CUSTOM: {
+			if (scene_export->get_item_submenu(p_idx) == "") {
+				Array params = scene_export->get_item_metadata(p_idx);
+
+				Object *handler = ObjectDB::get_instance(params[0]);
+				String callback = params[1];
+				Variant *ud = &params[2];
+				Callable::CallError ce;
+
+				handler->call(callback, (const Variant **)&ud, 1, ce);
+				if (ce.error != Callable::CallError::CALL_OK) {
+					String err = Variant::get_call_error_text(handler, callback, (const Variant **)&ud, 1, ce);
+					ERR_PRINT("Error calling function from scene export menu: " + err);
 				}
 			} // else it's a submenu so don't do anything.
 		} break;
@@ -5041,6 +5060,45 @@ void EditorNode::remove_tool_menu_item(const String &p_name) {
 	}
 }
 
+void EditorNode::add_scene_export_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud) {
+	ERR_FAIL_NULL(p_handler);
+	int idx = scene_export->get_item_count();
+	scene_export->add_item(p_name, SCENE_EXPORT_CUSTOM);
+
+	Array parameters;
+	parameters.push_back(p_handler->get_instance_id());
+	parameters.push_back(p_callback);
+	parameters.push_back(p_ud);
+
+	scene_export->set_item_metadata(idx, parameters);
+}
+
+void EditorNode::add_scene_export_submenu_item(const String &p_name, PopupMenu *p_submenu) {
+	ERR_FAIL_NULL(p_submenu);
+	ERR_FAIL_COND(p_submenu->get_parent() != NULL);
+
+	scene_export->add_child(p_submenu);
+	scene_export->add_submenu_item(p_name, p_submenu->get_name(), SCENE_EXPORT_CUSTOM);
+}
+
+void EditorNode::remove_scene_export_menu_item(const String &p_name) {
+	for (int i = 0; i < scene_export->get_item_count(); i++) {
+		if (scene_export->get_item_id(i) != SCENE_EXPORT_CUSTOM)
+			continue;
+
+		if (scene_export->get_item_text(i) == p_name) {
+			if (scene_export->get_item_submenu(i) != "") {
+				Node *n = scene_export->get_node(scene_export->get_item_submenu(i));
+				scene_export->remove_child(n);
+				memdelete(n);
+			}
+			scene_export->remove_item(i);
+			scene_export->set_as_minsize();
+			return;
+		}
+	}
+}
+
 void EditorNode::_global_menu_action(const Variant &p_id, const Variant &p_meta) {
 
 	int id = (int)p_id;
@@ -5351,6 +5409,11 @@ void EditorNode::_feature_profile_changed() {
 
 void EditorNode::_bind_methods() {
 
+	ClassDB::bind_method("_menu_option", &EditorNode::_menu_option);
+	ClassDB::bind_method("_scene_export_menu_option", &EditorNode::_scene_export_menu_option);
+	ClassDB::bind_method("_tool_menu_option", &EditorNode::_tool_menu_option);
+	ClassDB::bind_method("_menu_confirm_current", &EditorNode::_menu_confirm_current);
+	ClassDB::bind_method("_dialog_action", &EditorNode::_dialog_action);
 	ClassDB::bind_method("_editor_select", &EditorNode::_editor_select);
 	ClassDB::bind_method("_node_renamed", &EditorNode::_node_renamed);
 	ClassDB::bind_method("edit_node", &EditorNode::edit_node);
@@ -5618,10 +5681,6 @@ EditorNode::EditorNode() {
 			Ref<EditorOBJImporter> import_obj2;
 			import_obj2.instance();
 			import_scene->add_importer(import_obj2);
-
-			Ref<EditorSceneImporterGLTF> import_gltf;
-			import_gltf.instance();
-			import_scene->add_importer(import_gltf);
 
 			Ref<EditorSceneImporterESCN> import_escn;
 			import_escn.instance();
@@ -6012,8 +6071,13 @@ EditorNode::EditorNode() {
 
 	p->add_separator();
 	p->add_shortcut(ED_SHORTCUT("editor/save_scene", TTR("Save Scene"), KEY_MASK_CMD + KEY_S), FILE_SAVE_SCENE);
-	p->add_shortcut(ED_SHORTCUT("editor/save_scene_as", TTR("Save Scene As..."), KEY_MASK_CMD + KEY_MASK_SHIFT + KEY_S), FILE_SAVE_AS_SCENE);
-	p->add_shortcut(ED_SHORTCUT("editor/save_all_scenes", TTR("Save All Scenes"), KEY_MASK_CMD + KEY_MASK_SHIFT + KEY_MASK_ALT + KEY_S), FILE_SAVE_ALL_SCENES);
+	p->add_shortcut(ED_SHORTCUT("editor/save_scene_as", TTR("Save Scene As..."), KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_S), FILE_SAVE_AS_SCENE);
+	p->add_shortcut(ED_SHORTCUT("editor/save_all_scenes", TTR("Save All Scenes"), KEY_MASK_ALT + KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_S), FILE_SAVE_ALL_SCENES);
+	scene_export = memnew(PopupMenu);
+	scene_export->set_name("ExportSceneAs");
+	scene_export->connect_compat("index_pressed", this, "_scene_export_menu_option");
+	p->add_child(scene_export);
+	p->add_submenu_item(TTR("Export Scene As..."), "ExportSceneAs");
 
 	p->add_separator();
 
@@ -6022,7 +6086,7 @@ EditorNode::EditorNode() {
 	p->add_shortcut(ED_SHORTCUT("editor/quick_open_script", TTR("Quick Open Script..."), KEY_MASK_CMD + KEY_MASK_ALT + KEY_O), FILE_QUICK_OPEN_SCRIPT);
 
 	p->add_separator();
-	PopupMenu *pm_export = memnew(PopupMenu);
+	pm_export = memnew(PopupMenu);
 	pm_export->set_name("Export");
 	p->add_child(pm_export);
 	p->add_submenu_item(TTR("Convert To..."), "Export");
