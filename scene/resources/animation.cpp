@@ -32,6 +32,7 @@
 #include "scene/scene_string_names.h"
 
 #include "core/math/geometry.h"
+#include "modules/keyframe_reduce/keyframe_reduce.h"
 
 #define ANIM_MIN_LENGTH 0.001
 
@@ -3029,6 +3030,142 @@ bool Animation::_transform_track_optimize_key(const TKey<TransformKey> &t0, cons
 	return erase;
 }
 
+bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Variant> &t1, const TKey<Variant> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle) {
+
+	real_t c = (t1.time - t0.time) / (t2.time - t0.time);
+	real_t t[3] = { -1, -1, -1 };
+
+	{ //rotation
+
+		const Quat &q0 = t0.value;
+		const Quat &q1 = t1.value;
+		const Quat &q2 = t2.value;
+
+		//localize both to rotation from q0
+
+		if (q0.is_equal_approx(q2)) {
+
+			if (!q0.is_equal_approx(q1))
+				return false;
+
+		} else {
+
+			Quat r02 = (q0.inverse() * q2).normalized();
+			Quat r01 = (q0.inverse() * q1).normalized();
+
+			Vector3 v02, v01;
+			real_t a02, a01;
+
+			r02.get_axis_angle(v02, a02);
+			r01.get_axis_angle(v01, a01);
+
+			if (Math::abs(a02) > p_max_optimizable_angle)
+				return false;
+
+			if (v01.dot(v02) < 0) {
+				//make sure both rotations go the same way to compare
+				v02 = -v02;
+				a02 = -a02;
+			}
+
+			real_t err_01 = Math::acos(v01.normalized().dot(v02.normalized())) / Math_PI;
+			if (err_01 > p_alowed_angular_err) {
+				//not rotating in the same axis
+				return false;
+			}
+
+			if (a01 * a02 < 0) {
+				//not rotating in the same direction
+				return false;
+			}
+
+			real_t tr = a01 / a02;
+			if (tr < 0 || tr > 1)
+				return false; //rotating too much or too less
+
+			t[1] = tr;
+		}
+	}
+
+	bool erase = false;
+	if (t[0] == -1 && t[1] == -1 && t[2] == -1) {
+
+		erase = true;
+	} else {
+
+		erase = true;
+		real_t lt = -1;
+		for (int j = 0; j < 3; j++) {
+			//search for t on first, one must be it
+			if (t[j] != -1) {
+				lt = t[j]; //official t
+				//validate rest
+				for (int k = j + 1; k < 3; k++) {
+					if (t[k] == -1)
+						continue;
+
+					if (Math::abs(lt - t[k]) > p_alowed_linear_err) {
+						erase = false;
+						break;
+					}
+				}
+				break;
+			}
+		}
+
+		ERR_FAIL_COND_V(lt == -1, false);
+
+		if (erase) {
+
+			if (Math::abs(lt - c) > p_alowed_linear_err) {
+				//todo, evaluate changing the transition if this fails?
+				//this could be done as a second pass and would be
+				//able to optimize more
+				erase = false;
+			}
+		}
+	}
+
+	return erase;
+}
+
+void Animation::_quat_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+
+	ERR_FAIL_INDEX(p_idx, tracks.size());
+	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_VALUE);
+	bool prev_erased = false;
+	TKey<Variant> first_erased;
+
+	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
+	for (int i = 1; i < vt->values.size() - 1; i++) {
+
+		TKey<Variant> &t0 = vt->values.write[i - 1];
+		TKey<Variant> &t1 = vt->values.write[i];
+		TKey<Variant> &t2 = vt->values.write[i + 1];
+
+		bool erase = _quat_track_optimize_key(t0, t1, t2, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+
+		if (prev_erased && !_quat_track_optimize_key(t0, first_erased, t2, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle)) {
+			//avoid error to go beyond first erased key
+			erase = false;
+		}
+
+		if (erase) {
+
+			if (!prev_erased) {
+				first_erased = t1;
+				prev_erased = true;
+			}
+
+			vt->values.remove(i);
+			i--;
+
+		} else {
+			prev_erased = false;
+		}
+	}
+}
+
 void Animation::_transform_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
 
 	ERR_FAIL_INDEX(p_idx, tracks.size());
@@ -3072,12 +3209,208 @@ void Animation::_transform_track_optimize(int p_idx, float p_allowed_linear_err,
 	}
 }
 
-void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+void Animation::_convert_blendshapes(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
+	const String original_path = track_get_path(p_idx);
+	String path = original_path;
+	Ref<BezierKeyframeReduce> reduce;
+	reduce.instance();
+	Vector<BezierKeyframeReduce::Bezier> curves;
+	NodePath new_path = path;
+	BezierKeyframeReduce::KeyframeReductionSetting settings;
+	for (int value_i = 0; value_i < vt->values.size(); value_i++) {
+		const TKey<Variant> &key = vt->values[value_i];
+		real_t time = key.time;
+		real_t value = key.value;
+		settings.tangent_split_angle_thresholdValue = p_max_optimizable_angle;
+		settings.max_error = p_allowed_linear_err;
+		BezierKeyframeReduce::Vector2Bezier point = BezierKeyframeReduce::Vector2Bezier(time, value);
+		curves.push_back(BezierKeyframeReduce::Bezier(point, Vector2(), Vector2()));
+	}
+	if (!curves.size()) {
+		return;
+	}
 
-	for (int i = 0; i < tracks.size(); i++) {
+	Vector<BezierKeyframeReduce::Bezier> out_curves;
+	real_t rate = reduce->reduce(curves, out_curves, settings);
+	if (out_curves.size() == 2 && Math::is_equal_approx(out_curves[0].time_value.y, 0.0f) && Math::is_equal_approx(out_curves[1].time_value.y, 0.0f)) {
+		return;
+	}
+	String full_node = String(new_path).split(":")[0];
+	String property = String(new_path).trim_prefix(full_node + ":");
+	String short_path = full_node.get_slicec('/', full_node.get_slice_count("/") - 1) + ":" + property;
+	if (Math::is_equal_approx(rate, 0)) {
+		print_line("Animation: Unable to reduce " + short_path);
+	} else {
+		print_verbose("Animation: Reduced " + short_path + " to " + rtos(Math::stepify(rate * 100, 0.1f)) + "%");
+	}
+	if (!out_curves.size()) {
+		return;
+	}
+	int32_t track = add_track(TrackType::TYPE_BEZIER);
+	track_set_path(track, new_path);
+	track_set_interpolation_type(track, vt->interpolation);
+	for (int32_t curve_i = 0; curve_i < out_curves.size(); curve_i++) {
+		BezierKeyframeReduce::BezierKeyframeReduce::Bezier curve = out_curves[curve_i];
+		bezier_track_insert_key(track, curve.time_value.x, curve.time_value.y, curve.in_handle, curve.out_handle);
+	}
+}
 
-		if (tracks[i]->type == TYPE_TRANSFORM)
-			_transform_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+void Animation::_convert_bezier(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	TransformTrack *tt = static_cast<TransformTrack *>(tracks[p_idx]);
+	const String original_path = track_get_path(p_idx);
+	String path = original_path;
+	if (path.split(":").size() == 2) {
+		String bone_name = path.get_slicec(':', 1);
+		path = path.get_slicec(':', 0) + ":" + bone_name + "/";
+	} else {
+		path += ":";
+	}
+
+	Vector<int32_t> types;
+	types.push_back(BEZIER_TRACK_LOC_X);
+	types.push_back(BEZIER_TRACK_LOC_Y);
+	types.push_back(BEZIER_TRACK_LOC_Z);
+	types.push_back(BEZIER_TRACK_SCALE_X);
+	types.push_back(BEZIER_TRACK_SCALE_Y);
+	types.push_back(BEZIER_TRACK_SCALE_Z);
+	Ref<BezierKeyframeReduce> reduce;
+	reduce.instance();
+	for (int type_i = 0; type_i < types.size(); type_i++) {
+		Vector<BezierKeyframeReduce::Bezier> curves;
+		NodePath new_path;
+		BezierKeyframeReduce::KeyframeReductionSetting settings;
+		for (int transform_i = 0; transform_i < tt->transforms.size(); transform_i++) {
+			const TKey<TransformKey> &key = tt->transforms[transform_i];
+			real_t time = key.time;
+			Variant value = 0.0f;
+			settings.tangent_split_angle_thresholdValue = p_max_optimizable_angle;
+			settings.max_error = p_allowed_linear_err;
+			if (types[type_i] == BEZIER_TRACK_LOC_X) {
+				Vector3 loc = key.value.loc;
+				value = loc.x;
+				new_path = path + "translation:x";
+			} else if (types[type_i] == BEZIER_TRACK_LOC_Y) {
+				Vector3 loc = key.value.loc;
+				value = loc.y;
+				new_path = path + "translation:y";
+			} else if (types[type_i] == BEZIER_TRACK_LOC_Z) {
+				Vector3 loc = key.value.loc;
+				value = loc.z;
+				new_path = path + "translation:z";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_X) {
+				Vector3 scale = key.value.scale;
+				value = scale.x;
+				new_path = path + "scale:x";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_Y) {
+				Vector3 scale = key.value.scale;
+				value = scale.y;
+				new_path = path + "scale:y";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_Z) {
+				Vector3 scale = key.value.scale;
+				value = scale.z;
+				new_path = path + "scale:z";
+			} else {
+				ERR_BREAK_MSG(true, "Animation: Unknown bezier type");
+			}
+			BezierKeyframeReduce::Vector2Bezier point = BezierKeyframeReduce::Vector2Bezier(time, value);
+			curves.push_back(BezierKeyframeReduce::Bezier(point, Vector2(), Vector2()));
+		}
+		if (!curves.size()) {
+			continue;
+		}
+		Vector<BezierKeyframeReduce::Bezier> out_curves;
+		real_t rate = reduce->reduce(curves, out_curves, settings);
+		if (out_curves.size() == 2 && Math::is_equal_approx(out_curves[0].time_value.y, 0.0f) && Math::is_equal_approx(out_curves[1].time_value.y, 0.0f)) {
+			continue;
+		} else if (types[type_i] == BEZIER_TRACK_SCALE_X || types[type_i] == BEZIER_TRACK_SCALE_Y || types[type_i] == BEZIER_TRACK_SCALE_Z && (out_curves.size() == 2 && Math::is_equal_approx(out_curves[0].time_value.y, 1.0f) && Math::is_equal_approx(out_curves[1].time_value.y, 1.0f))) {
+			continue;
+		}
+		String full_node = String(new_path).split(":")[0];
+		String property = String(new_path).trim_prefix(full_node + ":");
+		String short_path = full_node.get_slicec('/', full_node.get_slice_count("/") - 1) + ":" + property;
+		if (Math::is_equal_approx(rate, 0)) {
+			print_line("Animation: Unable to reduce " + short_path);
+		} else {
+			print_verbose("Animation: Reduced " + short_path + " to " + rtos(Math::stepify(rate * 100, 0.1f)) + "%");
+		}
+		if (!out_curves.size()) {
+			continue;
+		}
+		int32_t track = add_track(TrackType::TYPE_BEZIER);
+		track_set_path(track, new_path);
+		track_set_interpolation_type(track, tt->interpolation);
+		for (int32_t curve_i = 0; curve_i < out_curves.size(); curve_i++) {
+			BezierKeyframeReduce::Bezier curve = out_curves[curve_i];
+			bezier_track_insert_key(track, curve.time_value.x, curve.time_value.y, curve.in_handle, curve.out_handle);
+		}
+	}
+}
+
+void Animation::_transform_track_bezier_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+
+	ERR_FAIL_INDEX(p_idx, tracks.size());
+	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_TRANSFORM);
+	_convert_bezier(p_idx, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+	_convert_rotation(p_idx, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+}
+
+void Animation::_convert_rotation(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	TransformTrack *tt = static_cast<TransformTrack *>(tracks[p_idx]);
+	const String original_path = track_get_path(p_idx);
+	String path = original_path;
+	if (path.split(":").size() == 2) {
+		String bone_name = path.get_slicec(':', 1);
+		path = path.get_slicec(':', 0) + ":" + bone_name + "/";
+	} else {
+		path += ":";
+	}
+	int32_t track = add_track(TrackType::TYPE_VALUE);
+	track_set_path(track, path + "rotation_quat");
+	for (int transform_i = 0; transform_i < tt->transforms.size(); transform_i++) {
+		const TKey<TransformKey> &key = tt->transforms[transform_i];
+		real_t time = key.time;
+		track_insert_key(track, time, key.value.rot);
+	}
+}
+
+void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle, bool p_convert_bezier) {
+	Vector<NodePath> removed_tracks;
+	int32_t track_count = tracks.size();
+	for (int i = 0; i < track_count; i++) {
+		if (tracks[i]->type == TYPE_TRANSFORM) {
+			if (p_convert_bezier) {
+				_transform_track_bezier_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+
+				removed_tracks.push_back(tracks[i]->path);
+			} else {
+				_transform_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+			}
+		} else if (tracks[i]->type == TYPE_VALUE && p_convert_bezier) {
+			const String original_path = track_get_path(i);
+			String path = original_path;
+			if (path.find("blend_shapes/") == -1) {
+				continue;
+			}
+			_convert_blendshapes(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+			removed_tracks.push_back(tracks[i]->path);
+		}
+	}
+
+	track_count = tracks.size();
+	for (int i = 0; i < track_count; i++) {
+		if (tracks[i]->type == TYPE_VALUE) {
+			ValueTrack *vt = static_cast<ValueTrack *>(tracks[i]);
+			if (false && !vt->values.size() || vt->values[0].value.get_type() != Variant::QUAT) {
+				continue;
+			}
+			_quat_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+		}
+	}
+
+	for (int i = 0; i < removed_tracks.size(); i++) {
+		int32_t track = find_track(removed_tracks[i]);
+		remove_track(track);
 	}
 }
 

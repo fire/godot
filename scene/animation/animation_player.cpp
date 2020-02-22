@@ -252,7 +252,15 @@ void AnimationPlayer::_ensure_node_caches(AnimationData *p_anim) {
 		uint32_t id = resource.is_valid() ? resource->get_instance_id() : child->get_instance_id();
 		int bone_idx = -1;
 
-		if (a->track_get_path(i).get_subname_count() == 1 && Object::cast_to<Skeleton>(child)) {
+		if (String(a->track_get_path(i)).get_slice_count(":") == 2 && Object::cast_to<Skeleton>(child)) {
+
+			Skeleton *sk = Object::cast_to<Skeleton>(child);
+			bone_idx = sk->find_bone(String(a->track_get_path(i).get_subname(0)).get_slicec('/', 0));
+			if (bone_idx == -1) {
+
+				continue;
+			}
+		} else if (a->track_get_path(i).get_subname_count() == 1 && Object::cast_to<Skeleton>(child)) {
 
 			Skeleton *sk = Object::cast_to<Skeleton>(child);
 			bone_idx = sk->find_bone(a->track_get_path(i).get_subname(0));
@@ -402,8 +410,7 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 
 			} break;
 			case Animation::TYPE_VALUE: {
-
-				if (!nc->node)
+				if (!nc->node && !nc->spatial)
 					continue;
 
 				//StringName property=a->track_get_path(i).get_property();
