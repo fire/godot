@@ -154,17 +154,17 @@ bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
 
 	return true;
 }
-void Skeleton::_get_property_list(List<PropertyInfo> *p_list) const {
 
+void Skeleton::_get_property_list(List<PropertyInfo> *p_list) const {
 	for (int i = 0; i < bones.size(); i++) {
 
 		String prep = "bones/" + itos(i) + "/";
-		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name"));
-		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest"));
-		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR));
-		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children"));
+		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
 	}
 }
 
@@ -371,6 +371,11 @@ void Skeleton::_notification(int p_what) {
 			}
 
 			dirty = false;
+
+#ifdef TOOLS_ENABLED
+			emit_signal("pose_updated");
+#endif // TOOLS_ENABLED
+
 		} break;
 	}
 }
@@ -394,7 +399,6 @@ Transform Skeleton::get_bone_global_pose(int p_bone) const {
 
 // skeleton creation api
 void Skeleton::add_bone(const String &p_name) {
-
 	ERR_FAIL_COND(p_name == "" || p_name.find(":") != -1 || p_name.find("/") != -1);
 
 	for (int i = 0; i < bones.size(); i++) {
@@ -446,7 +450,6 @@ int Skeleton::get_bone_count() const {
 }
 
 void Skeleton::set_bone_parent(int p_bone, int p_parent) {
-
 	ERR_FAIL_INDEX(p_bone, bones.size());
 	ERR_FAIL_COND(p_parent != -1 && (p_parent < 0));
 
@@ -456,7 +459,6 @@ void Skeleton::set_bone_parent(int p_bone, int p_parent) {
 }
 
 void Skeleton::unparent_bone_and_rest(int p_bone) {
-
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
 	_update_process_order();
@@ -493,7 +495,6 @@ int Skeleton::get_bone_parent(int p_bone) const {
 }
 
 void Skeleton::set_bone_rest(int p_bone, const Transform &p_rest) {
-
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
 	bones.write[p_bone].rest = p_rest;
@@ -611,8 +612,12 @@ int Skeleton::get_process_order(int p_idx) {
 	return process_order[p_idx];
 }
 
-void Skeleton::localize_rests() {
+const Vector<int> &Skeleton::get_process_order() {
+	_update_process_order();
+	return process_order;
+}
 
+void Skeleton::localize_rests() {
 	_update_process_order();
 
 	for (int i = bones.size() - 1; i >= 0; i--) {
@@ -883,6 +888,10 @@ void Skeleton::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("physical_bones_remove_collision_exception", "exception"), &Skeleton::physical_bones_remove_collision_exception);
 
 #endif // _3D_DISABLED
+
+#ifdef TOOLS_ENABLED
+	ADD_SIGNAL(MethodInfo("pose_updated"));
+#endif // TOOLS_ENABLED
 
 	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }

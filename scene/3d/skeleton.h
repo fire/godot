@@ -35,9 +35,12 @@
 #include "scene/3d/spatial.h"
 #include "scene/resources/skin.h"
 
-#ifndef _3D_DISABLED
+#ifndef BONE_ID_DEF
+#define BONE_ID_DEF
 typedef int BoneId;
+#endif // BONE_ID_DEF
 
+#ifndef _3D_DISABLED
 class PhysicalBone;
 #endif // _3D_DISABLED
 
@@ -198,6 +201,7 @@ public:
 
 	void localize_rests(); // used for loaders and tools
 	int get_process_order(int p_idx);
+	const Vector<int> &get_process_order();
 
 	Ref<SkinReference> register_skin(const Ref<Skin> &p_skin);
 
