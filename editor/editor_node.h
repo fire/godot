@@ -153,6 +153,7 @@ private:
 		EDIT_REVERT,
 		TOOLS_ORPHAN_RESOURCES,
 		TOOLS_CUSTOM,
+		SCENE_EXPORT_CUSTOM,
 		RESOURCE_SAVE,
 		RESOURCE_SAVE_AS,
 		RUN_PLAY,
@@ -268,7 +269,11 @@ private:
 	MenuButton *debug_menu;
 	MenuButton *settings_menu;
 	MenuButton *help_menu;
+
 	PopupMenu *tool_menu;
+	PopupMenu *pm_export;
+	PopupMenu *scene_export;
+
 	ToolButton *export_button;
 	ToolButton *prev_scene;
 	ToolButton *play_button;
@@ -447,6 +452,8 @@ private:
 	void _menu_option(int p_option);
 	void _menu_confirm_current();
 	void _menu_option_confirm(int p_option, bool p_confirmed);
+
+	void _scene_export_menu_option(int p_idx);
 
 	void _request_screenshot();
 	void _screenshot(bool p_use_utc = false);
@@ -832,6 +839,10 @@ public:
 	void add_tool_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud = Variant());
 	void add_tool_submenu_item(const String &p_name, PopupMenu *p_submenu);
 	void remove_tool_menu_item(const String &p_name);
+
+	void add_scene_export_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud = Variant());
+	void add_scene_export_submenu_item(const String &p_name, PopupMenu *p_submenu);
+	void remove_scene_export_menu_item(const String &p_name);
 
 	void save_all_scenes();
 	void save_scene_list(Vector<String> p_scene_filenames);

@@ -170,6 +170,10 @@ public:
 	void add_tool_submenu_item(const String &p_name, Object *p_submenu);
 	void remove_tool_menu_item(const String &p_name);
 
+	void add_scene_export_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud = Variant());
+	void add_scene_export_submenu_item(const String &p_name, Object *p_submenu);
+	void remove_scene_export_menu_item(const String &p_name);
+
 	void set_input_event_forwarding_always_enabled();
 	bool is_input_event_forwarding_always_enabled() { return input_event_forwarding_always_enabled; }
 
