@@ -31,39 +31,38 @@
 #ifndef THREADED_ARRAY_PROCESSOR_H
 #define THREADED_ARRAY_PROCESSOR_H
 
-#include "core/os/memory.h"
 #include "core/os/mutex.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
 #include "core/safe_refcount.h"
-#include "thirdparty/fem_fx_async/FEMFXAsyncThreading.h"
-#include "thirdparty/fem_fx_async/FEMFXCommon.h"
-#include "thirdparty/fem_fx_async/FEMFXParallelFor.h"
-#include "thirdparty/fem_fx_async/FEMFXTaskSystemInterface.h"
-
-using namespace AMD;
 
 template <class C, class U>
 struct ThreadArrayProcessData {
 	uint32_t elements;
+	uint32_t index;
 	C *instance;
 	U userdata;
 	void (C::*method)(uint32_t, U);
+
 	void process(uint32_t p_index) {
 		(instance->*method)(p_index, userdata);
 	}
 };
 
-template <class C, class U>
-void FmTaskProcessArray(void* inTaskData, int32_t inTaskBeginIndex, int32_t inTaskEndIndex) { 
-	ThreadArrayProcessData<C, U> *taskData = (ThreadArrayProcessData<C, U> *) inTaskData;
-	uint startIdx, endIdx;
-	FmGetIndexRange(&startIdx, &endIdx, (uint)inTaskBeginIndex, OS::get_singleton()->get_processor_count(), taskData->elements);
-	for (uint i = startIdx; i < endIdx; i++) {
-		taskData->process(i);
+#ifndef NO_THREADS
+
+template <class T>
+void process_array_thread(void *ud) {
+
+	T &data = *(T *)ud;
+	while (true) {
+		uint32_t index = atomic_increment(&data.index);
+		if (index >= data.elements)
+			break;
+		data.process(index);
 	}
-} 
+}
 
 template <class C, class M, class U>
 void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_userdata) {
@@ -72,13 +71,40 @@ void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_us
 	data.method = p_method;
 	data.instance = p_instance;
 	data.userdata = p_userdata;
+	data.index = 0;
 	data.elements = p_elements;
-	int32_t num_threads = OS::get_singleton()->get_processor_count();
-#ifndef NO_THREADS
-	num_threads = 1;
-#endif
-	AMD::FmTaskSystemCallbacks callbacks;
-	AMD::FmParallelForAsync("thread_process_array", FmTaskProcessArray<C, U>, FmTaskProcessArray<C, U>, NULL, &data, p_elements, callbacks.SubmitAsyncTask, num_threads);
+	data.process(data.index); //process first, let threads increment for next
+
+	Vector<Thread *> threads;
+
+	threads.resize(OS::get_singleton()->get_processor_count());
+
+	for (int i = 0; i < threads.size(); i++) {
+		threads.write[i] = Thread::create(process_array_thread<ThreadArrayProcessData<C, U> >, &data);
+	}
+
+	for (int i = 0; i < threads.size(); i++) {
+		Thread::wait_to_finish(threads[i]);
+		memdelete(threads[i]);
+	}
 }
+
+#else
+
+template <class C, class M, class U>
+void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_userdata) {
+
+	ThreadArrayProcessData<C, U> data;
+	data.method = p_method;
+	data.instance = p_instance;
+	data.userdata = p_userdata;
+	data.index = 0;
+	data.elements = p_elements;
+	for (uint32_t i = 0; i < p_elements; i++) {
+		data.process(i);
+	}
+}
+
+#endif
 
 #endif // THREADED_ARRAY_PROCESSOR_H
