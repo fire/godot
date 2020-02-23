@@ -1,21 +1,12 @@
 #include "stt_queue.h"
 
 String STTQueue::next() {
-	if (empty()) {
-		WARN_PRINT("Empty keywords queue, returning empty String");
-		return String("");
-	}
-
-	String kw = keywords.get(0);
-	keywords.remove(0);
+	String kw = keywords.read();
 	return kw;
 }
 
 bool STTQueue::add(String kw) {
-	if (size() + 1 > capacity)
-		return false;
-
-	keywords.push_back(kw);
+	keywords.write(kw);
 	return true;
 }
 
@@ -24,7 +15,7 @@ int STTQueue::size() {
 }
 
 bool STTQueue::empty() {
-	return keywords.empty();
+	return !keywords.data_left();
 }
 
 void STTQueue::clear() {
@@ -32,17 +23,13 @@ void STTQueue::clear() {
 }
 
 void STTQueue::set_capacity(const int &capacity) {
-	if (capacity <= 0) {
-		ERR_PRINT("Keywords queue capacity must be greater than 0");
-		return;
-	}
-	this->capacity = capacity;
-	if (size() > capacity)
-		WARN_PRINT("New capacity exceeds current number of keywords in buffer");
+	real_t power = log2(capacity);
+	power = Math::ceil(power);
+	keywords.resize(power);
 }
 
 int STTQueue::get_capacity() {
-	return capacity;
+	return keywords.size();
 }
 
 void STTQueue::_bind_methods() {
@@ -62,7 +49,7 @@ void STTQueue::_bind_methods() {
 }
 
 STTQueue::STTQueue() {
-	capacity = DEFAULT_KWS_CAPACITY;
+	set_capacity(DEFAULT_KWS_CAPACITY);
 }
 
 STTQueue::~STTQueue() {}

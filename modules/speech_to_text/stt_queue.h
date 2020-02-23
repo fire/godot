@@ -3,13 +3,14 @@
 
 #include "core/reference.h"
 #include "core/vector.h"
+#include "core/ring_buffer.h"
 
 class STTQueue : public Reference {
 	GDCLASS(STTQueue, Reference);
 
 private:
 	// Queue for storing recognized keywords; operations are thread-safe
-	Vector<String> keywords;
+	RingBuffer<String> keywords;
 
 	int capacity;
 
