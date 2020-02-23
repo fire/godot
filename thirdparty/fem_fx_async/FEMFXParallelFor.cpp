@@ -52,7 +52,7 @@ namespace AMD
 
         void SetNextTask(FmTaskFuncCallback inFunc, void* inData, int32_t inBeginIndex, int32_t inEndIndex)
         {
-            ERR_FAIL_COND(func == NULL); // should have run and cleared this
+            ERR_FAIL_COND(func != NULL); // should have run and cleared this
             func = inFunc;
             data = inData;
             beginIndex = inBeginIndex;
@@ -242,11 +242,11 @@ namespace AMD
 
         FmParallelForDispatcherData* dispatcherData = new FmParallelForDispatcherData(SubmitAsyncTask, taskName, TaskFunc, TaskFuncWrapped, BatchingFunc, taskData, (uint32_t)taskCount, numDispatchers);
 
-        // Submit other dispatchers
-        for (uint32_t i = 1; i < dispatcherData->numDispatchers; i++)
-        {
-            dispatcherData->SubmitAsyncTask("FEMFXParallelForDispatcher", FmTaskFuncParallelForDispatcherWrapped, dispatcherData, i, i + 1);
-        }
+        // // Submit other dispatchers
+        // for (uint32_t i = 1; i < dispatcherData->numDispatchers; i++)
+        // {
+        //     dispatcherData->SubmitAsyncTask("FEMFXParallelForDispatcher", FmTaskFuncParallelForDispatcherWrapped, dispatcherData, i, i + 1);
+        // }
 
         // Dispatch some tasks on this thread
         if (runLoop)
