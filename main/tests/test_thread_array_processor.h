@@ -38,12 +38,12 @@
 
 class WaitTasks {
 	void _process(uint32_t index, uint32_t *_create) {
-        OS::get_singleton()->delay_usec(1000000);
+        OS::get_singleton()->delay_usec(1000);
 	}
 
 public:
 	void process() {
-		int32_t count = 100000000;
+		int32_t count = 10000;
 		Vector<uint32_t> numbers;
 		numbers.resize(count);
 		thread_process_array(count, this, &WaitTasks::_process, numbers.ptrw());
@@ -54,10 +54,10 @@ TEST_CASE("[ThreadedProcessArray] Process") {
 	WaitTasks random_numbers;
 
 	OS::get_singleton()->print("\n\nTest 1: ThreadedProcessArray process\n");
-	uint32_t time = OS::get_singleton()->get_system_time_secs();
+	uint32_t time = OS::get_singleton()->get_system_time_msecs();
 	random_numbers.process();
-	time = OS::get_singleton()->get_system_time_secs() - time;
-	OS::get_singleton()->print("\tTime taken: %d\n", time);
+	time = OS::get_singleton()->get_system_time_msecs() - time;
+	OS::get_singleton()->print("\tTime taken in: %d\n", time);
 }
 
 #endif
