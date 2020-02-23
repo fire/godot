@@ -36,31 +36,44 @@
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
 #include "core/safe_refcount.h"
+#include "thirdparty/misc/wsq.hpp"
 
 template <class C, class U>
 struct ThreadArrayProcessData {
-	uint32_t elements;
-	uint32_t index;
-	C *instance;
+	C *instance = nullptr;
 	U userdata;
-	void (C::*method)(uint32_t, U);
+	void (C::*method)(uint32_t, U) = nullptr;
+	tf::WorkStealingQueue<uint32_t> *queue = nullptr;
 
 	void process(uint32_t p_index) {
 		(instance->*method)(p_index, userdata);
 	}
 };
 
-#ifndef NO_THREADS
-
 template <class T>
 void process_array_thread(void *ud) {
 
 	T &data = *(T *)ud;
-	while (true) {
-		uint32_t index = atomic_increment(&data.index);
-		if (index >= data.elements)
-			break;
-		data.process(index);
+	while (!data.queue->empty()) {
+		std::optional<uint32_t> work = data.queue->steal();
+		if (work.has_value()) {
+			data.process(work.value());
+		}
+	}
+}
+
+template <class C, class M, class U>
+void process_array_single(C *p_instance, M p_method, U p_userdata) {
+
+	ThreadArrayProcessData<C, U> data;
+	data.method = p_method;
+	data.instance = p_instance;
+	data.userdata = p_userdata;
+	while (!data.queue->empty()) {
+		std::optional<uint32_t> work = data.queue->steal();
+		if (work.has_value()) {
+			data.process(work.value());
+		}
 	}
 }
 
@@ -71,12 +84,14 @@ void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_us
 	data.method = p_method;
 	data.instance = p_instance;
 	data.userdata = p_userdata;
-	data.index = 0;
-	data.elements = p_elements;
-	data.process(data.index); //process first, let threads increment for next
+	data.queue = memnew(tf::WorkStealingQueue<uint32_t>(next_power_of_2(p_elements)));
 
+	for (uint32_t i = 0; i < p_elements; i++) {
+		data.queue->push(i);
+	}
+
+#ifndef NO_THREADS
 	Vector<Thread *> threads;
-
 	threads.resize(OS::get_singleton()->get_processor_count());
 
 	for (int i = 0; i < threads.size(); i++) {
@@ -87,24 +102,9 @@ void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_us
 		Thread::wait_to_finish(threads[i]);
 		memdelete(threads[i]);
 	}
-}
-
 #else
-
-template <class C, class M, class U>
-void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_userdata) {
-
-	ThreadArrayProcessData<C, U> data;
-	data.method = p_method;
-	data.instance = p_instance;
-	data.userdata = p_userdata;
-	data.index = 0;
-	data.elements = p_elements;
-	for (uint32_t i = 0; i < p_elements; i++) {
-		data.process(i);
-	}
-}
-
+	process_array_single(p_elements, p_instance, p_method, p_userdata);
 #endif
+}
 
 #endif // THREADED_ARRAY_PROCESSOR_H
