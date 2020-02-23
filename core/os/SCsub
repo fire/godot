@@ -2,4 +2,7 @@
 
 Import('env')
 
+env.Prepend(CPPPATH=['#thirdparty/FEMFXAsync/Vectormath'])
+env.Prepend(CPPPATH=['#thirdparty/FEMFXAsync'])
+
 env.add_source_files(env.core_sources, "*.cpp")
