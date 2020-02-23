@@ -31,51 +31,39 @@
 #ifndef THREADED_ARRAY_PROCESSOR_H
 #define THREADED_ARRAY_PROCESSOR_H
 
+#include "core/os/memory.h"
 #include "core/os/mutex.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
 #include "core/safe_refcount.h"
-#include "thirdparty/misc/wsq.hpp"
+#include "thirdparty/FEMFXAsync/FEMFXAsyncThreading.h"
+#include "thirdparty/FEMFXAsync/FEMFXCommon.h"
+#include "thirdparty/FEMFXAsync/FEMFXParallelFor.h"
+#include "thirdparty/FEMFXAsync/FEMFXTaskSystemInterface.h"
+
+using namespace AMD;
 
 template <class C, class U>
 struct ThreadArrayProcessData {
-	C *instance = nullptr;
+	uint32_t elements;
+	C *instance;
 	U userdata;
-	void (C::*method)(uint32_t, U) = nullptr;
-	tf::WorkStealingQueue<uint32_t> *queue = nullptr;
-
+	void (C::*method)(uint32_t, U);
 	void process(uint32_t p_index) {
 		(instance->*method)(p_index, userdata);
 	}
 };
 
-template <class T>
-void process_array_thread(void *ud) {
-
-	T &data = *(T *)ud;
-	while (!data.queue->empty()) {
-		std::optional<uint32_t> work = data.queue->steal();
-		if (work.has_value()) {
-			data.process(work.value());
-		}
+template <class C, class U>
+void FmTaskProcessArray(void* inTaskData, int32_t inTaskBeginIndex, int32_t inTaskEndIndex) { 
+	ThreadArrayProcessData<C, U> *taskData = (ThreadArrayProcessData<C, U> *) inTaskData;
+	uint startIdx, endIdx;
+	FmGetIndexRange(&startIdx, &endIdx, (uint)inTaskBeginIndex, OS::get_singleton()->get_processor_count(), taskData->elements);
+	for (uint i = startIdx; i < endIdx; i++) {
+		taskData->process(i);
 	}
-}
-
-template <class C, class M, class U>
-void process_array_single(C *p_instance, M p_method, U p_userdata) {
-
-	ThreadArrayProcessData<C, U> data;
-	data.method = p_method;
-	data.instance = p_instance;
-	data.userdata = p_userdata;
-	while (!data.queue->empty()) {
-		std::optional<uint32_t> work = data.queue->steal();
-		if (work.has_value()) {
-			data.process(work.value());
-		}
-	}
-}
+} 
 
 template <class C, class M, class U>
 void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_userdata) {
@@ -84,27 +72,13 @@ void thread_process_array(uint32_t p_elements, C *p_instance, M p_method, U p_us
 	data.method = p_method;
 	data.instance = p_instance;
 	data.userdata = p_userdata;
-	data.queue = memnew(tf::WorkStealingQueue<uint32_t>(next_power_of_2(p_elements)));
-
-	for (uint32_t i = 0; i < p_elements; i++) {
-		data.queue->push(i);
-	}
-
+	data.elements = p_elements;
+	int32_t num_threads = OS::get_singleton()->get_processor_count();
 #ifndef NO_THREADS
-	Vector<Thread *> threads;
-	threads.resize(OS::get_singleton()->get_processor_count());
-
-	for (int i = 0; i < threads.size(); i++) {
-		threads.write[i] = Thread::create(process_array_thread<ThreadArrayProcessData<C, U> >, &data);
-	}
-
-	for (int i = 0; i < threads.size(); i++) {
-		Thread::wait_to_finish(threads[i]);
-		memdelete(threads[i]);
-	}
-#else
-	process_array_single(p_elements, p_instance, p_method, p_userdata);
+	num_threads = 1;
 #endif
+	AMD::FmTaskSystemCallbacks callbacks;
+	AMD::FmParallelForAsync("thread_process_array", FmTaskProcessArray<C, U>, FmTaskProcessArray<C, U>, NULL, &data, p_elements, callbacks.SubmitAsyncTask, num_threads);
 }
 
 #endif // THREADED_ARRAY_PROCESSOR_H
