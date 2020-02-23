@@ -111,20 +111,20 @@ struct FmTaskSystemCallbacks {
 #endif
 
 	FmTaskSystemCallbacks() {
-		GetTaskSystemNumThreads = NULL;
-		GetTaskSystemWorkerIndex = NULL;
-		SubmitAsyncTask = NULL;
-		CreateSyncEvent = NULL;
-		DestroySyncEvent = NULL;
-		WaitForSyncEvent = NULL;
-		TriggerSyncEvent = NULL;
+		GetTaskSystemNumThreads = nullptr;
+		GetTaskSystemWorkerIndex = nullptr;
+		SubmitAsyncTask = nullptr;
+		CreateSyncEvent = nullptr;
+		DestroySyncEvent = nullptr;
+		WaitForSyncEvent = nullptr;
+		TriggerSyncEvent = nullptr;
 #if !FM_ASYNC_THREADING
-		GetTaskSystemNumThreads = NULL;
-		CreateTaskWaitCounter = NULL;
-		WaitForTaskWaitCounter = NULL;
-		DestroyTaskWaitCounter = NULL;
-		SubmitTask = NULL;
-		ParallelFor = NULL;
+		GetTaskSystemNumThreads = nullptr;
+		CreateTaskWaitCounter = nullptr;
+		WaitForTaskWaitCounter = nullptr;
+		DestroyTaskWaitCounter = nullptr;
+		SubmitTask = nullptr;
+		ParallelFor = nullptr;
 #endif
 	}
 

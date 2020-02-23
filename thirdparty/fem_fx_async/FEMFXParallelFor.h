@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #include "FEMFXAsyncThreading.h"
 #include "FEMFXTaskSystemInterface.h"
+#include "core/engine.h"
 
 namespace AMD {
 
@@ -50,24 +51,24 @@ typedef int32_t (*FmBatchingFuncCallback)(void *taskData, int32_t taskBeginIndex
 // This is necessary if FmParallelForAsync is not called from FmExecuteTask(), or other FmParallelForAsync() calls may take place before returning to FmExecuteTask().
 void FmParallelForAsync(const char *taskName,
 		FmTaskFuncCallback TaskFunc, FmTaskFuncCallback TaskFuncWrapped, FmBatchingFuncCallback BatchingFunc, void *taskData, int32_t taskCount,
-		FmSubmitAsyncTaskCallback SubmitAsyncTask, uint numThreads, bool runLoop = false);
+		FmSubmitAsyncTaskCallback SubmitAsyncTask, uint32_t numThreads, bool runLoop = false);
 
 // Get number of tasks assuming maximum batch size per task
-static _FORCE_INLINE_ uint FmGetNumTasks(uint problemSize, uint maxTaskBatchSize) {
+static _FORCE_INLINE_ uint32_t FmGetNumTasks(uint32_t problemSize, uint32_t maxTaskBatchSize) {
 	return (problemSize + maxTaskBatchSize - 1) / maxTaskBatchSize;
 }
 
 // Get number of tasks based on desired batch size per task, but limited to at most maxTasks
-static _FORCE_INLINE_ uint FmGetNumTasksLimited(uint problemSize, uint taskBatchSize, uint maxTasks) {
-	uint numTasks = (problemSize + taskBatchSize - 1) / taskBatchSize;
+static _FORCE_INLINE_ uint32_t FmGetNumTasksLimited(uint32_t problemSize, uint32_t taskBatchSize, uint32_t maxTasks) {
+	uint32_t numTasks = (problemSize + taskBatchSize - 1) / taskBatchSize;
 	numTasks = MIN(maxTasks, numTasks);
 	return numTasks;
 }
 
 // Get problem index range for the specified task index, assuming FmGetNumTasks() tasks
-static _FORCE_INLINE_ void FmGetIndexRange(uint *beginIndex, uint *endIndex, uint taskIndex, uint maxTaskBatchSize, uint problemSize) {
-	uint begin = taskIndex * maxTaskBatchSize;
-	uint end = begin + maxTaskBatchSize;
+static _FORCE_INLINE_ void FmGetIndexRange(uint32_t *beginIndex, uint32_t *endIndex, uint32_t taskIndex, uint32_t maxTaskBatchSize, uint32_t problemSize) {
+	uint32_t begin = taskIndex * maxTaskBatchSize;
+	uint32_t end = begin + maxTaskBatchSize;
 	begin = MIN(begin, problemSize);
 	end = MIN(end, problemSize);
 	*beginIndex = begin;
@@ -75,22 +76,22 @@ static _FORCE_INLINE_ void FmGetIndexRange(uint *beginIndex, uint *endIndex, uin
 }
 
 // Get number of tasks for a minimum batch size per task, assuming remainder will be evenly distributed to all tasks.
-static _FORCE_INLINE_ uint FmGetNumTasksMinBatchSize(uint problemSize, uint minTaskBatchSize) {
+static _FORCE_INLINE_ uint32_t FmGetNumTasksMinBatchSize(uint32_t problemSize, uint32_t minTaskBatchSize) {
 	return MAX(problemSize / minTaskBatchSize, 1);
 }
 
 // Get problem index range for the specified task index, assuming problem is distributed to tasks as evenly as possible.
 // NOTE: output range may be zero-sized if problemSize < taskCount
-static _FORCE_INLINE_ void FmGetIndexRangeEvenDistribution(uint *beginIndex, uint *endIndex, uint taskIndex, uint taskCount, uint problemSize) {
-	uint taskBatchSize = problemSize / taskCount;
-	uint remainderBatchSize = problemSize % taskCount;
+static _FORCE_INLINE_ void FmGetIndexRangeEvenDistribution(uint32_t *beginIndex, uint32_t *endIndex, uint32_t taskIndex, uint32_t taskCount, uint32_t problemSize) {
+	uint32_t taskBatchSize = problemSize / taskCount;
+	uint32_t remainderBatchSize = problemSize % taskCount;
 
-	uint taskExtra = remainderBatchSize / taskCount;
-	uint remainder = remainderBatchSize % taskCount;
+	uint32_t taskExtra = remainderBatchSize / taskCount;
+	uint32_t remainder = remainderBatchSize % taskCount;
 
 	taskBatchSize += taskExtra;
 
-	uint begin, end;
+	uint32_t begin, end;
 	if (taskIndex < remainder) {
 		taskBatchSize++;
 		begin = taskIndex * taskBatchSize;

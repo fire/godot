@@ -24,6 +24,8 @@ THE SOFTWARE.
 
 #include "FEMFXParallelFor.h"
 #include "FEMFXAsyncThreading.h"
+#include "core/engine.h"
+#include <atomic>
 
 namespace AMD
 {
@@ -50,7 +52,7 @@ namespace AMD
 
         void SetNextTask(FmTaskFuncCallback inFunc, void* inData, int32_t inBeginIndex, int32_t inEndIndex)
         {
-            FM_ASSERT(func == NULL); // should have run and cleared this
+            ERR_FAIL_COND(func == NULL); // should have run and cleared this
             func = inFunc;
             data = inData;
             beginIndex = inBeginIndex;
@@ -58,7 +60,7 @@ namespace AMD
         }
     };
 
-    FM_THREAD_LOCAL_STORAGE FmTaskFuncLoopData gFEMFXTaskFuncLoopData;
+    thread_local FmTaskFuncLoopData gFEMFXTaskFuncLoopData;
 
     // Loop while there is a non-NULL task function set in gFEMFXTaskFuncLoopData.
     // Reduces use of stack with Async code.
@@ -95,10 +97,8 @@ namespace AMD
     class FmParallelForDispatcherData
     {
     public:
-        FM_CLASS_NEW_DELETE(FmParallelForDispatcherData)
-
-        FmAtomicUint dispatcherIndexAtomic;
-        FmAtomicUint numDispatchersIncomplete;
+        std::atomic_uint32_t dispatcherIndexAtomic;
+        std::atomic_uint32_t numDispatchersIncomplete;
 
         FmSubmitAsyncTaskCallback SubmitAsyncTask;
         const char* taskName;
@@ -106,8 +106,8 @@ namespace AMD
         FmTaskFuncCallback TaskFuncWrapped;
         FmBatchingFuncCallback BatchingFunc;
         void* taskData;
-        uint problemSize;
-        uint numDispatchers;
+        uint32_t problemSize;
+        uint32_t numDispatchers;
 
         FmParallelForDispatcherData(
             FmSubmitAsyncTaskCallback inSubmitAsyncTask,
@@ -116,8 +116,8 @@ namespace AMD
             FmTaskFuncCallback inTaskFuncWrapped,
             FmBatchingFuncCallback inBatchingFunc,
             void* inTaskData,
-            uint inProblemSize,
-            uint inNumDispatchers)
+            uint32_t inProblemSize,
+            uint32_t inNumDispatchers)
         {
             SubmitAsyncTask = inSubmitAsyncTask;
             taskName = inTaskName;
@@ -127,8 +127,8 @@ namespace AMD
             taskData = inTaskData;
             problemSize = inProblemSize;
             numDispatchers = inNumDispatchers;
-            FmAtomicWrite(&dispatcherIndexAtomic.val, 0);
-            FmAtomicWrite(&numDispatchersIncomplete.val, numDispatchers);
+            dispatcherIndexAtomic.store(0);
+            numDispatchersIncomplete.store(numDispatchers);
         }
     };
 
@@ -142,14 +142,14 @@ namespace AMD
 
         FmBatchingFuncCallback BatchingFunc = dispatcherData->BatchingFunc;
 
-        uint dispatcherIndex = (uint)inTaskBeginIndex;
-        dispatcherIndex = FmAtomicIncrement(&dispatcherData->dispatcherIndexAtomic.val) - 1;
+        uint32_t dispatcherIndex = (uint32_t)inTaskBeginIndex;
+        dispatcherIndex = dispatcherData->dispatcherIndexAtomic++ - 1;
 
-        uint numDispatchers = dispatcherData->numDispatchers;
-        uint problemSize = dispatcherData->problemSize;
+        uint32_t numDispatchers = dispatcherData->numDispatchers;
+        uint32_t problemSize = dispatcherData->problemSize;
 
         // Compute range of parallel-for indices this dispatcher covers
-        uint beginIndex, endIndex;
+        uint32_t beginIndex, endIndex;
         FmGetIndexRangeEvenDistribution(&beginIndex, &endIndex, dispatcherIndex, numDispatchers, problemSize);
 
         if (BatchingFunc)
@@ -158,14 +158,14 @@ namespace AMD
             void* taskData = dispatcherData->taskData;
 
             // Save first batch to run on this thread
-            uint firstNumItems = (uint)BatchingFunc(taskData, beginIndex, endIndex);
-            uint firstBeginIndex = beginIndex;
+            uint32_t firstNumItems = (uint32_t)BatchingFunc(taskData, beginIndex, endIndex);
+            uint32_t firstBeginIndex = beginIndex;
 
             beginIndex += firstNumItems;
 
             while (beginIndex < endIndex)
             {
-                uint numItems = (uint)BatchingFunc(taskData, beginIndex, endIndex);
+                uint32_t numItems = (uint32_t)BatchingFunc(taskData, beginIndex, endIndex);
 
                 // Submit task
                 dispatcherData->SubmitAsyncTask(dispatcherData->taskName, dispatcherData->TaskFuncWrapped, dispatcherData->taskData, beginIndex, beginIndex + numItems);
@@ -180,22 +180,22 @@ namespace AMD
         }
         else
         {
-            uint numTasks = endIndex - beginIndex;
+            uint32_t numTasks = endIndex - beginIndex;
 
 #define FM_STRIDED 1
 #if FM_STRIDED
             // Experiment to improve ordering of tasks, however depends on task system; also should have no effect if using an atomic counter to ensure order.
             beginIndex = dispatcherIndex;
-            uint stride = numDispatchers;
+            uint32_t stride = numDispatchers;
 #endif
 
             // Run one task in-line but submit rest
-            for (uint i = 1; i < numTasks; i++)
+            for (uint32_t i = 1; i < numTasks; i++)
             {
 #if FM_STRIDED
-                uint taskIndex = beginIndex + stride * i;
+                uint32_t taskIndex = beginIndex + stride * i;
 #else
-                uint taskIndex = beginIndex + i;
+                uint32_t taskIndex = beginIndex + i;
 #endif
                 dispatcherData->SubmitAsyncTask(dispatcherData->taskName, dispatcherData->TaskFuncWrapped, dispatcherData->taskData, taskIndex, taskIndex + 1);
             }
@@ -206,7 +206,7 @@ namespace AMD
             }
         }
 
-        uint numIncomplete = FmAtomicDecrement(&dispatcherData->numDispatchersIncomplete.val);
+        uint32_t numIncomplete = dispatcherData->numDispatchersIncomplete--;
 
         if (numIncomplete == 0)
         {
@@ -222,7 +222,7 @@ namespace AMD
     // This is necessary if FmParallelForAsync is not called from FmExecuteTask(), or other FmParallelForAsync() calls may take place before returning to FmExecuteTask().
     void FmParallelForAsync(const char* taskName, 
         FmTaskFuncCallback TaskFunc, FmTaskFuncCallback TaskFuncWrapped, FmBatchingFuncCallback BatchingFunc, void* taskData, int32_t taskCount, 
-        FmSubmitAsyncTaskCallback SubmitAsyncTask, uint numThreads, bool runLoop)
+        FmSubmitAsyncTaskCallback SubmitAsyncTask, uint32_t numThreads, bool runLoop)
     {
         (void)taskName;
 
@@ -237,13 +237,13 @@ namespace AMD
         const int32_t numSubmitsPerThread = 16;
 
         // Get number of dispatchers needed
-        int numDispatchers = FmGetNumTasks((uint)taskCount, numSubmitsPerThread);
-        numDispatchers = FmMinUint(numThreads * 8, numDispatchers);
+        int numDispatchers = FmGetNumTasks((uint32_t)taskCount, numSubmitsPerThread);
+        numDispatchers = MIN(numThreads * 8, numDispatchers);
 
-        FmParallelForDispatcherData* dispatcherData = new FmParallelForDispatcherData(SubmitAsyncTask, taskName, TaskFunc, TaskFuncWrapped, BatchingFunc, taskData, (uint)taskCount, numDispatchers);
+        FmParallelForDispatcherData* dispatcherData = new FmParallelForDispatcherData(SubmitAsyncTask, taskName, TaskFunc, TaskFuncWrapped, BatchingFunc, taskData, (uint32_t)taskCount, numDispatchers);
 
         // Submit other dispatchers
-        for (uint i = 1; i < dispatcherData->numDispatchers; i++)
+        for (uint32_t i = 1; i < dispatcherData->numDispatchers; i++)
         {
             dispatcherData->SubmitAsyncTask("FEMFXParallelForDispatcher", FmTaskFuncParallelForDispatcherWrapped, dispatcherData, i, i + 1);
         }

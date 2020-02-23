@@ -37,10 +37,10 @@
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
 #include "core/safe_refcount.h"
-#include "thirdparty/FEMFXAsync/FEMFXAsyncThreading.h"
-#include "thirdparty/FEMFXAsync/FEMFXCommon.h"
-#include "thirdparty/FEMFXAsync/FEMFXParallelFor.h"
-#include "thirdparty/FEMFXAsync/FEMFXTaskSystemInterface.h"
+#include "thirdparty/fem_fx_async/FEMFXAsyncThreading.h"
+#include "thirdparty/fem_fx_async/FEMFXCommon.h"
+#include "thirdparty/fem_fx_async/FEMFXParallelFor.h"
+#include "thirdparty/fem_fx_async/FEMFXTaskSystemInterface.h"
 
 using namespace AMD;
 

@@ -54,7 +54,7 @@ namespace AMD
         int32_t            beginIndex;
         int32_t            endIndex;
 
-        FmTask() : func(NULL), data(NULL), beginIndex(0), endIndex(0) {}
+        FmTask() : func(nullptr), data(nullptr), beginIndex(0), endIndex(0) {}
     };
 
     // Async tasks need to be executed using this function, which starts a loop that will pick up subsequent tasks set by FmSetNextTask()
@@ -77,8 +77,8 @@ namespace AMD
         {
             nextIndex.store(0);
             numTasksIncomplete.store(0);
-            followTask.func = NULL;
-            followTask.data = NULL;
+            followTask.func = nullptr;
+            followTask.data = nullptr;
             followTask.beginIndex = 0;
             followTask.endIndex = 1;
         }
@@ -172,12 +172,12 @@ namespace AMD
 
         bool TaskIsFinished()
         {
-            return TaskIsFinished<void>(NULL);
+            return TaskIsFinished<void>(nullptr);
         }
 
         bool TasksAreFinished(uint32_t numTasks)
         {
-            return TasksAreFinished<void>(numTasks, NULL);
+            return TasksAreFinished<void>(numTasks, nullptr);
         }
     };
 
@@ -190,7 +190,7 @@ namespace AMD
         FmTask               followTask;      // Task to call following scope of this task data
         FmAsyncTaskData*     parentTaskData;  // Pointer to parent task data for nested parallel operations
 
-        FmAsyncTaskData() : parentTaskData(NULL) { }
+        FmAsyncTaskData() : parentTaskData(nullptr) { }
 
         virtual ~FmAsyncTaskData() {}
     };
