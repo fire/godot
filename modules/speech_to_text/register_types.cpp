@@ -1,7 +1,7 @@
 #include "register_types.h"
-#include "class_db.h"
-#include "core/os/dir_access.h"  // DirAccess::exists()
-#include "engine.h"              // Engine::Singleton(), Engine::get_singleton()
+#include "core/class_db.h"
+#include "core/os/dir_access.h"
+#include "core/engine.h"         
 
 #include "stt_config.h"
 #include "stt_queue.h"
