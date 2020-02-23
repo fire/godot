@@ -1,0 +1,100 @@
+# Most of this file is copied from the Godot repository .travis.yml file
+
+language: cpp
+
+dist: trusty
+
+sudo: false
+
+env:
+  global:
+    - SCONS_CACHE=$HOME/.scons_cache
+    - SCONS_CACHE_LIMIT=1024
+    - GODOT_REPO="https://github.com/godotengine/godot"
+    - GODOT_STABLE_TAG="3.0-stable"
+
+cache:
+  directories:
+    - $SCONS_CACHE
+
+matrix:
+  include:
+    - env: STATIC_CHECKS=yes
+      os: linux
+      compiler: clang
+    - env: GODOT_TARGET=x11 TOOLS=yes CACHE_NAME=${GODOT_TARGET}-gcc-tools
+      os: linux
+      compiler: gcc
+    - env: GODOT_TARGET=windows TOOLS=yes CACHE_NAME=${GODOT_TARGET}-gcc-tools
+      os: linux
+      compiler: gcc
+    - env: GODOT_TARGET=android TOOLS=no CACHE_NAME=${GODOT_TARGET}-gcc
+      os: linux
+      compiler: gcc
+    - env: GODOT_TARGET=osx TOOLS=yes CACHE_NAME=${GODOT_TARGET}-clang-tools
+      os: osx
+      compiler: clang
+    - env: GODOT_TARGET=iphone TOOLS=no CACHE_NAME=${GODOT_TARGET}-clang
+      os: osx
+      compiler: clang
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-5.0
+    packages:
+      - build-essential
+      - scons
+      - pkg-config
+      - libx11-dev
+      - libxcursor-dev
+      - libxi-dev
+      - libxinerama-dev
+      - libxrandr-dev
+      - libgl1-mesa-dev
+      - libglu1-mesa-dev
+      - libasound2-dev
+      - libfreetype6-dev
+      - libssl-dev
+
+      # For cross-compiling to Windows
+      - binutils-mingw-w64-i686
+      - binutils-mingw-w64-x86-64
+      - gcc-mingw-w64-i686
+      - gcc-mingw-w64-x86-64
+      - g++-mingw-w64-i686
+      - g++-mingw-w64-x86-64
+      - mingw-w64
+
+      # For style checks
+      - clang-format-5.0
+
+install:
+  # Clone Godot on latest stable release and copy module there
+  - git clone "$GODOT_REPO" godot --branch "$GODOT_STABLE_TAG" --single-branch
+  - cp -rf speech_to_text godot/modules
+  - cd godot
+
+  - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ "$GODOT_TARGET" = "android" ]; then
+      misc/travis/android-tools-linux.sh;
+    fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      misc/travis/scons-local-osx.sh;
+    fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ] && [ "$GODOT_TARGET" = "android" ]; then
+      misc/travis/android-tools-osx.sh;
+    fi
+
+before_script:
+  - if [ "$GODOT_TARGET" = "android" ]; then
+      export ANDROID_HOME=$TRAVIS_BUILD_DIR/godot/godot-dev/build-tools/android-sdk;
+      export ANDROID_NDK_ROOT=$TRAVIS_BUILD_DIR/godot/godot-dev/build-tools/android-ndk;
+    fi
+
+script:
+  - if [ "$STATIC_CHECKS" = "yes" ]; then
+      sh ./misc/travis/clang-format.sh;
+    else
+      scons -j2 CC=$CC CXX=$CXX platform=$GODOT_TARGET TOOLS=$TOOLS verbose=yes progress=no openmp=no gdnative_wrapper=yes;
+    fi
