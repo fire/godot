@@ -1,19 +1,18 @@
 #ifndef STT_RUNNER_H
 #define STT_RUNNER_H
 
+#include "scene/main/node.h"
 #include "core/os/thread.h"
 
-#include "modules/audio_effect_stream/stream_audio.h"
-#include "modules/speech_to_text/libsamplerate/src/samplerate.h"
 #include "stt_config.h"
 #include "stt_queue.h"
 
-class STTRunner : public StreamAudio {
-	GDCLASS(STTRunner, StreamAudio);
+class STTRunner : public Node {
+	GDCLASS(STTRunner, Node);
 
 private:
-	Thread *recognition; // Used to run the speech recognition in parallel
-	bool is_running; // If true, speech recognition loop is currently on
+	Thread *recognition;  // Used to run the speech recognition in parallel
+	bool is_running;      // If true, speech recognition loop is currently on
 
 	Ref<STTConfig> config;
 	Ref<STTQueue> queue;
@@ -44,15 +43,12 @@ private:
 	 */
 	void _error_stop(STTError::Error err);
 
-	uint32_t _resample_audio_buffer(const float *p_src, const uint32_t p_src_frame_count, float *r_dst);
-
 protected:
 	static void _bind_methods();
 
 public:
 	enum {
-		DEFAULT_REC_BUFFER_SIZE = 4096,
-		REC_SAMPLE_RATE = 16000
+		DEFAULT_REC_BUFFER_SIZE = 2048
 	};
 
 	STTError::Error start();
@@ -88,4 +84,4 @@ public:
 	~STTRunner();
 };
 
-#endif // STT_RUNNER_H
+#endif  // STT_RUNNER_H

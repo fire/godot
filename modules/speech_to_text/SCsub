@@ -84,7 +84,26 @@ base_srcs = [
     "libsphinxbase/lm/jsgf_scanner.c"
 ]
 
-base_srcs.append("libsphinxad/ad_base.c")
+# Platform-specific files
+if platform == "x11":
+    # Use PulseAudio or ALSA as sound driver
+    if (env["pulseaudio"] == "yes"):
+        base_srcs.append("libsphinxad/ad_pulse.c")
+    elif os.system("pkg-config --exists alsa") == 0:
+        base_srcs.append("libsphinxad/ad_alsa.c")
+    else:
+        print("[Speech to Text] Error: No PulseAudio or ALSA support found!")
+        Exit(1)
+
+elif platform == "windows":
+    base_srcs.append("libsphinxad/ad_win32.c")
+
+elif platform in ["osx", "iphone", "android"]:
+    base_srcs.append("libsphinxad/ad_base.c")
+
+else:
+    print("[Speech to Text] Error: Platform '" + platform + "' not supported!")
+    Exit(1)
 
 # Add path to Sphinxbase include/ folder
 base_inc_paths = [
@@ -141,9 +160,6 @@ module_env.Append(CPPPATH=pocket_dir + "/" + "include")
 # ---------------------------------------------------------------------
 
 all_srcs = base_srcs + pocket_srcs + stt_srcs
-
-module_env.Prepend(CPPPATH=['#modules/speech_to_text/include'])
-module_env.add_source_files(env.modules_sources, Glob("#modules/speech_to_text/libsamplerate/src/*.c"))
 
 if ARGUMENTS.get('speech_to_text_shared', 'no') == 'yes':
     # Shared lib compilation
