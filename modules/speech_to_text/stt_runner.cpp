@@ -1,6 +1,6 @@
 #include "stt_runner.h"
+#include "core/os/memory.h" // memnew(), memdelete()
 #include "stt_error.h"
-#include "core/os/memory.h"  // memnew(), memdelete()
 
 STTError::Error STTRunner::start() {
 	if (config.is_null()) {
@@ -35,20 +35,12 @@ void STTRunner::stop() {
 }
 
 void STTRunner::_thread_recognize(void *runner) {
-	STTRunner *self = (STTRunner *) runner;
+	STTRunner *self = (STTRunner *)runner;
 	self->_recognize();
 }
 
 void STTRunner::_recognize() {
-	int16 buffer[rec_buffer_size];
-	int32 n;
 	const char *hyp;
-
-	// Start recording
-	if (ad_start_rec(config->recorder) < 0) {
-		_error_stop(STTError::REC_START_ERR);
-		return;
-	}
 
 	// Start utterance
 	if (ps_start_utt(config->decoder) < 0) {
@@ -57,15 +49,27 @@ void STTRunner::_recognize() {
 	}
 
 	while (is_running) {
-		// Read data from microphone
-		if ((n = ad_read(config->recorder, buffer, rec_buffer_size)) < 0) {
-			_error_stop(STTError::AUDIO_READ_ERR);
-			return;
+		Vector<float> frames = get_audio_frames(rec_buffer_size);
+
+		if (!frames.size()) {
+			continue;
+		}
+
+		Vector<float> new_frames;
+		new_frames.resize(frames.size());
+		uint32_t frame_size = _resample_audio_buffer(frames.ptr(), rec_buffer_size, AudioServer::get_singleton()->get_channel_count(), AudioServer::get_singleton()->get_mix_rate(), REC_SAMPLE_RATE, new_frames.ptrw());
+		if (!frame_size) {
+			continue;
+		}
+
+		int16_t buffer[frame_size];
+		for (int32_t frame_i = 0; frame_i < frame_size; frame_i++) {
+			int16_t v = CLAMP(new_frames[frame_i * 2 + 0] * 32768, -32768, 32767);
+			buffer[frame_i] = v;
 		}
 
 		// Process captured sound
-		ps_process_raw(config->decoder, buffer, n, FALSE, FALSE);
-
+		ps_process_raw(config->decoder, buffer, frame_size, FALSE, FALSE);
 		// Check for keyword in captured sound
 		hyp = ps_get_hyp(config->decoder, NULL);
 		if (hyp != NULL) {
@@ -73,10 +77,13 @@ void STTRunner::_recognize() {
 			if (queue->add(String(hyp))) {
 #ifdef DEBUG_ENABLED
 				print_line("[STTRunner] " + String(hyp));
+				double time = 0.0f;
+				ps_get_utt_time(config->decoder, &time, nullptr, nullptr);
+				print_line("[STTRunner] Utterance time " + rtos(time));
 #endif
-			}
-			else
+			} else {
 				WARN_PRINT("Cannot store more keywords in the STTQueue!");
+			}
 
 			// Restart decoder
 			ps_end_utt(config->decoder);
@@ -88,10 +95,30 @@ void STTRunner::_recognize() {
 	}
 
 	ps_end_utt(config->decoder);
+}
+uint32_t STTRunner::_resample_audio_buffer(const float *p_src, const uint32_t p_src_frame_count, float *r_dst) {
+	double src_samplerate = AudioServer::get_singleton()->get_mix_rate();
+	if (src_samplerate != REC_SAMPLE_RATE) {
+		int error = 0;
+		SRC_STATE *libresample_state = src_new(SRC_SINC_BEST_QUALITY, AudioServer::get_singleton()->get_channel_count(), &error);
+		SRC_DATA src_data;
 
-	// Stop recording
-	if (ad_stop_rec(config->recorder) < 0)
-		_error_stop(STTError::REC_STOP_ERR);
+		src_data.data_in = p_src;
+		src_data.data_out = r_dst;
+		src_data.src_ratio = (double)REC_SAMPLE_RATE / src_samplerate;
+
+		src_data.input_frames = p_src_frame_count;
+		src_data.output_frames = p_src_frame_count * src_data.src_ratio;
+		src_data.end_of_input = 1;
+
+		error = src_process(libresample_state, &src_data);
+		ERR_FAIL_COND_V_MSG(error != 0, 0, "Resample_error.");
+		libresample_state = src_delete(libresample_state);
+		return src_data.output_frames_gen;
+	} else {
+		copymem(r_dst, p_src, p_src_frame_count * sizeof(float));
+		return p_src_frame_count;
+	}
 }
 
 void STTRunner::_error_stop(STTError::Error err) {
@@ -144,36 +171,36 @@ void STTRunner::reset_run_error() {
 }
 
 void STTRunner::_bind_methods() {
-	ClassDB::bind_method("start",   &STTRunner::start);
+	ClassDB::bind_method("start", &STTRunner::start);
 	ClassDB::bind_method("running", &STTRunner::running);
-	ClassDB::bind_method("stop",    &STTRunner::stop);
+	ClassDB::bind_method("stop", &STTRunner::stop);
 
 	ClassDB::bind_method(D_METHOD("set_config", "stt_config"),
-	                     &STTRunner::set_config);
+			&STTRunner::set_config);
 	ClassDB::bind_method("get_config", &STTRunner::get_config);
 
 	ClassDB::bind_method(D_METHOD("set_queue", "stt_queue"), &STTRunner::set_queue);
 	ClassDB::bind_method("get_queue", &STTRunner::get_queue);
 
 	ClassDB::bind_method(D_METHOD("set_rec_buffer_size", "size"),
-	                     &STTRunner::set_rec_buffer_size);
+			&STTRunner::set_rec_buffer_size);
 	ClassDB::bind_method("get_rec_buffer_size",
-	                     &STTRunner::get_rec_buffer_size);
+			&STTRunner::get_rec_buffer_size);
 
-	ClassDB::bind_method("get_run_error",   &STTRunner::get_run_error);
+	ClassDB::bind_method("get_run_error", &STTRunner::get_run_error);
 	ClassDB::bind_method("reset_run_error", &STTRunner::reset_run_error);
 
 	BIND_CONSTANT(DEFAULT_REC_BUFFER_SIZE);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "config",
-	                          PROPERTY_HINT_RESOURCE_TYPE, "STTConfig"),
-	             "set_config", "get_config");
+						 PROPERTY_HINT_RESOURCE_TYPE, "STTConfig"),
+			"set_config", "get_config");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "queue",
-	                          PROPERTY_HINT_RESOURCE_TYPE, "STTQueue"),
-	             "set_queue", "get_queue");
+						 PROPERTY_HINT_RESOURCE_TYPE, "STTQueue"),
+			"set_queue", "get_queue");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "recorder buffer size (bytes)",
-	                          PROPERTY_HINT_RANGE, "256,4096,32"),
-	             "set_rec_buffer_size", "get_rec_buffer_size");
+						 PROPERTY_HINT_RANGE, "256,4096,32"),
+			"set_rec_buffer_size", "get_rec_buffer_size");
 }
 
 STTRunner::STTRunner() {

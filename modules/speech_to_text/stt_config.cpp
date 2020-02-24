@@ -1,10 +1,10 @@
 #include "stt_config.h"
 #include "file_dir_util.h"
 
-#include "core/os/os.h"           // OS::get_singleton()->get_user_data_dir()
-#include "core/os/memory.h"       // memalloc(), memfree(), memdelete()
-#include "core/os/dir_access.h"   // DirAccess::exists()
-#include "core/os/file_access.h"  // FileAccess::exists()
+#include "core/os/dir_access.h" // DirAccess::exists()
+#include "core/os/file_access.h" // FileAccess::exists()
+#include "core/os/memory.h" // memalloc(), memfree(), memdelete()
+#include "core/os/os.h" // OS::get_singleton()->get_user_data_dir()
 
 /*
  * Adds the -adcdev option as a possible command line argument.
@@ -12,13 +12,6 @@
  */
 static arg_t cont_args_def[] = {
 	POCKETSPHINX_OPTIONS,
-	// Microphone
-	{
-		"-adcdev",
-		ARG_STRING,
-		NULL,  // Use default system microphone
-		"Name of audio device to use for input."
-	},
 	CMDLN_EMPTY_OPTION
 };
 
@@ -31,9 +24,9 @@ STTError::Error STTConfig::init() {
 
 #ifdef DEBUG_ENABLED
 	print_line("[STTConfig res:// files]");
-	print_line(" - HMM directory: '"   + hmm_dirname   + "'");
+	print_line(" - HMM directory: '" + hmm_dirname + "'");
 	print_line(" - Dictionary file: '" + dict_filename + "'");
-	print_line(" - Keywords file: '"   + kws_filename  + "'");
+	print_line(" - Keywords file: '" + kws_filename + "'");
 #endif
 
 	String user_dirname = "user://" + String(STT_USER_DIRNAME);
@@ -58,9 +51,9 @@ STTError::Error STTConfig::init() {
 
 #ifdef DEBUG_ENABLED
 	print_line("[STTConfig user:// files]");
-	print_line(" - HMM directory: '"   + user_hmm_dirname   + "'");
+	print_line(" - HMM directory: '" + user_hmm_dirname + "'");
 	print_line(" - Dictionary file: '" + user_dict_filename + "'");
-	print_line(" - Keywords file: '"   + user_kws_filename  + "'");
+	print_line(" - Keywords file: '" + user_kws_filename + "'");
 #endif
 
 	String names[3];
@@ -78,7 +71,7 @@ STTError::Error STTConfig::init() {
 			return STTError::MULTIBYTE_STR_ERR;
 		}
 
-		convert[i] = (char *) memalloc((len + 1) * sizeof(char));
+		convert[i] = (char *)memalloc((len + 1) * sizeof(char));
 		if (convert[i] == NULL) {
 			STT_ERR_PRINTS(STTError::MEM_ALLOC_ERR);
 			return STTError::MEM_ALLOC_ERR;
@@ -87,37 +80,20 @@ STTError::Error STTConfig::init() {
 		wcstombs(convert[i], names[i].c_str(), len + 1);
 	}
 
-	hmm  = convert[0];
+	hmm = convert[0];
 	dict = convert[1];
-	kws  = convert[2];
+	kws = convert[2];
 
 	// Create configuration variable
 	conf = cmd_ln_init(NULL, ps_args(), TRUE,
-	                   "-hmm", hmm,
-	                   "-dict", dict,
-	                   "-kws", kws,
-	                   NULL);
+			"-hmm", hmm,
+			"-dict", dict,
+			"-kws", kws,
+			NULL);
 
 	if (conf == NULL) {
 		STT_ERR_PRINTS(STTError::CONFIG_CREATE_ERR);
 		return STTError::CONFIG_CREATE_ERR;
-	}
-
-	// Update basic configuration with custom one for mic
-	conf = cmd_ln_init(conf, cont_args_def, TRUE, NULL);
-	if (conf == NULL) {
-		STT_ERR_PRINTS(STTError::CONFIG_CREATE_ERR);
-		return STTError::CONFIG_CREATE_ERR;
-	}
-
-	// Create recorder variable
-	recorder = ad_open_dev(cmd_ln_str_r(conf, "-adcdev"),
-	                       (int) cmd_ln_float32_r(conf, "-samprate"));
-
-	if (recorder == NULL) {
-		cmd_ln_free_r(conf);
-		STT_ERR_PRINTS(STTError::REC_CREATE_ERR);
-		return STTError::REC_CREATE_ERR;
 	}
 
 	// Creater decoder variable
@@ -125,7 +101,6 @@ STTError::Error STTConfig::init() {
 
 	if (decoder == NULL) {
 		cmd_ln_free_r(conf);
-		ad_close(recorder);
 		STT_ERR_PRINTS(STTError::DECODER_CREATE_ERR);
 		return STTError::DECODER_CREATE_ERR;
 	}
@@ -176,25 +151,25 @@ void STTConfig::_bind_methods() {
 	ClassDB::bind_method("init", &STTConfig::init);
 
 	ClassDB::bind_method(D_METHOD("set_hmm_dirname", "hmm_dirname"),
-	                     &STTConfig::set_hmm_dirname);
+			&STTConfig::set_hmm_dirname);
 	ClassDB::bind_method("get_hmm_dirname", &STTConfig::get_hmm_dirname);
 
 	ClassDB::bind_method(D_METHOD("set_dict_filename", "dict_filename"),
-	                     &STTConfig::set_dict_filename);
+			&STTConfig::set_dict_filename);
 	ClassDB::bind_method("get_dict_filename", &STTConfig::get_dict_filename);
 
 	ClassDB::bind_method(D_METHOD("set_kws_filename", "kws_filename"),
-	                     &STTConfig::set_kws_filename);
+			&STTConfig::set_kws_filename);
 	ClassDB::bind_method("get_kws_filename", &STTConfig::get_kws_filename);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "hmm directory", PROPERTY_HINT_DIR),
-	               "set_hmm_dirname", "get_hmm_dirname");
+			"set_hmm_dirname", "get_hmm_dirname");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "dictionary file",
-	                            PROPERTY_HINT_FILE, "dict"),
-	               "set_dict_filename", "get_dict_filename");
+						 PROPERTY_HINT_FILE, "dict"),
+			"set_dict_filename", "get_dict_filename");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "keywords file",
-	                            PROPERTY_HINT_FILE, "kws"),
-	               "set_kws_filename", "get_kws_filename");
+						 PROPERTY_HINT_FILE, "kws"),
+			"set_kws_filename", "get_kws_filename");
 }
 
 STTConfig::STTConfig() {
@@ -202,12 +177,11 @@ STTConfig::STTConfig() {
 	err_set_logfp(NULL);
 
 	conf = NULL;
-	recorder = NULL;
 	decoder = NULL;
 
-	hmm_dirname   = "";
+	hmm_dirname = "";
 	dict_filename = "";
-	kws_filename  = "";
+	kws_filename = "";
 
 	hmm = NULL;
 	dict = NULL;
@@ -215,11 +189,10 @@ STTConfig::STTConfig() {
 }
 
 STTConfig::~STTConfig() {
-	if (conf     != NULL) cmd_ln_free_r(conf);
-	if (recorder != NULL) ad_close(recorder);
-	if (decoder  != NULL) ps_free(decoder);
+	if (conf != NULL) cmd_ln_free_r(conf);
+	if (decoder != NULL) ps_free(decoder);
 
-	if (hmm  != NULL) memfree(hmm);
+	if (hmm != NULL) memfree(hmm);
 	if (dict != NULL) memfree(dict);
-	if (kws  != NULL) memfree(kws);
+	if (kws != NULL) memfree(kws);
 }
