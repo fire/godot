@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+
+Import('env')
+Import('env_modules')
+
+env_cacheserv = env.Clone()
+
+sources = [
+	"data_helpers.cpp",
+	"file_access_cached.cpp",
+	# "file_access_unbuffered_unix.cpp",
+	"file_cache_manager.cpp",
+	"register_types.cpp"
+]
+
+env_cacheserv.add_source_files(env.modules_sources, sources) # Add all cpp files to the build
+# env_cacheserv.add_source_files(env.modules_sources, sources) # Add all cpp files to the build
+# env_cacheserv.Append(CXXFLAGS='-fPIC')  # Needed to compile shared library
+# env_cacheserv['LIBS'] = []
+
+# shared_lib = env_cacheserv.SharedLibrary(target='#bin/cacheserv', source=sources)
+# shared_lib_shim = shared_lib[0].name.rsplit('.', 1)[0]
