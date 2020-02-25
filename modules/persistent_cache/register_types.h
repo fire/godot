@@ -32,9 +32,8 @@
 #define REGISTER_CACHESERV_TYPES_H
 
 #include "file_access_cached.h"
-#include "file_access_unbuffered_unix.h"
 
-void register_cache_types();
-void unregister_cache_types();
+void register_persistent_cache_types();
+void unregister_persistent_cache_types();
 
 #endif //REGISTER_CACHESERV_TYPES_H
