@@ -119,16 +119,11 @@ public:
 		memdelete(sem);
 	}
 
-	// Pushes to the back ofthe queue.
+	// Pushes to the back of the queue.
 	void push(CtrlOp op) {
 		MutexLock ml = MutexLock(mut);
 		queue.push_back(op);
-		// for (List<CtrlOp>::Element *i = queue.front(); i; i = i->next())
-		// 	WARN_PRINTS("Curr op: " + String(i->get().type == CtrlOp::LOAD ? "load" : "other") + " op with page: " + itoh(i->get().offset) + " and frame: " + itoh(i->get().frame))
-		sem->post();
-
-		// WARN_PRINTS("Pushed " + String(op.type == CtrlOp::LOAD ? "load" : "other") + " op with page: " + itoh(op.offset) + " and frame: " + itoh(op.frame))
-	}
+		sem->post();	}
 
 	// Pushes to the queue's front, so the pushed operation is processed ASAP.
 	void priority_push(CtrlOp op) {
