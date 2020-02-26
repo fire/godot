@@ -43,7 +43,7 @@ FileCacheManager::FileCacheManager() {
 	mutex = Mutex::create();
 	rng.set_seed(OS::get_singleton()->get_ticks_usec());
 
-	memory_region = memnew_arr(uint8_t, CS_CACHE_SIZE);
+	memory_region.resize(CS_CACHE_SIZE);
 	page_frame_map.clear();
 
 	available_space = CS_CACHE_SIZE;
@@ -52,16 +52,13 @@ FileCacheManager::FileCacheManager() {
 	frames.instance();
 	frames->frames.resize(CS_NUM_FRAMES);
 	for (int i = 0; i < CS_NUM_FRAMES; ++i) {
-		frames->frames.write[i] = Ref<FileCacheFrame>(memnew(FileCacheFrame(memory_region + i * CS_PAGE_SIZE)));
+		frames->frames.write[i] = Ref<FileCacheFrame>(memnew(FileCacheFrame(memory_region.ptrw() + i * CS_PAGE_SIZE)));
 	}
 
 	singleton = this;
 }
 
 FileCacheManager::~FileCacheManager() {
-	//// WARN_PRINT("Destructor running.");
-	if (memory_region) memdelete(memory_region);
-
 	if (rids.size()) {
 		for (const String *key = rids.next(NULL); key; key = rids.next(key)) {
 			permanent_close(rids[*key]);
@@ -80,7 +77,6 @@ FileCacheManager::~FileCacheManager() {
 	exit_thread = true;
 
 	Thread::wait_to_finish(this->thread);
-
 	memdelete(thread);
 	memdelete(mutex);
 }
@@ -90,6 +86,7 @@ RID FileCacheManager::open(const String &path, int p_mode, int cache_policy) {
 	//  WARN_PRINTS(path + " " + itoh(p_mode) + " " + itoh(cache_policy));
 
 	ERR_FAIL_COND_V(path.empty(), RID());
+	ERR_FAIL_COND_V(is_queued_for_deletion(), RID());
 
 	MutexLock ml = MutexLock(mutex);
 
@@ -915,7 +912,7 @@ page_id FileCacheManager::rp_fifo(DescriptorInfo *desc_info) {
 
 	} else if (lru_cached_pages.size() > CS_LRU_THRESH_DEFAULT) {
 
-		Ref<FileCacheFrame> f = frames->frames.operator[](page_frame_map.operator[](lru_cached_pages.back()->get()));
+		Ref<FileCacheFrame> f = frames->frames.write.operator[](page_frame_map.operator[](lru_cached_pages.back()->get()));
 
 		if (step - f->get_last_use() > CS_LRU_THRESH_DEFAULT) {
 

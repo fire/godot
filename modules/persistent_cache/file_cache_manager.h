@@ -32,6 +32,7 @@
 #define FILE_CACHE_MANAGER_H
 
 #include "core/error_macros.h"
+#include "core/io/resource_saver.h"
 #include "core/math/random_number_generator.h"
 #include "core/object.h"
 #include "core/ordered_hash_map.h"
@@ -41,7 +42,6 @@
 #include "core/set.h"
 #include "core/variant.h"
 #include "core/vector.h"
-#include "core/io/resource_saver.h"
 
 #include "cacheserv_defines.h"
 #include "control_queue.h"
@@ -80,12 +80,32 @@ struct LRUComparator;
 
 class FileCache : public Resource {
 	GDCLASS(FileCache, Resource)
+protected:
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("set_frames", "frames"), &FileCache::set_frames);
+		ClassDB::bind_method(D_METHOD("get_frames"), &FileCache::get_frames);
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "fraFileCacheManagermes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "set_frames", "get_frames");
+	}
 public:
-	Vector<Ref<FileCacheFrame>> frames;
+	Vector<Variant> get_frames() const {
+		Vector<Variant> r;
+		for (int i = 0; i < frames.size(); i++) {
+			r.push_back(frames[i].get_ref_ptr());
+		}
+		return r;
+	}
+	void set_frames(Array p_frames) {
+		Vector<Ref<FileCacheFrame> > r;
+		for (int i = 0; i < p_frames.size(); i++) {
+			r.push_back(p_frames[i]);
+		}
+		frames = r;
+	}
+	Vector<Ref<FileCacheFrame> > frames;
 };
 
-class FileCacheManager : public Object {
-	GDCLASS(FileCacheManager, Object);
+class FileCacheManager : public Resource {
+	GDCLASS(FileCacheManager, Resource);
 
 	friend class _FileCacheManager;
 
@@ -96,6 +116,13 @@ class FileCacheManager : public Object {
 	Thread *thread, *th2;
 	Mutex *mutex;
 
+protected:
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("set_frames", "frames"), &FileCacheManager::set_frames);
+		ClassDB::bind_method(D_METHOD("get_frames"), &FileCacheManager::get_frames);
+		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "frames", PROPERTY_HINT_RESOURCE_TYPE, "FileCache"), "set_frames", "get_frames");
+	}
+
 public:
 	Ref<FileCache> frames;
 	HashMap<String, RID> rids;
@@ -105,13 +132,21 @@ public:
 	List<page_id> fifo_cached_pages;
 	Set<page_id, LRUComparator> permanent_cached_pages;
 
-	uint8_t *memory_region = NULL;
+	Vector<uint8_t> memory_region;
 	uint64_t step = 0;
 	size_t last_used = 0;
 	size_t available_space;
 	size_t used_space;
 	size_t total_space;
 	bool exit_thread;
+
+	void set_frames(Ref<FileCache> p_fcm) {
+		frames = p_fcm;
+	}
+
+	Ref<FileCache> get_frames() const {
+		return frames;
+	}
 
 private:
 	static void thread_func(void *p_udata);
@@ -163,7 +198,6 @@ private:
 	//
 	// Leaves the file pointer invalid.
 	void do_flush_close_op(DescriptorInfo *desc_info);
-
 
 protected:
 public:

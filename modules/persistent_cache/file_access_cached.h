@@ -108,7 +108,7 @@ public:
 	virtual Error _set_unix_permissions(const String &p_file, uint32_t p_permissions) { return FileAccess::set_unix_permissions(p_file, p_permissions); }
 
 	void save_cache(NodePath p_path) {
-		ResourceSaver::save(p_path, cache_mgr->frames);
+		ResourceSaver::save(p_path, cache_mgr);
 	}
 
 	void close() {

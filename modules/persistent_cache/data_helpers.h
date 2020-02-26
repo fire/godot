@@ -123,7 +123,7 @@ protected:
 	}
 
 private:
-	uint8_t *const memory_region;
+	uint8_t * memory_region;
 	page_id owning_page;
 	int64_t ts_last_use;
 	int32_t used_size;
@@ -132,6 +132,9 @@ private:
 	volatile bool used;
 
 public:
+	void set_memory_region(uint8_t *const p_memory_region) {
+		memory_region = p_memory_region;
+	}
 	PoolByteArray get_serialized_memory_region() const {
 		PoolByteArray bytes;
 		bytes.resize(used_size);
