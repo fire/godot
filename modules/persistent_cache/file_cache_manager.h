@@ -84,7 +84,7 @@ protected:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_frames", "frames"), &FileCache::set_frames);
 		ClassDB::bind_method(D_METHOD("get_frames"), &FileCache::get_frames);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "fraFileCacheManagermes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "set_frames", "get_frames");
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "file_cache_frames", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "set_frames", "get_frames");
 	}
 public:
 	Vector<Variant> get_frames() const {
@@ -120,7 +120,7 @@ protected:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_frames", "frames"), &FileCacheManager::set_frames);
 		ClassDB::bind_method(D_METHOD("get_frames"), &FileCacheManager::get_frames);
-		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "frames", PROPERTY_HINT_RESOURCE_TYPE, "FileCache"), "set_frames", "get_frames");
+		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "file_cache_manager_frames", PROPERTY_HINT_RESOURCE_TYPE, "FileCache"), "set_frames", "get_frames");
 	}
 
 public:

@@ -10,9 +10,11 @@ void register_persistent_cache_types() {
 	file_cache_manager = memnew(FileCacheManager);
 	file_cache_manager->init();
 	_file_cache_server = memnew(_FileCacheManager);
+	ClassDB::register_class<FileCache>();
 	ClassDB::register_class<FileCacheFrame>();
+	ClassDB::register_class<FileCacheManager>();
 	ClassDB::register_class<_FileCacheManager>();
-	ClassDB::register_class<_FileAccessCached>();	
+	ClassDB::register_class<_FileAccessCached>();
 	Engine::get_singleton()->add_singleton(Engine::Singleton("FileCacheManager", _FileCacheManager::get_singleton()));
 }
 
