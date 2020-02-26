@@ -132,7 +132,6 @@ public:
 	List<page_id> fifo_cached_pages;
 	Set<page_id, LRUComparator> permanent_cached_pages;
 
-	Vector<uint8_t> memory_region;
 	uint64_t step = 0;
 	size_t last_used = 0;
 	size_t available_space;

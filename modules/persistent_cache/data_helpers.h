@@ -123,7 +123,7 @@ protected:
 	}
 
 private:
-	uint8_t * memory_region;
+	Vector<uint8_t> memory_region;
 	page_id owning_page;
 	int64_t ts_last_use;
 	int32_t used_size;
@@ -132,18 +132,23 @@ private:
 	volatile bool used;
 
 public:
-	void set_memory_region(uint8_t *const p_memory_region) {
-		memory_region = p_memory_region;
+	void set_memory_region(PoolByteArray p_memory_region) {
+		memory_region.resize(CS_PAGE_SIZE);
+		PoolByteArray::Read r = p_memory_region.read();
+		copymem(memory_region.ptrw(), r.ptr(), used_size);
 	}
 	PoolByteArray get_serialized_memory_region() const {
 		PoolByteArray bytes;
-		bytes.resize(used_size);
-		copymem(bytes.write().ptr(), memory_region, used_size);
+		bytes.resize(memory_region.size());
+		PoolByteArray::Write w = bytes.write();
+		copymem(w.ptr(), memory_region.ptr(), used_size);
 		return bytes;
 	}
 	void set_serialized_memory_region(PoolByteArray bytes) {
 		used_size = bytes.size();
-		copymem(memory_region, bytes.read().ptr(), bytes.size());
+		memory_region.resize(bytes.size());
+		PoolByteArray::Read r = bytes.read();
+		copymem(memory_region.ptrw(), r.ptr(), bytes.size());
 	}
 	void set_serialized_owning_page(String p_owning_page) {
 		owning_page = p_owning_page.to_int64();
@@ -176,7 +181,6 @@ public:
 		used = p_used;
 	}
 	FileCacheFrame() :
-			memory_region(NULL),
 			owning_page(0),
 			ts_last_use(0),
 			used_size(0),
@@ -185,7 +189,7 @@ public:
 			used(false) {}
 
 	explicit FileCacheFrame(
-			uint8_t *i_memory_region) :
+			Vector<uint8_t> i_memory_region) :
 
 			memory_region(i_memory_region),
 			owning_page(0),
@@ -218,7 +222,7 @@ public:
 		CRASH_COND(!ready)
 		dirty = true;
 		String a;
-		a.parse_utf8((const char *)(this->memory_region), 4095);
+		a.parse_utf8((const char *)(this->memory_region.ptr()), CS_PAGE_SIZE - 1);
 		// WARN_PRINTS("Dirty page.\n\n" + a + "\n\n");
 		return this;
 	}
@@ -300,9 +304,9 @@ public:
 	Variant to_variant() {
 		Dictionary a;
 		char s[101] = { 0 };
-		memcpy(s, memory_region, 100);
+		memcpy(s, memory_region.ptr(), 100);
 
-		a["memory_region"] = Variant(itoh(reinterpret_cast<size_t>(memory_region)) + " # " + s + " ... ");
+		a["memory_region"] = Variant(itoh(reinterpret_cast<size_t>(memory_region.ptr())) + " # " + s + " ... ");
 		a["used_size"] = Variant(itoh(used_size));
 		a["time_since_last_use"] = Variant(itoh(ts_last_use));
 		a["used"] = Variant(used);
@@ -331,7 +335,7 @@ public:
 
 		DataRead(const Ref<FileCacheFrame> alloc, DescriptorInfo *desc_info) :
 				rwl(desc_info->lock),
-				mem(alloc->memory_region) {
+				mem(alloc->memory_region.ptr()) {
 			while (!(alloc->ready))
 				desc_info->ready_sem->wait();
 			// WARN_PRINT(("Acquiring data READ lock in thread ID "  + itoh(Thread::get_caller_id()) ).utf8().get_data());
@@ -367,7 +371,7 @@ public:
 		// We must wait for the page to become clean if we want to write to this page from a file. But, if we're writing from the main thread, we can safely allow this operation to occur.
 		DataWrite(Ref<FileCacheFrame> p_alloc, DescriptorInfo *desc_info, bool is_io_op) :
 				rwl(desc_info->lock),
-				mem(p_alloc->memory_region) {
+				mem(p_alloc->memory_region.ptrw()) {
 			if (is_io_op)
 				while (p_alloc->dirty)
 					desc_info->dirty_sem->wait();

@@ -43,7 +43,6 @@ FileCacheManager::FileCacheManager() {
 	mutex = Mutex::create();
 	rng.set_seed(OS::get_singleton()->get_ticks_usec());
 
-	memory_region.resize(CS_CACHE_SIZE);
 	page_frame_map.clear();
 
 	available_space = CS_CACHE_SIZE;
@@ -52,7 +51,9 @@ FileCacheManager::FileCacheManager() {
 	frames.instance();
 	frames->frames.resize(CS_NUM_FRAMES);
 	for (int i = 0; i < CS_NUM_FRAMES; ++i) {
-		frames->frames.write[i] = Ref<FileCacheFrame>(memnew(FileCacheFrame(memory_region.ptrw() + i * CS_PAGE_SIZE)));
+		Vector<uint8_t> memory_region;
+		memory_region.resize(CS_PAGE_SIZE);
+		frames->frames.write[i] = Ref<FileCacheFrame>(memnew(FileCacheFrame(memory_region)));
 	}
 
 	singleton = this;
