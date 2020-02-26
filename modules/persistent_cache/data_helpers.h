@@ -58,7 +58,7 @@ typedef int64_t frame_id;
 typedef int64_t page_id;
 
 struct CacheInfoTable;
-struct Frame;
+struct FileCacheFrame;
 struct DescriptorInfo;
 
 class FileCacheManager;
@@ -91,33 +91,33 @@ struct DescriptorInfo {
 	Variant to_variant(const FileCacheManager &p);
 };
 
-struct Frame : Resource {
-	GDCLASS(Frame, Resource);
+struct FileCacheFrame : Resource {
+	GDCLASS(FileCacheFrame, Resource);
 	friend class FileCacheManager;
 
 protected:
 	void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("get_memory_region"), &Frame::get_memory_region);
-		ClassDB::bind_method(D_METHOD("set_memory_region"), &Frame::set_memory_region);
+		ClassDB::bind_method(D_METHOD("get_memory_region"), &FileCacheFrame::get_memory_region);
+		ClassDB::bind_method(D_METHOD("set_memory_region"), &FileCacheFrame::set_memory_region);
 		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_memory_region", "get_memory_region");
 
-		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &Frame::get_ts_last_use);
-		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &Frame::set_ts_last_use);
+		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &FileCacheFrame::get_ts_last_use);
+		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &FileCacheFrame::set_ts_last_use);
 		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_ts_last_use", "get_ts_last_use");
 
 
-		ClassDB::bind_method(D_METHOD("get_used_size"), &Frame::get_used_size);
-		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &Frame::set_used_size);
+		ClassDB::bind_method(D_METHOD("get_used_size"), &FileCacheFrame::get_used_size);
+		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &FileCacheFrame::set_used_size);
 		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_used_size", "get_used_size");
 
 
-		ClassDB::bind_method(D_METHOD("get_dirty"), &Frame::get_dirty);
-		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &Frame::set_dirty);
+		ClassDB::bind_method(D_METHOD("get_dirty"), &FileCacheFrame::get_dirty);
+		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &FileCacheFrame::set_dirty);
 		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_dirty", "get_dirty");
 
 
-		ClassDB::bind_method(D_METHOD("get_used"), &Frame::get_used);
-		ClassDB::bind_method(D_METHOD("set_used", "used"), &Frame::set_used);
+		ClassDB::bind_method(D_METHOD("get_used"), &FileCacheFrame::get_used);
+		ClassDB::bind_method(D_METHOD("set_used", "used"), &FileCacheFrame::set_used);
 		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_used", PROPERTY_HINT_NONE, ""), "set_used", "get_used");
 	}
 
@@ -170,7 +170,7 @@ public:
 	void set_dirty(bool p_ready) {
 		ready = p_ready;
 	}
-	Frame() :
+	FileCacheFrame() :
 			memory_region(NULL),
 			owning_page(0),
 			ts_last_use(0),
@@ -179,7 +179,7 @@ public:
 			ready(false),
 			used(false) {}
 
-	explicit Frame(
+	explicit FileCacheFrame(
 			uint8_t *i_memory_region) :
 
 			memory_region(i_memory_region),
@@ -190,14 +190,14 @@ public:
 			ready(false),
 			used(false) {}
 
-	~Frame() {
+	~FileCacheFrame() {
 	}
 
 	_FORCE_INLINE_ page_id get_owning_page() {
 		return owning_page;
 	}
 
-	_FORCE_INLINE_ Frame &set_owning_page(page_id page) {
+	_FORCE_INLINE_ FileCacheFrame &set_owning_page(page_id page) {
 		// A frame whose owning page is changing should not be dirty and should be in a non-ready state.
 		CRASH_COND(dirty || ready)
 		owning_page = page;
@@ -208,7 +208,7 @@ public:
 		return dirty;
 	}
 
-	_FORCE_INLINE_ Frame &set_dirty_true() {
+	_FORCE_INLINE_ FileCacheFrame &set_dirty_true() {
 		// A page that isn't ready can't become dirty.
 		CRASH_COND(!ready)
 		dirty = true;
@@ -218,7 +218,7 @@ public:
 		return *this;
 	}
 
-	_FORCE_INLINE_ Frame &set_dirty_false(Semaphore *dirty_sem, frame_id frame) {
+	_FORCE_INLINE_ FileCacheFrame &set_dirty_false(Semaphore *dirty_sem, frame_id frame) {
 		// A page which is dirty as well as not ready is in an invalid state.
 		CRASH_COND(!ready)
 		dirty = false;
@@ -231,7 +231,7 @@ public:
 		return used;
 	}
 
-	_FORCE_INLINE_ Frame &set_used(bool in) {
+	_FORCE_INLINE_ FileCacheFrame &set_used(bool in) {
 		// All io ops must be completed (page must not be dirty) for this transition to be valid.
 		CRASH_COND(dirty)
 		used = in;
@@ -242,7 +242,7 @@ public:
 		return ready;
 	}
 
-	_FORCE_INLINE_ Frame &set_ready_true(Semaphore *ready_sem) {
+	_FORCE_INLINE_ FileCacheFrame &set_ready_true(Semaphore *ready_sem) {
 		// A page cannot be dirty before it is ready.
 		CRASH_COND(!ready && dirty)
 		ready = true;
@@ -251,7 +251,7 @@ public:
 		return *this;
 	}
 
-	_FORCE_INLINE_ Frame &set_ready_false() {
+	_FORCE_INLINE_ FileCacheFrame &set_ready_false() {
 		// A page that is dirty must always be ready.
 		CRASH_COND(dirty)
 		ready = false;
@@ -262,21 +262,21 @@ public:
 		return ts_last_use;
 	}
 
-	_FORCE_INLINE_ Frame &set_last_use(uint32_t in) {
+	_FORCE_INLINE_ FileCacheFrame &set_last_use(uint32_t in) {
 		// maybe unnecessary.
 		// CRASH_COND(dirty)
 		ts_last_use = in;
 		return *this;
 	}
 
-	_FORCE_INLINE_ Frame &wait_clean(Semaphore *sem) {
+	_FORCE_INLINE_ FileCacheFrame &wait_clean(Semaphore *sem) {
 		while (dirty != false)
 			sem->wait();
 		// ERR_PRINTS("Page is clean.")
 		return *this;
 	}
 
-	_FORCE_INLINE_ Frame &wait_ready(Semaphore *sem) {
+	_FORCE_INLINE_ FileCacheFrame &wait_ready(Semaphore *sem) {
 		while (ready != true)
 			sem->wait();
 		// ERR_PRINTS("Page is clean.")
@@ -287,7 +287,7 @@ public:
 		return used_size;
 	}
 
-	_FORCE_INLINE_ Frame &set_used_size(uint16_t in) {
+	_FORCE_INLINE_ FileCacheFrame &set_used_size(uint16_t in) {
 		used_size = in;
 		return *this;
 	}
@@ -324,7 +324,7 @@ public:
 				rwl(NULL),
 				mem(NULL) {}
 
-		DataRead(const Frame *alloc, DescriptorInfo *desc_info) :
+		DataRead(const FileCacheFrame *alloc, DescriptorInfo *desc_info) :
 				rwl(desc_info->lock),
 				mem(alloc->memory_region) {
 			while (!(alloc->ready))
@@ -360,7 +360,7 @@ public:
 				mem(NULL) {}
 
 		// We must wait for the page to become clean if we want to write to this page from a file. But, if we're writing from the main thread, we can safely allow this operation to occur.
-		DataWrite(Frame *const p_alloc, DescriptorInfo *desc_info, bool is_io_op) :
+		DataWrite(FileCacheFrame *const p_alloc, DescriptorInfo *desc_info, bool is_io_op) :
 				rwl(desc_info->lock),
 				mem(p_alloc->memory_region) {
 			if (is_io_op)
