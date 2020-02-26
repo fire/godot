@@ -99,11 +99,17 @@ protected:
 		//ClassDB::bind_method(D_METHOD("get_buffer", "len"), &FileAccessCached::get_buffer);
 		ClassDB::bind_method(D_METHOD("seek", "position"), &FileAccessCached::seek);
 		ClassDB::bind_method(D_METHOD("seek_end", "position"), &FileAccessCached::seek_end);
+		ClassDB::bind_method(D_METHOD("save_cache", "path"), &FileAccessCached::save_cache);
 	}
 
 public:
+
 	virtual uint32_t _get_unix_permissions(const String &p_file) { return FileAccess::get_unix_permissions(p_file); }
 	virtual Error _set_unix_permissions(const String &p_file, uint32_t p_permissions) { return FileAccess::set_unix_permissions(p_file, p_permissions); }
+
+	void save_cache(NodePath p_path) {
+		ResourceSaver::save(p_path, cache_mgr->frames);
+	}
 
 	void close() {
 		if (cached_file.is_valid()) {
@@ -262,6 +268,7 @@ protected:
 
 		ClassDB::bind_method(D_METHOD("eof_reached"), &_FileAccessCached::eof_reached);
 		ClassDB::bind_method(D_METHOD("flush"), &_FileAccessCached::flush);
+		ClassDB::bind_method(D_METHOD("save_cache", "path"), &_FileAccessCached::save_cache);
 	}
 
 public:
@@ -356,6 +363,10 @@ public:
 
 		if (fac.is_open())
 			fac.close();
+	}
+
+	void save_cache(NodePath p_node_path) {
+		 fac.save_cache(p_node_path);
 	}
 };
 

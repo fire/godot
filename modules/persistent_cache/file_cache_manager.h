@@ -41,6 +41,7 @@
 #include "core/set.h"
 #include "core/variant.h"
 #include "core/vector.h"
+#include "core/io/resource_saver.h"
 
 #include "cacheserv_defines.h"
 #include "control_queue.h"
@@ -77,6 +78,12 @@ _FORCE_INLINE_ page_id get_page_guid(const DescriptorInfo *di, size_t offset, bo
 
 struct LRUComparator;
 
+class FileCache : public Resource {
+	GDCLASS(FileCache, Resource)
+public:
+	Vector<Ref<FileCacheFrame>> frames;
+};
+
 class FileCacheManager : public Object {
 	GDCLASS(FileCacheManager, Object);
 
@@ -90,7 +97,7 @@ class FileCacheManager : public Object {
 	Mutex *mutex;
 
 public:
-	Vector<Ref<FileCacheFrame>> frames;
+	Ref<FileCache> frames;
 	HashMap<String, RID> rids;
 	HashMap<uint32_t, DescriptorInfo *> files;
 	Map<page_id, frame_id> page_frame_map;
@@ -117,11 +124,12 @@ private:
 		frame_id curr_frame = page_frame_map[curr_page];
 		// WARN_PRINTS("Untracking page: " + itoh(curr_page) + " mapped to frame: " + itoh(curr_frame) + " in file:  " + desc_info->path)
 
-		CS_GET_CACHE_POLICY_FN(cache_removal_policies, desc_info->cache_policy)(curr_page);
+		CS_GET_CACHE_POLICY_FN(cache_removal_policies, desc_info->cache_policy)
+		(curr_page);
 
 		page_frame_map.erase(curr_page);
 		desc_info->pages.erase(curr_page);
-		frames.write[curr_frame]->wait_clean(desc_info->dirty_sem)->set_used(false)->set_ready_false()->set_owning_page(0)->set_used_size(0);
+		frames->frames.write[curr_frame]->wait_clean(desc_info->dirty_sem)->set_used(false)->set_ready_false()->set_owning_page(0)->set_used_size(0);
 	}
 
 	void do_load_op(DescriptorInfo *desc_info, page_id curr_page, frame_id curr_frame, size_t offset);
@@ -155,6 +163,7 @@ private:
 	//
 	// Leaves the file pointer invalid.
 	void do_flush_close_op(DescriptorInfo *desc_info);
+
 
 protected:
 public:
@@ -225,7 +234,6 @@ public:
 
 	// Invalidates the RID. The associated file will no longer be tracked.
 	void permanent_close(RID rid);
-
 
 	size_t read(RID rid, void *const buffer, size_t length);
 	size_t write(RID rid, const void *const data, size_t length);
@@ -305,20 +313,18 @@ public:
 
 VARIANT_ENUM_CAST(_FileCacheManager::CachePolicy);
 
-
 // A comparator functor to sort page IDs according to the LRU paging algorithm.
 struct LRUComparator : public Object {
 	GDCLASS(LRUComparator, Object);
-	const FileCacheManager* const fcm;
-public:
+	FileCacheManager *const fcm;
 
+public:
 	LRUComparator() :
 			fcm(FileCacheManager::get_singleton()) {}
 
 	_FORCE_INLINE_ bool operator()(page_id p1, page_id p2) {
-		page_id a = fcm->frames[fcm->page_frame_map[p1]]->get_last_use();
-
-		page_id b = fcm->frames[fcm->page_frame_map[p2]]->get_last_use();
+		page_id a = fcm->frames->frames[fcm->page_frame_map[p1]]->get_last_use();
+		page_id b = fcm->frames->frames[fcm->page_frame_map[p2]]->get_last_use();
 
 		// Older pages have lower last_use values.
 		// This means that to sort by longest age we must compare for the least value of last_use.

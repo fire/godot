@@ -88,7 +88,7 @@ struct DescriptorInfo {
 		memdelete(lock);
 	}
 
-	Variant to_variant(const FileCacheManager &p);
+	Variant to_variant(FileCacheManager &p);
 };
 
 class FileCacheFrame : public Resource {
@@ -97,29 +97,29 @@ class FileCacheFrame : public Resource {
 
 protected:
 	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("set_memory_region", "memory_region"), &FileCacheFrame::set_serialized_memory_region);
 		ClassDB::bind_method(D_METHOD("get_memory_region"), &FileCacheFrame::get_serialized_memory_region);
-		ClassDB::bind_method(D_METHOD("set_memory_region"), &FileCacheFrame::set_serialized_memory_region);
-		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_serialized_memory_region", "get_serialized_memory_region");
+		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_memory_region", "get_memory_region");
 
-		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &FileCacheFrame::get_serialized_ts_last_use);
 		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &FileCacheFrame::set_serialized_ts_last_use);
-		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_serialized_ts_last_use", "get_serialized_ts_last_use");
+		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &FileCacheFrame::get_serialized_ts_last_use);
+		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_ts_last_use", "get_ts_last_use");
 
-		ClassDB::bind_method(D_METHOD("get_used_size"), &FileCacheFrame::get_serialized_used_size);
 		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &FileCacheFrame::set_serialized_used_size);
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_serialized_used_size", "get_serialized_used_size");
+		ClassDB::bind_method(D_METHOD("get_used_size"), &FileCacheFrame::get_serialized_used_size);
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_used_size", "get_used_size");
 
-		ClassDB::bind_method(D_METHOD("get_dirty"), &FileCacheFrame::get_serialized_dirty);
 		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &FileCacheFrame::set_serialized_dirty);
-		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_serialized_dirty", "get_serialized_dirty");
+		ClassDB::bind_method(D_METHOD("get_dirty"), &FileCacheFrame::get_serialized_dirty);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_dirty", "get_dirty");
 
-		ClassDB::bind_method(D_METHOD("get_ready"), &FileCacheFrame::get_serialized_used);
 		ClassDB::bind_method(D_METHOD("set_ready", "ready"), &FileCacheFrame::set_serialized_used);
-		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ready", PROPERTY_HINT_NONE, ""), "set_serialized_ready", "get_serialized_ready");
+		ClassDB::bind_method(D_METHOD("get_ready"), &FileCacheFrame::get_serialized_used);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ready", PROPERTY_HINT_NONE, ""), "set_ready", "get_ready");
 
 		ClassDB::bind_method(D_METHOD("get_used"), &FileCacheFrame::get_serialized_used);
 		ClassDB::bind_method(D_METHOD("set_used", "used"), &FileCacheFrame::set_serialized_used);
-		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "used", PROPERTY_HINT_NONE, ""), "set_serialized_used", "get_serialized_used");
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "used", PROPERTY_HINT_NONE, ""), "set_used", "get_used");
 	}
 
 private:
@@ -157,8 +157,8 @@ public:
 	void set_serialized_used_size(int32_t p_used_size) {
 		used_size = p_used_size;
 	}
-	int32_t get_serialized_used_size(int32_t p_used_size) const {
-		return p_used_size;
+	int32_t get_serialized_used_size() const {
+		return used_size;
 	}
 	bool get_serialized_dirty() const {
 		return dirty;
@@ -294,7 +294,7 @@ public:
 		return this;
 	}
 
-	Variant to_variant() const {
+	Variant to_variant() {
 		Dictionary a;
 		char s[101] = { 0 };
 		memcpy(s, memory_region, 100);

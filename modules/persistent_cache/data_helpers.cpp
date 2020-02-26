@@ -54,12 +54,13 @@ DescriptorInfo::DescriptorInfo(FileAccess *fa, page_id new_range, int cache_poli
 	lock = RWLock::create();
 }
 
-Variant DescriptorInfo::to_variant(const FileCacheManager &p) {
+Variant DescriptorInfo::to_variant(FileCacheManager &p) {
 
 	Dictionary d;
 
-	for(int i = 0; i < pages.size(); ++i) {
-		d[itoh(pages[i]) + " # " + itoh(p.page_frame_map[pages[i]])] = (p.frames[p.page_frame_map[pages[i]]]->to_variant());
+
+	for (int i = 0; i < pages.size(); ++i) {
+		d[itoh(pages[i]) + " # " + itoh(p.page_frame_map[pages[i]])] = (p.frames->frames.write[p.page_frame_map[pages[i]]]->to_variant());
 	}
 
 	Dictionary out;
@@ -69,7 +70,5 @@ Variant DescriptorInfo::to_variant(const FileCacheManager &p) {
 	out["pages"] = Variant(d);
 	out["cache_policy"] = Variant(cache_policy);
 
-
 	return Variant(out);
-
 }
