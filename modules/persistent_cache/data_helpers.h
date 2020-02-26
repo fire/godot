@@ -42,6 +42,7 @@
 #include "core/set.h"
 #include "core/variant.h"
 #include "core/vector.h"
+#include "core/resource.h"
 
 #include "cacheserv_defines.h"
 
@@ -89,7 +90,8 @@ struct DescriptorInfo {
 	Variant to_variant(const FileCacheManager &p);
 };
 
-struct Frame {
+struct Frame : Resource {
+	GDCLASS(Frame, Resource);
 	friend class FileCacheManager;
 
 private:
