@@ -53,12 +53,12 @@ _FORCE_INLINE_ String itoh(size_t num) {
 	return String(x);
 }
 
-typedef int64_t data_descriptor;
+typedef uint32_t data_descriptor;
 typedef int64_t frame_id;
 typedef int64_t page_id;
 
 struct CacheInfoTable;
-struct FileCacheFrame;
+class FileCacheFrame;
 struct DescriptorInfo;
 
 class FileCacheManager;
@@ -91,34 +91,35 @@ struct DescriptorInfo {
 	Variant to_variant(const FileCacheManager &p);
 };
 
-struct FileCacheFrame : Resource {
+class FileCacheFrame : public Resource {
 	GDCLASS(FileCacheFrame, Resource);
 	friend class FileCacheManager;
 
 protected:
-	void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("get_memory_region"), &FileCacheFrame::get_memory_region);
-		ClassDB::bind_method(D_METHOD("set_memory_region"), &FileCacheFrame::set_memory_region);
-		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_memory_region", "get_memory_region");
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("get_memory_region"), &FileCacheFrame::get_serialized_memory_region);
+		ClassDB::bind_method(D_METHOD("set_memory_region"), &FileCacheFrame::set_serialized_memory_region);
+		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_serialized_memory_region", "get_serialized_memory_region");
 
-		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &FileCacheFrame::get_ts_last_use);
-		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &FileCacheFrame::set_ts_last_use);
-		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_ts_last_use", "get_ts_last_use");
+		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &FileCacheFrame::get_serialized_ts_last_use);
+		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &FileCacheFrame::set_serialized_ts_last_use);
+		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_serialized_ts_last_use", "get_serialized_ts_last_use");
 
+		ClassDB::bind_method(D_METHOD("get_used_size"), &FileCacheFrame::get_serialized_used_size);
+		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &FileCacheFrame::set_serialized_used_size);
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_serialized_used_size", "get_serialized_used_size");
 
-		ClassDB::bind_method(D_METHOD("get_used_size"), &FileCacheFrame::get_used_size);
-		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &FileCacheFrame::set_used_size);
-		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_used_size", "get_used_size");
+		ClassDB::bind_method(D_METHOD("get_dirty"), &FileCacheFrame::get_serialized_dirty);
+		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &FileCacheFrame::set_serialized_dirty);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_serialized_dirty", "get_serialized_dirty");
 
+		ClassDB::bind_method(D_METHOD("get_ready"), &FileCacheFrame::get_serialized_used);
+		ClassDB::bind_method(D_METHOD("set_ready", "ready"), &FileCacheFrame::set_serialized_used);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ready", PROPERTY_HINT_NONE, ""), "set_serialized_ready", "get_serialized_ready");
 
-		ClassDB::bind_method(D_METHOD("get_dirty"), &FileCacheFrame::get_dirty);
-		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &FileCacheFrame::set_dirty);
-		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_dirty", "get_dirty");
-
-
-		ClassDB::bind_method(D_METHOD("get_used"), &FileCacheFrame::get_used);
-		ClassDB::bind_method(D_METHOD("set_used", "used"), &FileCacheFrame::set_used);
-		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_used", PROPERTY_HINT_NONE, ""), "set_used", "get_used");
+		ClassDB::bind_method(D_METHOD("get_used"), &FileCacheFrame::get_serialized_used);
+		ClassDB::bind_method(D_METHOD("set_used", "used"), &FileCacheFrame::set_serialized_used);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "used", PROPERTY_HINT_NONE, ""), "set_serialized_used", "get_serialized_used");
 	}
 
 private:
@@ -131,44 +132,45 @@ private:
 	volatile bool used;
 
 public:
-	PoolByteArray get_memory_region() {
+	PoolByteArray get_serialized_memory_region() const {
 		PoolByteArray bytes;
 		bytes.resize(used_size);
 		copymem(bytes.write().ptr(), memory_region, used_size);
+		return bytes;
 	}
-	void set_memory_region(PoolByteArray bytes) {
+	void set_serialized_memory_region(PoolByteArray bytes) {
 		used_size = bytes.size();
 		copymem(memory_region, bytes.read().ptr(), bytes.size());
 	}
-	void set_owning_page(String p_owning_page) {
+	void set_serialized_owning_page(String p_owning_page) {
 		owning_page = p_owning_page.to_int64();
 	}
-	String get_owning_page() {
+	String get_serialized_owning_page() const {
 		return itoh(owning_page);
 	}
-	void set_ts_last_use(String p_ts) {
+	void set_serialized_ts_last_use(String p_ts) {
 		ts_last_use = p_ts.to_int64();
 	}
-	String get_ts_last_use() {
+	String get_serialized_ts_last_use() const {
 		return itoh(ts_last_use);
 	}
-	void set_used_size(int32_t p_used_size) {
+	void set_serialized_used_size(int32_t p_used_size) {
 		used_size = p_used_size;
 	}
-	int32_t get_used_size(int32_t p_used_size) {
-		used_size = p_used_size;
+	int32_t get_serialized_used_size(int32_t p_used_size) const {
+		return p_used_size;
 	}
-	bool get_dirty() {
+	bool get_serialized_dirty() const {
 		return dirty;
 	}
-	void set_dirty(bool p_dirty) {
+	void set_serialized_dirty(bool p_dirty) {
 		dirty = p_dirty;
 	}
-	bool get_ready() {
-		return ready;
+	bool get_serialized_used() const {
+		return used;
 	}
-	void set_dirty(bool p_ready) {
-		ready = p_ready;
+	void set_serialized_used(bool p_used) {
+		used = p_used;
 	}
 	FileCacheFrame() :
 			memory_region(NULL),
@@ -193,103 +195,103 @@ public:
 	~FileCacheFrame() {
 	}
 
-	_FORCE_INLINE_ page_id get_owning_page() {
+	_FORCE_INLINE_ page_id get_owning_page() const {
 		return owning_page;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_owning_page(page_id page) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_owning_page(page_id page) {
 		// A frame whose owning page is changing should not be dirty and should be in a non-ready state.
 		CRASH_COND(dirty || ready)
 		owning_page = page;
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ bool get_dirty() {
+	_FORCE_INLINE_ bool get_dirty() const {
 		return dirty;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_dirty_true() {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_dirty_true() {
 		// A page that isn't ready can't become dirty.
 		CRASH_COND(!ready)
 		dirty = true;
 		String a;
 		a.parse_utf8((const char *)(this->memory_region), 4095);
 		// WARN_PRINTS("Dirty page.\n\n" + a + "\n\n");
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_dirty_false(Semaphore *dirty_sem, frame_id frame) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_dirty_false(Semaphore *dirty_sem, frame_id frame) {
 		// A page which is dirty as well as not ready is in an invalid state.
 		CRASH_COND(!ready)
 		dirty = false;
 		// WARN_PRINTS("Dirty page " + itoh(frame) + " is clean.");
 		dirty_sem->post();
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ bool get_used() {
+	_FORCE_INLINE_ bool get_used() const {
 		return used;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_used(bool in) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_used(bool in) {
 		// All io ops must be completed (page must not be dirty) for this transition to be valid.
 		CRASH_COND(dirty)
 		used = in;
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ bool get_ready() {
+	_FORCE_INLINE_ bool get_ready() const {
 		return ready;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_ready_true(Semaphore *ready_sem) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_ready_true(Semaphore *ready_sem) {
 		// A page cannot be dirty before it is ready.
 		CRASH_COND(!ready && dirty)
 		ready = true;
 		ready_sem->post();
 		// WARN_PRINTS("Part ready for page " + itoh(page) + " and frame " + itoh(frame) + " .");
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_ready_false() {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_ready_false() {
 		// A page that is dirty must always be ready.
 		CRASH_COND(dirty)
 		ready = false;
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ uint32_t get_last_use() {
+	_FORCE_INLINE_ uint32_t get_last_use() const {
 		return ts_last_use;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_last_use(uint32_t in) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_last_use(uint32_t in) {
 		// maybe unnecessary.
 		// CRASH_COND(dirty)
 		ts_last_use = in;
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &wait_clean(Semaphore *sem) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> wait_clean(Semaphore *sem) {
 		while (dirty != false)
 			sem->wait();
 		// ERR_PRINTS("Page is clean.")
-		return *this;
+		return this;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &wait_ready(Semaphore *sem) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> wait_ready(Semaphore *sem) {
 		while (ready != true)
 			sem->wait();
 		// ERR_PRINTS("Page is clean.")
-		return *this;
+		return this;
 	}
 
 	_FORCE_INLINE_ uint16_t get_used_size() {
 		return used_size;
 	}
 
-	_FORCE_INLINE_ FileCacheFrame &set_used_size(uint16_t in) {
+	_FORCE_INLINE_ Ref<FileCacheFrame> set_used_size(uint16_t in) {
 		used_size = in;
-		return *this;
+		return this;
 	}
 
 	Variant to_variant() const {
@@ -324,7 +326,7 @@ public:
 				rwl(NULL),
 				mem(NULL) {}
 
-		DataRead(const FileCacheFrame *alloc, DescriptorInfo *desc_info) :
+		DataRead(const Ref<FileCacheFrame> alloc, DescriptorInfo *desc_info) :
 				rwl(desc_info->lock),
 				mem(alloc->memory_region) {
 			while (!(alloc->ready))
@@ -360,7 +362,7 @@ public:
 				mem(NULL) {}
 
 		// We must wait for the page to become clean if we want to write to this page from a file. But, if we're writing from the main thread, we can safely allow this operation to occur.
-		DataWrite(FileCacheFrame *const p_alloc, DescriptorInfo *desc_info, bool is_io_op) :
+		DataWrite(Ref<FileCacheFrame> p_alloc, DescriptorInfo *desc_info, bool is_io_op) :
 				rwl(desc_info->lock),
 				mem(p_alloc->memory_region) {
 			if (is_io_op)

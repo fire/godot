@@ -90,7 +90,7 @@ class FileCacheManager : public Object {
 	Mutex *mutex;
 
 public:
-	Vector<Frame *> frames;
+	Vector<Ref<FileCacheFrame>> frames;
 	HashMap<String, RID> rids;
 	HashMap<uint32_t, DescriptorInfo *> files;
 	Map<page_id, frame_id> page_frame_map;
@@ -121,7 +121,7 @@ private:
 
 		page_frame_map.erase(curr_page);
 		desc_info->pages.erase(curr_page);
-		frames[curr_frame]->wait_clean(desc_info->dirty_sem).set_used(false).set_ready_false().set_owning_page(0).set_used_size(0);
+		frames.write[curr_frame]->wait_clean(desc_info->dirty_sem)->set_used(false)->set_ready_false()->set_owning_page(0)->set_used_size(0);
 	}
 
 	void do_load_op(DescriptorInfo *desc_info, page_id curr_page, frame_id curr_frame, size_t offset);
@@ -307,8 +307,10 @@ VARIANT_ENUM_CAST(_FileCacheManager::CachePolicy);
 
 
 // A comparator functor to sort page IDs according to the LRU paging algorithm.
-struct LRUComparator {
-	const FileCacheManager *const fcm;
+struct LRUComparator : public Object {
+	GDCLASS(LRUComparator, Object);
+	const FileCacheManager* const fcm;
+public:
 
 	LRUComparator() :
 			fcm(FileCacheManager::get_singleton()) {}
