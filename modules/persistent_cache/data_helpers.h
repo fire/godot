@@ -38,11 +38,11 @@
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
 #include "core/reference.h"
+#include "core/resource.h"
 #include "core/rid.h"
 #include "core/set.h"
 #include "core/variant.h"
 #include "core/vector.h"
-#include "core/resource.h"
 
 #include "cacheserv_defines.h"
 
@@ -53,9 +53,9 @@ _FORCE_INLINE_ String itoh(size_t num) {
 	return String(x);
 }
 
-typedef uint32_t data_descriptor;
-typedef uint32_t frame_id;
-typedef uint64_t page_id;
+typedef int64_t data_descriptor;
+typedef int64_t frame_id;
+typedef int64_t page_id;
 
 struct CacheInfoTable;
 struct Frame;
@@ -81,7 +81,8 @@ struct DescriptorInfo {
 	// Create a new DescriptorInfo with a new random namespace defined by 24 most significant bits.
 	DescriptorInfo(FileAccess *fa, page_id new_guid_prefix, int cache_policy);
 	~DescriptorInfo() {
-		while (dirty) dirty_sem->wait();
+		while (dirty)
+			dirty_sem->wait();
 		memdelete(ready_sem);
 		memdelete(dirty_sem);
 		memdelete(lock);
@@ -94,16 +95,81 @@ struct Frame : Resource {
 	GDCLASS(Frame, Resource);
 	friend class FileCacheManager;
 
+protected:
+	void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("get_memory_region"), &Frame::get_memory_region);
+		ClassDB::bind_method(D_METHOD("set_memory_region"), &Frame::set_memory_region);
+		ADD_PROPERTY(PropertyInfo(Variant::POOL_BYTE_ARRAY, "memory_region", PROPERTY_HINT_NONE, ""), "set_memory_region", "get_memory_region");
+
+		ClassDB::bind_method(D_METHOD("get_ts_last_use"), &Frame::get_ts_last_use);
+		ClassDB::bind_method(D_METHOD("set_ts_last_use", "ts_last_use"), &Frame::set_ts_last_use);
+		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_last_use", PROPERTY_HINT_NONE, ""), "set_ts_last_use", "get_ts_last_use");
+
+
+		ClassDB::bind_method(D_METHOD("get_used_size"), &Frame::get_used_size);
+		ClassDB::bind_method(D_METHOD("set_used_size", "used_size"), &Frame::set_used_size);
+		ADD_PROPERTY(PropertyInfo(Variant::INT, "used_size", PROPERTY_HINT_NONE, ""), "set_used_size", "get_used_size");
+
+
+		ClassDB::bind_method(D_METHOD("get_dirty"), &Frame::get_dirty);
+		ClassDB::bind_method(D_METHOD("set_dirty", "dirty"), &Frame::set_dirty);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "dirty", PROPERTY_HINT_NONE, ""), "set_dirty", "get_dirty");
+
+
+		ClassDB::bind_method(D_METHOD("get_used"), &Frame::get_used);
+		ClassDB::bind_method(D_METHOD("set_used", "used"), &Frame::set_used);
+		ADD_PROPERTY(PropertyInfo(Variant::STRING, "ts_used", PROPERTY_HINT_NONE, ""), "set_used", "get_used");
+	}
+
 private:
 	uint8_t *const memory_region;
 	page_id owning_page;
-	uint32_t ts_last_use;
-	uint16_t used_size;
+	int64_t ts_last_use;
+	int32_t used_size;
 	volatile bool dirty;
 	volatile bool ready;
 	volatile bool used;
 
 public:
+	PoolByteArray get_memory_region() {
+		PoolByteArray bytes;
+		bytes.resize(used_size);
+		copymem(bytes.write().ptr(), memory_region, used_size);
+	}
+	void set_memory_region(PoolByteArray bytes) {
+		used_size = bytes.size();
+		copymem(memory_region, bytes.read().ptr(), bytes.size());
+	}
+	void set_owning_page(String p_owning_page) {
+		owning_page = p_owning_page.to_int64();
+	}
+	String get_owning_page() {
+		return itoh(owning_page);
+	}
+	void set_ts_last_use(String p_ts) {
+		ts_last_use = p_ts.to_int64();
+	}
+	String get_ts_last_use() {
+		return itoh(ts_last_use);
+	}
+	void set_used_size(int32_t p_used_size) {
+		used_size = p_used_size;
+	}
+	int32_t get_used_size(int32_t p_used_size) {
+		used_size = p_used_size;
+	}
+	bool get_dirty() {
+		return dirty;
+	}
+	void set_dirty(bool p_dirty) {
+		dirty = p_dirty;
+	}
+	bool get_ready() {
+		return ready;
+	}
+	void set_dirty(bool p_ready) {
+		ready = p_ready;
+	}
 	Frame() :
 			memory_region(NULL),
 			owning_page(0),
@@ -228,10 +294,10 @@ public:
 
 	Variant to_variant() const {
 		Dictionary a;
-		char s[101] = {0};
+		char s[101] = { 0 };
 		memcpy(s, memory_region, 100);
 
-		a["memory_region"] = Variant(itoh(reinterpret_cast<size_t>(memory_region)) +  " # " + s + " ... ");
+		a["memory_region"] = Variant(itoh(reinterpret_cast<size_t>(memory_region)) + " # " + s + " ... ");
 		a["used_size"] = Variant(itoh(used_size));
 		a["time_since_last_use"] = Variant(itoh(ts_last_use));
 		a["used"] = Variant(used);
