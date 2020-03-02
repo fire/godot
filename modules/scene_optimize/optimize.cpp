@@ -24,7 +24,7 @@
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
 /* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN connect_compatION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
@@ -148,40 +148,38 @@ void SceneOptimize::simplify(Node *p_root_node) {
 			st->create_from(mesh, j);
 			st->index();
 			const Array mesh_array = st->commit_to_arrays();
-			PoolVector<Vector3> vertexes = mesh_array[Mesh::ARRAY_VERTEX];
+			Vector<Vector3> vertexes = mesh_array[Mesh::ARRAY_VERTEX];
 			// https://github.com/zeux/meshoptimizer/blob/bce99a4bfdc7bbc72479e1d71c4083329d306347/demo/main.cpp#L414
 			// generate 4 LOD levels (1-4), with each subsequent LOD using 70% triangles
 			// note that each LOD uses the same (shared) vertex buffer
-			PoolVector<PoolVector<uint32_t> > lods;
+			Vector<Vector<uint32_t> > lods;
 			lods.resize(lod_count);
-			PoolVector<PoolVector<uint32_t> >::Write w = lods.write();
-			PoolVector<uint32_t> unsigned_indices;
+			Vector<uint32_t> unsigned_indices;
 			{
-				PoolVector<int32_t> indices = mesh_array[Mesh::ARRAY_INDEX];
+				Vector<int32_t> indices = mesh_array[Mesh::ARRAY_INDEX];
 				unsigned_indices.resize(indices.size());
 				for (int32_t o = 0; o < indices.size(); o++) {
-					unsigned_indices.write()[o] = indices.read()[o];
+					unsigned_indices.write[o] = indices[o];
 				}
 			}
-			w[0] = unsigned_indices;
-			PoolVector<Vertex> meshopt_vertices;
+			lods.write[0] = unsigned_indices;
+			Vector<Vertex> meshopt_vertices;
 			meshopt_vertices.resize(vertexes.size());
 
 			for (int32_t k = 0; k < vertexes.size(); k++) {
 				Vertex meshopt_vertex;
-				Vector3 vertex = vertexes.read()[k];
+				Vector3 vertex = vertexes[k];
 				meshopt_vertex.px = vertex.x;
 				meshopt_vertex.py = vertex.y;
 				meshopt_vertex.pz = vertex.z;
-				meshopt_vertices.write()[k] = meshopt_vertex;
+				meshopt_vertices.write[k] = meshopt_vertex;
 			}
 			// we can simplify all the way from base level or from the last result
 			// simplifying from the base level sometimes produces better results, but simplifying from last level is faster
 			// simplify from the base level
 
 			for (size_t l = 1; l < lod_count; ++l) {
-				PoolVector<PoolVector<uint32_t> >::Write w = lods.write();
-				PoolVector<uint32_t> &lod = w[l];
+				Vector<uint32_t> &lod = lods.write[l];
 
 				float threshold = powf(0.7f, float(l));
 				size_t target_index_count = (unsigned_indices.size() * threshold) / 3 * 3;
@@ -192,17 +190,17 @@ void SceneOptimize::simplify(Node *p_root_node) {
 				}
 
 				lod.resize(unsigned_indices.size());
-				lod.resize(meshopt_simplify(&lod.write()[0], unsigned_indices.read().ptr(), unsigned_indices.size(), &meshopt_vertices.read()[0].px, meshopt_vertices.size(), sizeof(Vertex), target_index_count, target_error));
+				lod.resize(meshopt_simplify(&lod.write[0], unsigned_indices.ptr(), unsigned_indices.size(), &meshopt_vertices[0].px, meshopt_vertices.size(), sizeof(Vertex), target_index_count, target_error));
 			}
 
 			// double middle = OS::get_singleton()->get_ticks_msec();
 
 			// optimize each individual LOD for vertex cache & overdraw
 			for (size_t m = 1; m < lod_count; m++) {
-				PoolVector<uint32_t> &lod = lods.write()[m];
+				Vector<uint32_t> &lod = lods.write[m];
 
-				meshopt_optimizeVertexCache(&lod.write()[0], &lod.write()[0], lod.size(), meshopt_vertices.size());
-				meshopt_optimizeOverdraw(&lod.write()[0], &lod.read()[0], lod.size(), &meshopt_vertices.read()[0].px, meshopt_vertices.size(), sizeof(Vertex), 1.0f);
+				meshopt_optimizeVertexCache(&lod.write[0], &lod.write[0], lod.size(), meshopt_vertices.size());
+				meshopt_optimizeOverdraw(&lod.write[0], &lod[0], lod.size(), &meshopt_vertices[0].px, meshopt_vertices.size(), sizeof(Vertex), 1.0f);
 			}
 
 			// TODO (Ernest)
@@ -226,10 +224,10 @@ void SceneOptimize::simplify(Node *p_root_node) {
 
 			for (int32_t r = 0; r < lods.size(); r++) {
 				Array current_mesh = mesh_array;
-				PoolIntArray indexes = current_mesh[Mesh::ARRAY_INDEX];
+				Vector<int32_t> indexes = current_mesh[Mesh::ARRAY_INDEX];
 				indexes.resize(lods[r].size());
 				for (int32_t p = 0; p < lods[r].size(); p++) {
-					indexes.write()[p] = lods[r][p];
+					indexes.write[p] = lods[r][p];
 				}
 				current_mesh[Mesh::ARRAY_INDEX] = indexes;
 				{
@@ -308,7 +306,7 @@ void SceneOptimizePlugin::optimize(Variant p_user_data) {
 	file_export_lib = memnew(EditorFileDialog);
 	file_export_lib->set_title(TTR("Export Library"));
 	file_export_lib->set_mode(EditorFileDialog::MODE_SAVE_FILE);
-	file_export_lib->connect("file_selected", this, "_dialog_action");
+	file_export_lib->connect_compat("file_selected", this, "_dialog_action");
 	file_export_lib_merge = memnew(CheckBox);
 	file_export_lib_merge->set_text(TTR("Merge With Existing"));
 	file_export_lib_merge->set_pressed(false);
