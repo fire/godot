@@ -36,6 +36,8 @@
 #include "scene/resources/mesh.h"
 #include "scene/resources/skin.h"
 
+class MeshSubdivision;
+
 class MeshInstance : public GeometryInstance {
 
 	GDCLASS(MeshInstance, GeometryInstance);
@@ -46,6 +48,9 @@ protected:
 	Ref<Skin> skin_internal;
 	Ref<SkinReference> skin_ref;
 	NodePath skeleton_path;
+
+	int subdiv_level;
+	MeshSubdivision *subdiv_mesh;
 
 	struct BlendShapeTrack {
 
@@ -62,6 +67,9 @@ protected:
 
 	void _mesh_changed();
 	void _resolve_skeleton_path();
+
+	void _update_subdiv();
+	void _update_subdiv_vertices();
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -84,6 +92,9 @@ public:
 	int get_surface_material_count() const;
 	void set_surface_material(int p_surface, const Ref<Material> &p_material);
 	Ref<Material> get_surface_material(int p_surface) const;
+
+	void set_subdiv_level(int p_level);
+	int get_subdiv_level() const;
 
 	Node *create_trimesh_collision_node();
 	void create_trimesh_collision();

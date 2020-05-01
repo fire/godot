@@ -35,6 +35,7 @@
 #include "physics_body.h"
 #include "scene/resources/material.h"
 #include "scene/scene_string_names.h"
+#include "servers/visual/subdivision.h"
 #include "skeleton.h"
 
 bool MeshInstance::_set(const StringName &p_name, const Variant &p_value) {
@@ -118,6 +119,8 @@ void MeshInstance::set_mesh(const Ref<Mesh> &p_mesh) {
 
 	mesh = p_mesh;
 
+	_update_subdiv();
+
 	blend_shape_tracks.clear();
 	if (mesh.is_valid()) {
 
@@ -132,7 +135,8 @@ void MeshInstance::set_mesh(const Ref<Mesh> &p_mesh) {
 		mesh->connect(CoreStringNames::get_singleton()->changed, this, SceneStringNames::get_singleton()->_mesh_changed);
 		materials.resize(mesh->get_surface_count());
 
-		set_base(mesh->get_rid());
+		RID render_mesh = subdiv_mesh ? subdiv_mesh->get_rid() : mesh->get_rid();
+		set_base(render_mesh);
 	} else {
 
 		set_base(RID());
@@ -163,13 +167,77 @@ void MeshInstance::_resolve_skeleton_path() {
 		}
 	}
 
+	if (skin_ref.is_valid() && subdiv_mesh) {
+		ERR_FAIL_COND(!skin_ref->get_skeleton_node());
+		skin_ref->get_skeleton_node()->disconnect("skeleton_updated", this, "_update_subdiv_vertices");
+	}
+
 	skin_ref = new_skin_reference;
 
 	if (skin_ref.is_valid()) {
-		VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), skin_ref->get_skeleton());
+		if (subdiv_mesh) {
+			ERR_FAIL_COND(!skin_ref->get_skeleton_node());
+			skin_ref->get_skeleton_node()->connect("skeleton_updated", this, "_update_subdiv_vertices");
+
+			VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), RID());
+		} else {
+			VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), skin_ref->get_skeleton());
+		}
 	} else {
 		VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), RID());
 	}
+}
+
+void MeshInstance::_update_subdiv() {
+	if ((subdiv_level == 0) || mesh.is_null()) {
+		if (subdiv_mesh) {
+			SubdivisionSystem *subdivision_system = SubdivisionSystem::get_subdivision_system();
+			ERR_FAIL_COND(!subdivision_system);
+			subdivision_system->destroy_mesh_subdivision(subdiv_mesh);
+			subdiv_mesh = NULL;
+
+			if (skin_ref.is_valid()) {
+				ERR_FAIL_COND(!skin_ref->get_skeleton_node());
+				skin_ref->get_skeleton_node()->disconnect("skeleton_updated", this, "_update_subdiv_vertices");
+
+				VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), skin_ref->get_skeleton());
+			}
+		}
+		return;
+	}
+
+	if (!subdiv_mesh) {
+		SubdivisionSystem *subdivision_system = SubdivisionSystem::get_subdivision_system();
+		ERR_FAIL_COND(!subdivision_system);
+		subdiv_mesh = subdivision_system->create_mesh_subdivision(mesh, subdiv_level);
+
+		if (subdiv_mesh && skin_ref.is_valid()) {
+			ERR_FAIL_COND(!skin_ref->get_skeleton_node());
+			skin_ref->get_skeleton_node()->connect("skeleton_updated", this, "_update_subdiv_vertices");
+
+			VisualServer::get_singleton()->instance_attach_skeleton(get_instance(), RID());
+		}
+	} else {
+		subdiv_mesh->update_subdivision(mesh, subdiv_level);
+	}
+
+	if (skin_ref.is_valid()) {
+		// Intialize from current skeleton pose
+		_update_subdiv_vertices();
+	}
+}
+
+void MeshInstance::_update_subdiv_vertices() {
+	if (!subdiv_mesh) {
+		return;
+	}
+
+	ERR_FAIL_COND(skin_ref.is_null());
+
+	RID skeleton = skin_ref->get_skeleton();
+	ERR_FAIL_COND(!skeleton.is_valid());
+
+	subdiv_mesh->update_skinning(skeleton);
 }
 
 void MeshInstance::set_skin(const Ref<Skin> &p_skin) {
@@ -306,9 +374,46 @@ Ref<Material> MeshInstance::get_surface_material(int p_surface) const {
 	return materials[p_surface];
 }
 
+void MeshInstance::set_subdiv_level(int p_level) {
+	ERR_FAIL_COND(p_level < 0);
+
+	if (p_level == subdiv_level) {
+		return;
+	}
+
+	subdiv_level = p_level;
+
+	if (mesh.is_null()) {
+		return;
+	}
+
+	_update_subdiv();
+
+	RID render_mesh = subdiv_mesh ? subdiv_mesh->get_rid() : mesh->get_rid();
+	if (render_mesh != get_base()) {
+		set_base(render_mesh);
+
+		// Update instance materials after switching mesh
+		int surface_count = mesh->get_surface_count();
+		for (int surface_index = 0; surface_index < surface_count; ++surface_index) {
+			if (materials[surface_index].is_valid()) {
+				VS::get_singleton()->instance_set_surface_material(get_instance(), surface_index, materials[surface_index]->get_rid());
+			}
+		}
+	}
+}
+
+int MeshInstance::get_subdiv_level() const {
+	return subdiv_level;
+}
+
 void MeshInstance::_mesh_changed() {
 
 	materials.resize(mesh->get_surface_count());
+
+	if (subdiv_mesh) {
+		subdiv_mesh->update_subdivision(mesh, subdiv_level);
+	}
 }
 
 void MeshInstance::create_debug_tangents() {
@@ -399,11 +504,15 @@ void MeshInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_surface_material", "surface", "material"), &MeshInstance::set_surface_material);
 	ClassDB::bind_method(D_METHOD("get_surface_material", "surface"), &MeshInstance::get_surface_material);
 
+	ClassDB::bind_method(D_METHOD("set_subdiv_level", "level"), &MeshInstance::set_subdiv_level);
+	ClassDB::bind_method(D_METHOD("get_subdiv_level"), &MeshInstance::get_subdiv_level);
+
 	ClassDB::bind_method(D_METHOD("create_trimesh_collision"), &MeshInstance::create_trimesh_collision);
 	ClassDB::set_method_flags("MeshInstance", "create_trimesh_collision", METHOD_FLAGS_DEFAULT);
 	ClassDB::bind_method(D_METHOD("create_convex_collision"), &MeshInstance::create_convex_collision);
 	ClassDB::set_method_flags("MeshInstance", "create_convex_collision", METHOD_FLAGS_DEFAULT);
 	ClassDB::bind_method(D_METHOD("_mesh_changed"), &MeshInstance::_mesh_changed);
+	ClassDB::bind_method(D_METHOD("_update_subdiv_vertices"), &MeshInstance::_update_subdiv_vertices);
 
 	ClassDB::bind_method(D_METHOD("create_debug_tangents"), &MeshInstance::create_debug_tangents);
 	ClassDB::set_method_flags("MeshInstance", "create_debug_tangents", METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
@@ -411,10 +520,15 @@ void MeshInstance::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "mesh", PROPERTY_HINT_RESOURCE_TYPE, "Mesh"), "set_mesh", "get_mesh");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "skin", PROPERTY_HINT_RESOURCE_TYPE, "Skin"), "set_skin", "get_skin");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Skeleton"), "set_skeleton_path", "get_skeleton_path");
+
+	ADD_GROUP("Subdivison", "subdiv_");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "subdiv_level", PROPERTY_HINT_RANGE, "0,5"), "set_subdiv_level", "get_subdiv_level");
 }
 
 MeshInstance::MeshInstance() {
 	skeleton_path = NodePath("..");
+	subdiv_level = 0;
+	subdiv_mesh = NULL;
 }
 
 MeshInstance::~MeshInstance() {

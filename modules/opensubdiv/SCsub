@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_opensubdiv = env_modules.Clone()
+
+# Thirdparty source files
+
+if env["builtin_opensubdiv"] and not env["disable_3d"]:
+    thirdparty_dir = "#thirdparty/opensubdiv/"
+    thirdparty_sources = [
+        "far/error.cpp",
+        "far/topologyDescriptor.cpp",
+        "far/topologyRefiner.cpp",
+        "far/topologyRefinerFactory.cpp",
+        "sdc/crease.cpp",
+        "sdc/typeTraits.cpp",
+        "vtr/fvarLevel.cpp",
+        "vtr/fvarRefinement.cpp",
+        "vtr/level.cpp",
+        "vtr/quadRefinement.cpp",
+        "vtr/refinement.cpp",
+        "vtr/sparseSelector.cpp",
+        "vtr/triRefinement.cpp",
+    ]
+    thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+    env_opensubdiv.Append(CPPPATH=[thirdparty_dir])
+
+    env_thirdparty = env_opensubdiv.Clone()
+    env_thirdparty.disable_warnings()
+    env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
+
+# Godot source files
+env_opensubdiv.add_source_files(env.modules_sources, "*.cpp")

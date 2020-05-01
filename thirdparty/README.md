@@ -394,6 +394,18 @@ Files extracted from the upstream source:
 - LICENSE.txt
 
 
+## opensubdiv
+
+- Upstream: https://github.com/PixarAnimationStudios/OpenSubdiv.git
+- Version: 3.4.3
+- License: Apache 2.0
+
+Files extracted from upstream source:
+
+- opensubdiv/* apart from CMakeLists.txt
+- LICENSE.txt
+
+
 ## opus
 
 - Upstream: https://opus-codec.org
