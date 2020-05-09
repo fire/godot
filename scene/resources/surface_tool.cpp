@@ -960,6 +960,64 @@ void SurfaceTool::generate_tangents() {
 	format |= Mesh::ARRAY_FORMAT_TANGENT;
 }
 
+void SurfaceTool::generate_smooth_normals(bool p_flip) {
+	ERR_FAIL_COND(primitive != Mesh::PRIMITIVE_TRIANGLES);
+	bool was_indexed = index_array.size();
+	deindex();
+	HashMap<Vertex, Vector3, VertexHasher> vertex_hash;
+	List<Vertex>::Element *B = vertex_array.front();
+	for (List<Vertex>::Element *E = B; E;) {
+
+		List<Vertex>::Element *v[3];
+		v[0] = E;
+		v[1] = v[0]->next();
+		ERR_FAIL_COND(!v[1]);
+		v[2] = v[1]->next();
+		ERR_FAIL_COND(!v[2]);
+		E = v[2]->next();
+
+		Vector3 normal;
+		if (!p_flip)
+			normal = Plane(v[0]->get().vertex, v[1]->get().vertex, v[2]->get().vertex).normal;
+		else
+			normal = Plane(v[2]->get().vertex, v[1]->get().vertex, v[0]->get().vertex).normal;
+
+		for (int i = 0; i < 3; i++) {
+
+			Vector3 *lv = vertex_hash.getptr(v[i]->get());
+			if (!lv) {
+				vertex_hash.set(v[i]->get(), normal);
+			} else {
+				(*lv) += normal;
+			}
+		}
+
+		if (!E) {
+			if (vertex_hash.size()) {
+
+				while (B != E) {
+
+					Vector3 *lv = vertex_hash.getptr(B->get());
+					if (lv) {
+						B->get().normal = lv->normalized();
+					}
+
+					B = B->next();
+				}
+
+			} else {
+				B = E;
+			}
+			vertex_hash.clear();
+		}
+	}
+
+	format |= Mesh::ARRAY_FORMAT_NORMAL;
+	if (was_indexed) {
+		index();
+	}
+}
+
 void SurfaceTool::generate_normals(bool p_flip) {
 
 	ERR_FAIL_COND(primitive != Mesh::PRIMITIVE_TRIANGLES);

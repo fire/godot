@@ -45,7 +45,10 @@ class OpenSubdivMeshSubdivision : public MeshSubdivision {
 		Vector<int> mesh_to_subdiv_index_map;
 	};
 	Vector<SurfaceData> surface_data;
-	int subdiv_vertex_count;
+	int subdiv_vertex_count = 0;
+	int subdiv_uv_count = 0;
+	int subdiv_bone_count = 0;
+	int subdiv_weight_count = 0;
 
 	OpenSubdiv::Far::TopologyRefiner *refiner;
 

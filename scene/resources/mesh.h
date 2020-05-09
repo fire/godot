@@ -229,7 +229,7 @@ public:
 	virtual RID get_rid() const;
 
 	void regen_normalmaps();
-
+	Error mesh_unwrap(const Transform &p_base_transform = Transform(), float p_texel_size = 0.05);
 	Error lightmap_unwrap(const Transform &p_base_transform = Transform(), float p_texel_size = 0.05);
 
 	virtual void reload_from_file();

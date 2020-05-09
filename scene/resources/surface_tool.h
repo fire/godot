@@ -123,7 +123,8 @@ public:
 
 	void index();
 	void deindex();
-	void generate_normals(bool p_flip = false);
+	void generate_normals(bool p_flip = false);	
+	void generate_smooth_normals(bool p_flip = false);
 	void generate_tangents();
 
 	void set_material(const Ref<Material> &p_material);
