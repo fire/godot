@@ -523,7 +523,7 @@ Error AudioDriverJACK::load_jack_library(LibJACK *&library) {
 	OS *os = OS::get_singleton();
 
 #if defined(WIN32)
-	const char *library_name = "libjack.dll";
+	const char *library_name = "libjack64.dll";
 #elif defined(__APPLE__)
 	const char *library_name = "libjack.dylib";
 #else

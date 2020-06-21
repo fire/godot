@@ -177,6 +177,7 @@ void OS_Windows::initialize_debugging() {
 }
 
 void OS_Windows::initialize() {
+
 	crash_handler.initialize();
 
 	//RedirectIOToConsole();
@@ -840,7 +841,9 @@ OS_Windows::OS_Windows(HINSTANCE _hInstance) {
 #ifdef STDOUT_FILE
 	stdo = fopen("stdout.txt", "wb");
 #endif
-
+#ifdef JACK_ENABLED
+	AudioDriverManager::add_driver(&driver_jack);
+#endif
 #ifdef WASAPI_ENABLED
 	AudioDriverManager::add_driver(&driver_wasapi);
 #endif

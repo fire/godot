@@ -38,6 +38,7 @@
 #include "drivers/unix/ip_unix.h"
 #include "drivers/wasapi/audio_driver_wasapi.h"
 #include "drivers/winmidi/midi_driver_winmidi.h"
+#include "drivers/jack/audio_driver_jack.h"
 #include "key_mapping_windows.h"
 #include "servers/audio_server.h"
 #include "servers/rendering/rasterizer.h"
@@ -84,6 +85,9 @@ class OS_Windows : public OS {
 #endif
 #ifdef WINMIDI_ENABLED
 	MIDIDriverWinMidi driver_midi;
+#endif
+#ifdef JACK_ENABLED
+	AudioDriverJACK driver_jack;
 #endif
 
 	CrashHandler crash_handler;

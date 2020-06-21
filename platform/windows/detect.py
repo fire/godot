@@ -69,6 +69,7 @@ def get_opts():
         ("msvc_version", "MSVC version to use. Ignored if VCINSTALLDIR is set in shell env.", None),
         BoolVariable("use_mingw", "Use the Mingw compiler, even if MSVC is installed. Only used on Windows.", False),
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
+        BoolVariable("jack", "Detect and use JACK", True),
         BoolVariable("use_thinlto", "Use ThinLTO", False),
     ]
 
@@ -228,6 +229,13 @@ def configure_msvc(env, manual_msvc_config):
             "_WIN32_WINNT=%s" % env["target_win_version"],
         ]
     )
+
+    if env["jack"] and env["bits"] == "64":
+        print("Enabling JACK")
+        env.Append(CPPDEFINES=["JACK_ENABLED"]) 
+        env.Prepend(CPPPATH=["#thirdparty/jack/include"])
+
+
     env.AppendUnique(CPPDEFINES=["NOMINMAX"])  # disable bogus min/max WinDef.h macros
     if env["bits"] == "64":
         env.AppendUnique(CPPDEFINES=["_WIN64"])

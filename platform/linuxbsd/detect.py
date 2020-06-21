@@ -318,7 +318,7 @@ def configure(env):
             # Do not link the library at build time
             env.ParseConfig("pkg-config --cflags jack")
         else:
-            print("JACK development libraries not found, disabling driver")
+            env.Prepend(CPPPATH=["#thirdparty/jack/include"])
 
     if platform.system() == "Linux":
         env.Append(CPPDEFINES=["JOYDEV_ENABLED"])
