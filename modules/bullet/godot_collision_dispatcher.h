@@ -34,13 +34,14 @@
 #include "core/int_types.h"
 
 #include <btBulletDynamicsCommon.h>
+#include "thirdparty/bullet/BulletCollision/CollisionDispatch/btCollisionDispatcherMt.h"
 
 /**
 	@author AndreaCatania
 */
 
 /// This class is required to implement custom collision behaviour in the narrowphase
-class GodotCollisionDispatcher : public btCollisionDispatcher {
+class GodotCollisionDispatcher : public btCollisionDispatcherMt {
 private:
 	static const int CASTED_TYPE_AREA;
 

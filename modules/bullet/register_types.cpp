@@ -39,6 +39,11 @@
 */
 
 #ifndef _3D_DISABLED
+bool init_bt_task_scheduler() {
+	btITaskScheduler *godot_bullet_task_scheduler = btCreateDefaultTaskScheduler();
+	btSetTaskScheduler(godot_bullet_task_scheduler);
+	return true;
+}
 PhysicsServer *_createBulletPhysicsCallback() {
 	return memnew(BulletPhysicsServer);
 }
@@ -46,6 +51,7 @@ PhysicsServer *_createBulletPhysicsCallback() {
 
 void register_bullet_types() {
 #ifndef _3D_DISABLED
+	init_bt_task_scheduler();
 	PhysicsServerManager::register_server("Bullet", &_createBulletPhysicsCallback);
 	PhysicsServerManager::set_default_server("Bullet", 1);
 
