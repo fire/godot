@@ -4223,6 +4223,16 @@ void RasterizerSceneGLES3::render_scene(const Transform &p_cam_transform, const 
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_SCISSOR_TEST);
 
+	#ifdef DEBUG_ENABLED
+		if (state.debug_draw == VS::VIEWPORT_DEBUG_DRAW_WIREFRAME_SHADED) {
+			VisualServer::ViewportDebugDraw debug = state.debug_draw;
+			state.debug_draw = VS::VIEWPORT_DEBUG_DRAW_WIREFRAME;
+			directional_light = NULL;
+			_render_list(render_list.elements, render_list.element_count, p_cam_transform, p_cam_projection, nullptr, false, false, false, false, use_shadows);
+			state.debug_draw = debug;
+		}
+	#endif
+
 	//rendering to a probe cubemap side
 	ReflectionProbeInstance *probe = reflection_probe_instance_owner.getornull(p_reflection_probe);
 	GLuint current_fbo;

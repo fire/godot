@@ -702,6 +702,7 @@ public:
 		VIEWPORT_DEBUG_DRAW_UNSHADED,
 		VIEWPORT_DEBUG_DRAW_OVERDRAW,
 		VIEWPORT_DEBUG_DRAW_WIREFRAME,
+		VIEWPORT_DEBUG_DRAW_WIREFRAME_SHADED
 	};
 
 	virtual void viewport_set_debug_draw(RID p_viewport, ViewportDebugDraw p_draw) = 0;

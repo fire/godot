@@ -4637,6 +4637,9 @@
 		<constant name="VIEWPORT_DEBUG_DRAW_WIREFRAME" value="3" enum="ViewportDebugDraw">
 			Debug draw draws objects in wireframe.
 		</constant>
+		<constant name="VIEWPORT_DEBUG_DRAW_WIREFRAME_SHADED" value="4" enum="ViewportDebugDraw">
+			Debug draw draws objects in wireframe and shaded.
+		</constant>
 		<constant name="SCENARIO_DEBUG_DISABLED" value="0" enum="ScenarioDebugMode">
 			Do not use a debug mode.
 		</constant>
