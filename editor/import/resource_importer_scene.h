@@ -32,6 +32,10 @@
 #define RESOURCEIMPORTERSCENE_H
 
 #include "core/io/resource_importer.h"
+#include "scene/3d/bone_attachment.h"
+#include "scene/3d/mesh_instance.h"
+#include "scene/3d/skeleton.h"
+#include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/shape.h"
@@ -120,6 +124,17 @@ class ResourceImporterScene : public ResourceImporter {
 	};
 
 	void _replace_owner(Node *p_node, Node *p_scene, Node *p_new_owner);
+
+private:
+	void _mark_nodes(Node *p_current, Node *p_owner, Vector<Node *> &r_remove_nodes);
+	void _clean_animation_player(Node *scene);
+	void _remove_nodes(Node *node, Vector<Node *> &r_nodes);
+	Error _animation_player_move(Node *new_scene, const Node *scene, Map<MeshInstance *, Skeleton *> &r_moved_meshes);
+	void _move_nodes(Node *new_scene, const Map<MeshInstance *, Skeleton *> moved_meshes, const Map<BoneAttachment *, Skeleton *> moved_attachments);
+	void _moved_mesh_and_attachments(Node *p_current, Node *p_owner, Map<MeshInstance *, Skeleton *> &r_moved_meshes,
+			Map<BoneAttachment *, Skeleton *> &r_moved_attachments);
+	void _duplicate_children(Node *current_node, Node *matching_node, Node *owner, Transform global_xform);
+	void _remove_empty_spatials(Node *scene);
 
 public:
 	static ResourceImporterScene *get_singleton() { return singleton; }
