@@ -122,6 +122,24 @@ class ResourceImporterScene : public ResourceImporter {
 	void _replace_owner(Node *p_node, Node *p_scene, Node *p_new_owner);
 
 public:
+	struct RestBone {
+		NodePath path;
+		Transform rest_local_before;
+		Transform rest_local_after;
+		Quat rest_delta;
+		Vector3 children_centroid_direction;
+		int parent_index;
+		Vector<int> children;
+	};
+
+private:
+	void _fix_meshes(Map<int, ResourceImporterScene::RestBone> &r_rest_bones, Vector<MeshInstance *> p_meshes);
+	void _fix_skeleton(Skeleton *p_skeleton, Map<int, ResourceImporterScene::RestBone> &r_rest_bones);
+	Transform get_bone_global_transform(int p_id, Skeleton *p_skeleton, Vector<Vector<Transform> > p_local_transform_array);
+	Vector3 _get_perpendicular_vector(Vector3 v);
+	Quat _align_vectors(Vector3 a, Vector3 b);
+
+public:
 	static ResourceImporterScene *get_singleton() { return singleton; }
 
 	const Set<Ref<EditorSceneImporter> > &get_importers() const { return importers; }

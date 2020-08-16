@@ -1164,6 +1164,7 @@ void ResourceImporterScene::get_import_options(List<ImportOption> *r_options, in
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/location", PROPERTY_HINT_ENUM, "Node,Mesh"), (meshes_out || materials_out) ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/storage", PROPERTY_HINT_ENUM, "Built-In,Files (.material),Files (.tres)", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), materials_out ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "materials/keep_on_reimport"), materials_out));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "skeleton/point_to_children"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "meshes/compress"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "meshes/ensure_tangents"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "meshes/storage", PROPERTY_HINT_ENUM, "Built-In,Files (.mesh),Files (.tres)"), meshes_out ? 1 : 0));
@@ -1370,6 +1371,12 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 
 	scene = _fix_node(scene, scene, collision_map, LightBakeMode(light_bake_mode));
 
+	bool is_skeleton_point_to_children = p_options["skeleton/point_to_children"];
+
+	if (is_skeleton_point_to_children) {
+		_skeleton_point_to_children(scene);
+	}
+
 	if (use_optimizer) {
 		_optimize_animations(scene, anim_optimizer_linerr, anim_optimizer_angerr, anim_optimizer_maxang);
 	}
@@ -1531,6 +1538,164 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 	//EditorNode::get_singleton()->reload_scene(p_source_file);
 
 	return OK;
+}
+
+Vector3 ResourceImporterScene::_get_perpendicular_vector(Vector3 v) {
+	Vector3 perpendicular;
+	if (v[0] != 0 && v[1] != 0) {
+		perpendicular = Vector3(0, 0, 1).cross(v).normalized();
+	} else {
+		perpendicular = Vector3(1, 0, 0);
+	}
+	return perpendicular;
+}
+
+Quat ResourceImporterScene::_align_vectors(Vector3 a, Vector3 b) {
+	a.normalize();
+	b.normalize();
+	if (a.length_squared() != 0 && b.length_squared() != 0) {
+		//Find the axis perpendicular to both vectors and rotate along it by the angular difference
+		Vector3 perpendicular = a.cross(b).normalized();
+		float angleDiff = a.angle_to(b);
+		if (perpendicular.length_squared() == 0) {
+			perpendicular = _get_perpendicular_vector(a);
+		}
+		return Quat(perpendicular, angleDiff);
+	} else {
+		return Quat();
+	}
+}
+
+void ResourceImporterScene::_fix_skeleton(Skeleton *p_skeleton, Map<int, ResourceImporterScene::RestBone> &r_rest_bones) {
+	int bone_count = p_skeleton->get_bone_count();
+
+	//First iterate through all the bones and create a RestBone for it with an empty centroid
+	for (int j = 0; j < bone_count; j++) {
+		RestBone rest_bone;
+
+		String path = p_skeleton->get_name();
+		Node *current_node = p_skeleton->get_parent();
+		while (current_node && current_node != p_skeleton->get_owner()) {
+			path = String(current_node->get_name()) + "/" + path;
+			current_node = current_node->get_parent();
+		}
+		rest_bone.path = String(path) + String(":") + p_skeleton->get_bone_name(j);
+		rest_bone.parent_index = p_skeleton->get_bone_parent(j);
+		rest_bone.rest_local_before = p_skeleton->get_bone_rest(j);
+		rest_bone.rest_local_after = rest_bone.rest_local_before;
+		r_rest_bones.insert(j, rest_bone);
+	}
+
+	//We iterate through again, and add the child's position to the centroid of its parent.
+	//These position are local to the parent which means (0, 0, 0) is right where the parent is.
+	for (int i = 0; i < bone_count; i++) {
+		int parent_bone = p_skeleton->get_bone_parent(i);
+		if (parent_bone >= 0) {
+			r_rest_bones[parent_bone].children_centroid_direction = r_rest_bones[parent_bone].children_centroid_direction + p_skeleton->get_bone_rest(i).origin;
+			r_rest_bones[parent_bone].children.push_back(i);
+		}
+	}
+
+	//Point leaf bones to parent
+	for (int i = 0; i < bone_count; i++) {
+		ResourceImporterScene::RestBone &leaf_bone = r_rest_bones[i];
+		if (!leaf_bone.children.size()) {
+			leaf_bone.children_centroid_direction = r_rest_bones[leaf_bone.parent_index].children_centroid_direction;
+		}
+	} 
+	
+	//We iterate again to point each bone to the centroid
+	//When we rotate a bone, we also have to move all of its children in the opposite direction
+	for (int i = 0; i < bone_count; i++) {
+		r_rest_bones[i].rest_delta = _align_vectors(Vector3(0, 1, 0), r_rest_bones[i].children_centroid_direction);
+
+		r_rest_bones[i].rest_local_after.basis = r_rest_bones[i].rest_local_after.basis * r_rest_bones[i].rest_delta;
+
+		//Iterate through the children and rotate them in the opposite direction.
+		for (int j = 0; j < r_rest_bones[i].children.size(); j++) {
+			int child_index = r_rest_bones[i].children[j];
+			r_rest_bones[child_index].rest_local_after = Transform(r_rest_bones[i].rest_delta.inverse(), Vector3()) * r_rest_bones[child_index].rest_local_after;
+		}
+	}
+
+	//One last iteration to apply the transforms we calculated
+	for (int i = 0; i < bone_count; i++) {
+		p_skeleton->set_bone_rest(i, r_rest_bones[i].rest_local_after);
+	}
+}
+
+void ResourceImporterScene::_fix_meshes(Map<int, ResourceImporterScene::RestBone> &r_rest_bones, Vector<MeshInstance *> p_meshes) {
+
+	for (int32_t mesh_i = 0; mesh_i < p_meshes.size(); mesh_i++) {
+		MeshInstance *mi = p_meshes.write[mesh_i];
+		Ref<Skin> skin = mi->get_skin();
+		if (skin.is_null()) {
+			continue;
+		}
+		skin = skin->duplicate();
+		mi->set_skin(skin);
+		NodePath skeleton_path = mi->get_skeleton_path();
+		Node *node = mi->get_node_or_null(skeleton_path);
+		Skeleton *skeleton = Object::cast_to<Skeleton>(node);
+		ERR_CONTINUE(!skeleton);
+		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
+			String bind_name = skin->get_bind_name(bind_i);
+			if (bind_name.empty()) {
+				continue;
+			}
+			int32_t bone_index = skeleton->find_bone(bind_name);
+			if (bone_index == -1) {
+				continue;
+			}
+			RestBone rest_bone = r_rest_bones[bone_index];
+			Transform pose = skin->get_bind_pose(bind_i);
+			skin->set_bind_pose(bind_i, Transform(rest_bone.rest_delta.inverse()) * pose);
+		}
+	}
+}
+Transform ResourceImporterScene::get_bone_global_transform(int p_id, Skeleton *p_skeleton, Vector<Vector<Transform> > p_local_transform_array) {
+	Transform return_transform;
+	int parent_id = p_skeleton->get_bone_parent(p_id);
+	if (parent_id != -1) {
+		return_transform = get_bone_global_transform(parent_id, p_skeleton, p_local_transform_array);
+	}
+	for (int i = 0; i < p_local_transform_array.size(); i++) {
+		return_transform *= p_local_transform_array[i][p_id];
+	}
+	return return_transform;
+}
+
+void ResourceImporterScene::_skeleton_point_to_children(Node *p_scene) {
+	Map<int, RestBone> rest_bones;
+	Vector<MeshInstance *> meshes;
+	List<Node *> queue;
+	queue.push_back(p_scene);
+
+	while (!queue.empty()) {
+		List<Node *>::Element *E = queue.front();
+		ERR_FAIL_COND(!E);
+		Node *node = E->get();
+		if (node->get_class_name() == StringName("Skeleton")) {
+			Skeleton *skeleton = Object::cast_to<Skeleton>(node);
+			_fix_skeleton(skeleton, rest_bones);
+		}
+		if (node->get_class_name() == StringName("MeshInstance")) {
+			MeshInstance *mi = Object::cast_to<MeshInstance>(node);
+			if (mi) {
+				NodePath path = mi->get_skeleton_path();
+				if (!path.is_empty() && mi->get_node_or_null(path) && Object::cast_to<Skeleton>(mi->get_node_or_null(path))) {
+					meshes.push_back(mi);
+				}
+			}
+		}
+
+		int child_count = node->get_child_count();
+		for (int i = 0; i < child_count; i++) {
+			queue.push_back(node->get_child(i));
+		}
+		queue.pop_front();
+	}
+	_fix_meshes(rest_bones, meshes);
 }
 
 ResourceImporterScene *ResourceImporterScene::singleton = NULL;
