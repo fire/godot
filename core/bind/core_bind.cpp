@@ -183,6 +183,12 @@ void _ResourceSaver::_bind_methods() {
 
 ////// _OS //////
 
+void _OS::debug_crash() const {
+	// From breakpad https://stackoverflow.com/a/39920519/381724
+	volatile int *a = reinterpret_cast<volatile int *>(NULL);
+	*a = 1;
+}
+
 PackedStringArray _OS::get_connected_midi_inputs() {
 	return OS::get_singleton()->get_connected_midi_inputs();
 }
@@ -687,6 +693,7 @@ void _OS::set_current_tablet_driver(const String &p_driver) {
 _OS *_OS::singleton = nullptr;
 
 void _OS::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("debug_crash"), &_OS::debug_crash);
 	ClassDB::bind_method(D_METHOD("get_connected_midi_inputs"), &_OS::get_connected_midi_inputs);
 	ClassDB::bind_method(D_METHOD("open_midi_inputs"), &_OS::open_midi_inputs);
 	ClassDB::bind_method(D_METHOD("close_midi_inputs"), &_OS::close_midi_inputs);
