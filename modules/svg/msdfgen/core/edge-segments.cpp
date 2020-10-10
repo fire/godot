@@ -228,7 +228,7 @@ int QuadraticSegment::scanlineIntersections(double x[3], int dy[3], double y) co
         if (solutions >= 2 && t[0] > t[1])
             tmp = t[0], t[0] = t[1], t[1] = tmp;
         for (int i = 0; i < solutions && total < 2; ++i) {
-            if (t[i] > 0 && t[i] < 1) {
+            if (t[i] >= 0 && t[i] <= 1) {
                 x[total] = p[0].x+2*t[i]*ab.x+t[i]*t[i]*br.x;
                 if (nextDY*(ab.y+t[i]*br.y) >= 0) {
                     dy[total++] = nextDY;
@@ -253,8 +253,11 @@ int QuadraticSegment::scanlineIntersections(double x[3], int dy[3], double y) co
     if (nextDY != (y >= p[2].y ? 1 : -1)) {
         if (total > 0)
             --total;
-        else
+        else {
+            if (fabs(p[2].y-y) < fabs(p[0].y-y))
+                x[total] = p[2].x;
             dy[total++] = nextDY;
+        }
     }
     return total;
 }
@@ -287,7 +290,7 @@ int CubicSegment::scanlineIntersections(double x[3], int dy[3], double y) const 
             }
         }
         for (int i = 0; i < solutions && total < 3; ++i) {
-            if (t[i] > 0 && t[i] < 1) {
+            if (t[i] >= 0 && t[i] <= 1) {
                 x[total] = p[0].x+3*t[i]*ab.x+3*t[i]*t[i]*br.x+t[i]*t[i]*t[i]*as.x;
                 if (nextDY*(ab.y+2*t[i]*br.y+t[i]*t[i]*as.y) >= 0) {
                     dy[total++] = nextDY;
@@ -312,8 +315,11 @@ int CubicSegment::scanlineIntersections(double x[3], int dy[3], double y) const 
     if (nextDY != (y >= p[3].y ? 1 : -1)) {
         if (total > 0)
             --total;
-        else
+        else {
+            if (fabs(p[3].y-y) < fabs(p[0].y-y))
+                x[total] = p[3].x;
             dy[total++] = nextDY;
+        }
     }
     return total;
 }
@@ -325,12 +331,12 @@ static void pointBounds(Point2 p, double &l, double &b, double &r, double &t) {
     if (p.y > t) t = p.y;
 }
 
-void LinearSegment::bounds(double &l, double &b, double &r, double &t) const {
+void LinearSegment::bound(double &l, double &b, double &r, double &t) const {
     pointBounds(p[0], l, b, r, t);
     pointBounds(p[1], l, b, r, t);
 }
 
-void QuadraticSegment::bounds(double &l, double &b, double &r, double &t) const {
+void QuadraticSegment::bound(double &l, double &b, double &r, double &t) const {
     pointBounds(p[0], l, b, r, t);
     pointBounds(p[2], l, b, r, t);
     Vector2 bot = (p[1]-p[0])-(p[2]-p[1]);
@@ -346,7 +352,7 @@ void QuadraticSegment::bounds(double &l, double &b, double &r, double &t) const 
     }
 }
 
-void CubicSegment::bounds(double &l, double &b, double &r, double &t) const {
+void CubicSegment::bound(double &l, double &b, double &r, double &t) const {
     pointBounds(p[0], l, b, r, t);
     pointBounds(p[3], l, b, r, t);
     Vector2 a0 = p[1]-p[0];

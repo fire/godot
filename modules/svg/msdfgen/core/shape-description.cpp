@@ -1,11 +1,8 @@
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "shape-description.h"
 
 namespace msdfgen {
-
-#ifdef _WIN32
-    #pragma warning(disable:4996)
-#endif
 
 int readCharF(FILE *input) {
     int c = '\0';
@@ -78,7 +75,6 @@ static bool readContour(T *input, Contour &output, const Point2 *first, int term
     while ((c = readChar(input)) != terminator) {
         if (c != ';')
             return false;
-        bool parenthesis = false;
         EdgeColor color = WHITE;
         int result = readCoord(input, p[1]);
         if (result == 2) {
@@ -220,9 +216,18 @@ bool readShapeDescription(const char *input, Shape &output, bool *colorsSpecifie
     }
 }
 
+static bool isColored(const Shape &shape) {
+    for (std::vector<Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour)
+        for (std::vector<EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge)
+            if ((*edge)->color != WHITE)
+                return true;
+    return false;
+}
+
 bool writeShapeDescription(FILE *output, const Shape &shape) {
     if (!shape.validate())
         return false;
+    bool writeColors = isColored(shape);
     if (shape.inverseYAxis)
         fprintf(output, "@invert-y\n");
     for (std::vector<Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour) {
@@ -230,12 +235,14 @@ bool writeShapeDescription(FILE *output, const Shape &shape) {
         if (!contour->edges.empty()) {
             for (std::vector<EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge) {
                 char colorCode = '\0';
-                switch ((*edge)->color) {
-                    case YELLOW: colorCode = 'y'; break;
-                    case MAGENTA: colorCode = 'm'; break;
-                    case CYAN: colorCode = 'c'; break;
-                    case WHITE: colorCode = 'w'; break;
-                    default:;
+                if (writeColors) {
+                    switch ((*edge)->color) {
+                        case YELLOW: colorCode = 'y'; break;
+                        case MAGENTA: colorCode = 'm'; break;
+                        case CYAN: colorCode = 'c'; break;
+                        case WHITE: colorCode = 'w'; break;
+                        default:;
+                    }
                 }
                 {
                     const LinearSegment *e = dynamic_cast<const LinearSegment *>(&**edge);

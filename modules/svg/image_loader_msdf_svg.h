@@ -63,7 +63,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		msdfgen::Vector2 translate;
 		msdfgen::Vector2 scale = 1;
 		bool scaleSpecified = false;
-		double angleThreshold = M_PI;
+		double angleThreshold = Math_PI;
 		double edgeThreshold = 1.001;
 		bool yFlip = false;
 		bool printMetrics = false;
@@ -125,7 +125,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 			LARGE_VALUE, LARGE_VALUE, -LARGE_VALUE, -LARGE_VALUE
 		};
 		if (autoFrame || printMetrics || orientation == GUESS)
-			shape.bounds(bounds.l, bounds.b, bounds.r, bounds.t);
+			shape.bound(bounds.l, bounds.b, bounds.r, bounds.t);
 
 		// Auto-frame
 		if (autoFrame) {
