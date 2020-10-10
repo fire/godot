@@ -177,13 +177,13 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 				print_line("ResourceImporterMSDF range is " + rtos(range));
 		}
 
-		msdfgen::Bitmap<float, 3> msdf;
+		msdfgen::Bitmap<float, 4> msdf;
 
 		if (!skipColoring)
 			msdfgen::edgeColoringSimple(shape, angleThreshold, coloringSeed);
-		msdf = msdfgen::Bitmap<float, 3>(width, height);
+		msdf = msdfgen::Bitmap<float, 4>(width, height);
 
-		msdfgen::generateMSDF(msdf, shape, range, scale, translate, scanlinePass ? 0 : edgeThreshold, overlapSupport);
+		msdfgen::generateMTSDF(msdf, shape, range, scale, translate, scanlinePass ? 0 : edgeThreshold, overlapSupport);
 
 		if (orientation == GUESS) {
 			// Get sign of signed distance outside bounds
@@ -199,7 +199,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 			orientation = minDistance.distance <= 0 ? KEEP : REVERSE;
 		}
 		if (orientation == REVERSE) {
-			invertColor<3>(msdf);
+			invertColor<4>(msdf);
 		}
 		if (scanlinePass) {
 			msdfgen::distanceSignCorrection(msdf, shape, scale, translate, fillRule);
@@ -217,6 +217,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 				c.r = split_pixel[0];
 				c.g = split_pixel[1];
 				c.b = split_pixel[2];
+				c.a = split_pixel[3];
 				r_image->set_pixel(j, i, c);
 			}
 		}
