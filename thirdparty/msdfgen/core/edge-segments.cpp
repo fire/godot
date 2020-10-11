@@ -97,6 +97,18 @@ Vector2 CubicSegment::direction(double param) const {
     return tangent;
 }
 
+Vector2 LinearSegment::directionChange(double param) const {
+    return Vector2();
+}
+
+Vector2 QuadraticSegment::directionChange(double param) const {
+    return (p[2]-p[1])-(p[1]-p[0]);
+}
+
+Vector2 CubicSegment::directionChange(double param) const {
+    return mix((p[2]-p[1])-(p[1]-p[0]), (p[3]-p[2])-(p[2]-p[1]), param);
+}
+
 SignedDistance LinearSegment::signedDistance(Point2 origin, double &param) const {
     Vector2 aq = origin-p[0];
     Vector2 ab = p[1]-p[0];
@@ -136,7 +148,7 @@ SignedDistance QuadraticSegment::signedDistance(Point2 origin, double &param) co
     for (int i = 0; i < solutions; ++i) {
         if (t[i] > 0 && t[i] < 1) {
             Point2 qe = p[0]+2*t[i]*ab+t[i]*t[i]*br-origin;
-            double distance = nonZeroSign(crossProduct(p[2]-p[0], qe))*qe.length();
+            double distance = nonZeroSign(crossProduct(direction(t[i]), qe))*qe.length();
             if (fabs(distance) <= fabs(minDistance)) {
                 minDistance = distance;
                 param = t[i];
@@ -172,21 +184,20 @@ SignedDistance CubicSegment::signedDistance(Point2 origin, double &param) const 
     // Iterative minimum distance search
     for (int i = 0; i <= MSDFGEN_CUBIC_SEARCH_STARTS; ++i) {
         double t = (double) i/MSDFGEN_CUBIC_SEARCH_STARTS;
-        for (int step = 0;; ++step) {
-            Vector2 qe = p[0]+3*t*ab+3*t*t*br+t*t*t*as-origin; // do not simplify with qa !!!
+        Vector2 qe = qa+3*t*ab+3*t*t*br+t*t*t*as;
+        for (int step = 0; step < MSDFGEN_CUBIC_SEARCH_STEPS; ++step) {
+            // Improve t
+            Vector2 d1 = 3*as*t*t+6*br*t+3*ab;
+            Vector2 d2 = 6*as*t+6*br;
+            t -= dotProduct(qe, d1)/(dotProduct(d1, d1)+dotProduct(qe, d2));
+            if (t <= 0 || t >= 1)
+                break;
+            qe = qa+3*t*ab+3*t*t*br+t*t*t*as;
             double distance = nonZeroSign(crossProduct(direction(t), qe))*qe.length();
             if (fabs(distance) < fabs(minDistance)) {
                 minDistance = distance;
                 param = t;
             }
-            if (step == MSDFGEN_CUBIC_SEARCH_STEPS)
-                break;
-            // Improve t
-            Vector2 d1 = 3*as*t*t+6*br*t+3*ab;
-            Vector2 d2 = 6*as*t+6*br;
-            t -= dotProduct(qe, d1)/(dotProduct(d1, d1)+dotProduct(qe, d2));
-            if (t < 0 || t > 1)
-                break;
         }
     }
 
@@ -425,6 +436,24 @@ void CubicSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeS
         mix(mix(mix(p[0], p[1], 2/3.), mix(p[1], p[2], 2/3.), 2/3.), mix(mix(p[1], p[2], 2/3.), mix(p[2], p[3], 2/3.), 2/3.), 1/3.),
         point(2/3.), color);
     part3 = new CubicSegment(point(2/3.), mix(mix(p[1], p[2], 2/3.), mix(p[2], p[3], 2/3.), 2/3.), p[2] == p[3] ? p[3] : mix(p[2], p[3], 2/3.), p[3], color);
+}
+
+EdgeSegment * QuadraticSegment::convertToCubic() const {
+    return new CubicSegment(p[0], mix(p[0], p[1], 2/3.), mix(p[1], p[2], 1/3.), p[2], color);
+}
+
+void CubicSegment::deconverge(int param, double amount) {
+    Vector2 dir = direction(param);
+    Vector2 normal = dir.getOrthonormal();
+    double h = dotProduct(directionChange(param)-dir, normal);
+    switch (param) {
+        case 0:
+            p[1] += amount*(dir+sign(h)*sqrt(fabs(h))*normal);
+            break;
+        case 1:
+            p[2] -= amount*(dir-sign(h)*sqrt(fabs(h))*normal);
+            break;
+    }
 }
 
 }

@@ -45,37 +45,36 @@ static char toupper(char c) {
 }
 
 static bool parseUnsigned(unsigned &value, const char *arg) {
-    static char c;
+    char c;
     return sscanf(arg, "%u%c", &value, &c) == 1;
 }
 
+static bool parseUnsignedDecOrHex(unsigned &value, const char *arg) {
+    if (arg[0] == '0' && (arg[1] == 'x' || arg[1] == 'X')) {
+        char c;
+        return sscanf(arg+2, "%x%c", &value, &c) == 1;
+    }
+    return parseUnsigned(value, arg);
+}
+
 static bool parseUnsignedLL(unsigned long long &value, const char *arg) {
-    static char c;
+    char c;
     return sscanf(arg, "%llu%c", &value, &c) == 1;
 }
 
-static bool parseUnsignedHex(unsigned &value, const char *arg) {
-    static char c;
-    return sscanf(arg, "%x%c", &value, &c) == 1;
-}
-
 static bool parseDouble(double &value, const char *arg) {
-    static char c;
+    char c;
     return sscanf(arg, "%lf%c", &value, &c) == 1;
 }
 
 static bool parseUnicode(unicode_t &unicode, const char *arg) {
     unsigned uuc;
-    if (parseUnsigned(uuc, arg)) {
-        unicode = uuc;
-        return true;
-    }
-    if (arg[0] == '0' && (arg[1] == 'x' || arg[1] == 'X') && parseUnsignedHex(uuc, arg+2)) {
+    if (parseUnsignedDecOrHex(uuc, arg)) {
         unicode = uuc;
         return true;
     }
     if (arg[0] == '\'' && arg[1] && arg[2] == '\'' && !arg[3]) {
-        unicode = arg[1];
+        unicode = (unicode_t) (unsigned char) arg[1];
         return true;
     }
     return false;
@@ -157,7 +156,7 @@ static bool writeTextBitmap(FILE *file, const float *values, int cols, int rows)
 static bool writeTextBitmapFloat(FILE *file, const float *values, int cols, int rows) {
     for (int row = 0; row < rows; ++row) {
         for (int col = 0; col < cols; ++col) {
-            fprintf(file, col ? " %g" : "%g", *values++);
+            fprintf(file, col ? " %.9g" : "%.9g", *values++);
         }
         fprintf(file, "\n");
     }
@@ -178,7 +177,7 @@ static bool writeBinBitmapFloatBE(FILE *file, const float *values, int count)
 static bool writeBinBitmapFloat(FILE *file, const float *values, int count)
 #endif
 {
-    return fwrite(values, sizeof(float), count, file) == count;
+    return (int) fwrite(values, sizeof(float), count, file) == count;
 }
 
 #ifdef __BIG_ENDIAN__
@@ -203,7 +202,7 @@ static bool cmpExtension(const char *path, const char *ext) {
 }
 
 template <int N>
-static const char * writeOutput(const BitmapConstRef<float, N> &bitmap, const char *filename, Format format) {
+static const char * writeOutput(const BitmapConstRef<float, N> &bitmap, const char *filename, Format &format) {
     if (filename) {
         if (format == AUTO) {
             if (cmpExtension(filename, ".png")) format = PNG;
@@ -274,7 +273,7 @@ static const char *helpText =
     "  -defineshape <definition>\n"
         "\tDefines input shape using the ad-hoc text definition.\n"
     "  -font <filename.ttf> <character code>\n"
-        "\tLoads a single glyph from the specified font file. Format of character code is '?', 63 or 0x3F.\n"
+        "\tLoads a single glyph from the specified font file. Format of character code is '?', 63, 0x3F (Unicode value), or g34 (glyph index).\n"
     "  -shapedesc <filename.txt>\n"
         "\tLoads text shape description from a file.\n"
     "  -stdin\n"
@@ -291,6 +290,8 @@ static const char *helpText =
         "\tAutomatically scales (unless specified) and translates the shape to fit.\n"
     "  -coloringstrategy <simple / inktrap>\n"
         "\tSelects the strategy of the edge coloring heuristic.\n"
+    "  -distanceshift <shift>\n"
+        "\tShifts all normalized distances in the output distance field by this value.\n"
     "  -edgecolors <sequence>\n"
         "\tOverrides automatic edge coloring with the specified color sequence.\n"
     "  -errorcorrection <threshold>\n"
@@ -371,6 +372,7 @@ int main(int argc, const char * const *argv) {
     const char *testRender = NULL;
     const char *testRenderMulti = NULL;
     bool outputSpecified = false;
+    GlyphIndex glyphIndex;
     unicode_t unicode = 0;
     int svgPathIndex = 0;
 
@@ -389,6 +391,7 @@ int main(int argc, const char * const *argv) {
     bool scaleSpecified = false;
     double angleThreshold = DEFAULT_ANGLE_THRESHOLD;
     double errorCorrectionThreshold = MSDFGEN_DEFAULT_ERROR_CORRECTION_THRESHOLD;
+    float outputDistanceShift = 0.f;
     const char *edgeAssignment = NULL;
     bool yFlip = false;
     bool printMetrics = false;
@@ -425,7 +428,18 @@ int main(int argc, const char * const *argv) {
         ARG_CASE("-font", 2) {
             inputType = FONT;
             input = argv[argPos+1];
-            parseUnicode(unicode, argv[argPos+2]);
+            const char *charArg = argv[argPos+2];
+            unsigned gi;
+            switch (charArg[0]) {
+                case 'G': case 'g':
+                    if (parseUnsignedDecOrHex(gi, charArg+1))
+                        glyphIndex = GlyphIndex(gi);
+                    break;
+                case 'U': case 'u':
+                    ++charArg;
+                default:
+                    parseUnicode(unicode, charArg);
+            }
             argPos += 3;
             continue;
         }
@@ -597,6 +611,14 @@ int main(int argc, const char * const *argv) {
             argPos += 2;
             continue;
         }
+        ARG_CASE("-distanceshift", 1) {
+            double ds;
+            if (!parseDouble(ds, argv[argPos+1]))
+                ABORT("Invalid distance shift. Use -distanceshift <shift> with a real value.");
+            outputDistanceShift = (float) ds;
+            argPos += 2;
+            continue;
+        }
         ARG_CASE("-exportshape", 1) {
             shapeExport = argv[argPos+1];
             argPos += 2;
@@ -682,8 +704,8 @@ int main(int argc, const char * const *argv) {
             break;
         }
         case FONT: {
-            if (!unicode)
-                ABORT("No character specified! Use -font <file.ttf/otf> <character code>. Character code can be a number (65, 0x41), or a character in apostrophes ('A').");
+            if (!glyphIndex && !unicode)
+                ABORT("No character specified! Use -font <file.ttf/otf> <character code>. Character code can be a Unicode index (65, 0x41), a character in apostrophes ('A'), or a glyph index prefixed by g (g36, g0x24).");
             FreetypeHandle *ft = initializeFreetype();
             if (!ft) return -1;
             FontHandle *font = loadFont(ft, input);
@@ -691,7 +713,9 @@ int main(int argc, const char * const *argv) {
                 deinitializeFreetype(ft);
                 ABORT("Failed to load font file.");
             }
-            if (!loadGlyph(shape, font, unicode, &glyphAdvance)) {
+            if (unicode)
+                getGlyphIndex(glyphIndex, font, unicode);
+            if (!loadGlyph(shape, font, glyphIndex, &glyphAdvance)) {
                 destroyFont(font);
                 deinitializeFreetype(ft);
                 ABORT("Failed to load glyph from font file.");
@@ -738,10 +762,13 @@ int main(int argc, const char * const *argv) {
     if (autoFrame) {
         double l = bounds.l, b = bounds.b, r = bounds.r, t = bounds.t;
         Vector2 frame(width, height);
-        if (rangeMode == RANGE_UNIT)
-            l -= .5*range, b -= .5*range, r += .5*range, t += .5*range;
-        else if (!scaleSpecified)
-            frame -= pxRange;
+        double m = .5+(double) outputDistanceShift;
+        if (!scaleSpecified) {
+            if (rangeMode == RANGE_UNIT)
+                l -= m*range, b -= m*range, r += m*range, t += m*range;
+            else
+                frame -= 2*m*pxRange;
+        }
         if (l >= r || b >= t)
             l = 0, b = 0, r = 1, t = 1;
         if (frame.x <= 0 || frame.y <= 0)
@@ -759,7 +786,7 @@ int main(int argc, const char * const *argv) {
             }
         }
         if (rangeMode == RANGE_PX && !scaleSpecified)
-            translate += .5*pxRange/scale;
+            translate += m*pxRange/scale;
     }
 
     if (rangeMode == RANGE_PX)
@@ -879,6 +906,27 @@ int main(int argc, const char * const *argv) {
             default:;
         }
     }
+    if (outputDistanceShift) {
+        float *pixel = NULL, *pixelsEnd = NULL;
+        switch (mode) {
+            case SINGLE:
+            case PSEUDO:
+                pixel = (float *) sdf;
+                pixelsEnd = pixel+1*sdf.width()*sdf.height();
+                break;
+            case MULTI:
+                pixel = (float *) msdf;
+                pixelsEnd = pixel+3*msdf.width()*msdf.height();
+                break;
+            case MULTI_AND_TRUE:
+                pixel = (float *) mtsdf;
+                pixelsEnd = pixel+4*mtsdf.width()*mtsdf.height();
+                break;
+            default:;
+        }
+        while (pixel < pixelsEnd)
+            *pixel++ += outputDistanceShift;
+    }
 
     // Save output
     if (shapeExport) {
@@ -904,13 +952,13 @@ int main(int argc, const char * const *argv) {
             }
             if (testRenderMulti) {
                 Bitmap<float, 3> render(testWidthM, testHeightM);
-                renderSDF(render, sdf, avgScale*range);
+                renderSDF(render, sdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRenderMulti))
                     puts("Failed to write test render file.");
             }
             if (testRender) {
                 Bitmap<float, 1> render(testWidth, testHeight);
-                renderSDF(render, sdf, avgScale*range);
+                renderSDF(render, sdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRender))
                     puts("Failed to write test render file.");
             }
@@ -927,13 +975,13 @@ int main(int argc, const char * const *argv) {
             }
             if (testRenderMulti) {
                 Bitmap<float, 3> render(testWidthM, testHeightM);
-                renderSDF(render, msdf, avgScale*range);
+                renderSDF(render, msdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRenderMulti))
                     puts("Failed to write test render file.");
             }
             if (testRender) {
                 Bitmap<float, 1> render(testWidth, testHeight);
-                renderSDF(render, msdf, avgScale*range);
+                renderSDF(render, msdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRender))
                     ABORT("Failed to write test render file.");
             }
@@ -950,13 +998,13 @@ int main(int argc, const char * const *argv) {
             }
             if (testRenderMulti) {
                 Bitmap<float, 4> render(testWidthM, testHeightM);
-                renderSDF(render, mtsdf, avgScale*range);
+                renderSDF(render, mtsdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRenderMulti))
                     puts("Failed to write test render file.");
             }
             if (testRender) {
                 Bitmap<float, 1> render(testWidth, testHeight);
-                renderSDF(render, mtsdf, avgScale*range);
+                renderSDF(render, mtsdf, avgScale*range, .5f+outputDistanceShift);
                 if (!savePng(render, testRender))
                     ABORT("Failed to write test render file.");
             }
