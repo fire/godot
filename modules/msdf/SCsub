@@ -3,7 +3,7 @@
 Import("env")
 Import("env_modules")
 
-env_svg = env_modules.Clone()
+env_msdf = env_modules.Clone()
 
 # Thirdparty source files
 thirdparty_dir = "#thirdparty/nanosvg/"
@@ -14,19 +14,19 @@ thirdparty_sources += Glob("#thirdparty/msdfgen/core/*.cpp")
 thirdparty_sources += Glob("#thirdparty/msdfgen/ext/*.cpp")
 thirdparty_sources += Glob("#thirdparty/msdfgen/lib/*.cpp")
 
-env_svg.Prepend(CPPPATH=[thirdparty_dir])
-env_svg.Prepend(CPPPATH=["#thirdparty/msdfgen/include"])
-env_svg.Prepend(CPPPATH=["#thirdparty/freetype/include"])
+env_msdf.Prepend(CPPPATH=[thirdparty_dir])
+env_msdf.Prepend(CPPPATH=["#thirdparty/msdfgen/include"])
+env_msdf.Prepend(CPPPATH=["#thirdparty/msdfgen/ext"])
+env_msdf.Prepend(CPPPATH=["#thirdparty/freetype/include"])
 
 # FIXME: Needed in editor/editor_themes.cpp for now, but ideally there
 # shouldn't be a dependency on modules/ and its own 3rd party deps.
 env.Prepend(CPPPATH=[thirdparty_dir])
 env.Append(CPPDEFINES=["SVG_ENABLED"])
-env.Append(CPPDEFINES=["MSDFGEN_USE_SKIA"])
 
-env_thirdparty = env_svg.Clone()
+env_thirdparty = env_msdf.Clone()
 env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
 
 # Godot's own source files
-env_svg.add_source_files(env.modules_sources, "*.cpp")
+env_msdf.add_source_files(env.modules_sources, "*.cpp")

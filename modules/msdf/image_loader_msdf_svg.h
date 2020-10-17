@@ -16,6 +16,7 @@
 #include "thirdparty/msdfgen/msdfgen.h"
 
 #include "thirdparty/msdfgen/ext/import-svg.h"
+#include "thirdparty/msdfgen/ext/resolve-shape-geometry.h"
 #include "nanosvg.h"
 
 #define LARGE_VALUE 1e240
@@ -105,6 +106,9 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		// Validate and normalize shape
 		if (!shape.validate()) {
 			ERR_FAIL_V_MSG(FAILED, "The geometry of the loaded shape is invalid.");
+		}
+		if (!msdfgen::resolveShapeGeometry(shape)) {
+			ERR_FAIL_V_MSG(FAILED, "Shape geometry preprocessing failed, skipping.");
 		}
 		shape.normalize();
 		if (yFlip)
