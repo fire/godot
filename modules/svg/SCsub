@@ -10,11 +10,7 @@ thirdparty_dir = "#thirdparty/nanosvg/"
 thirdparty_sources = ["nanosvg.cc"]
 thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
-thirdparty_sources = thirdparty_sources + Glob("#modules/svg/msdfgen/core/*.cpp")
-
 env_svg.Prepend(CPPPATH=[thirdparty_dir])
-env_svg.Prepend(CPPPATH=["#modules/svg/msdfgen/include"])
-env_svg.Prepend(CPPPATH=["#modules/svg/msdfgen/"])
 
 # FIXME: Needed in editor/editor_themes.cpp for now, but ideally there
 # shouldn't be a dependency on modules/ and its own 3rd party deps.

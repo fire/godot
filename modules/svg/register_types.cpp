@@ -31,22 +31,14 @@
 #include "register_types.h"
 
 #include "editor/editor_node.h"
-#include "image_loader_msdf_svg.h"
 #include "image_loader_svg.h"
 
 static ImageLoaderSVG *image_loader_svg = NULL;
-
-static void _editor_init() {
-	Ref<ResourceImporterSVGDistanceField> msdf_loader;
-	msdf_loader.instance();
-	ResourceFormatImporter::get_singleton()->add_importer(msdf_loader);
-}
 
 void register_svg_types() {
 
 	image_loader_svg = memnew(ImageLoaderSVG);
 	ImageLoader::add_image_format_loader(image_loader_svg);
-	EditorNode::add_init_callback(_editor_init);
 }
 
 void unregister_svg_types() {
