@@ -15,9 +15,9 @@
 
 #include "thirdparty/msdfgen/msdfgen.h"
 
+#include "nanosvg.h"
 #include "thirdparty/msdfgen/ext/import-svg.h"
 #include "thirdparty/msdfgen/ext/resolve-shape-geometry.h"
-#include "nanosvg.h"
 
 #define LARGE_VALUE 1e240
 #define SDF_ERROR_ESTIMATE_PRECISION 19
@@ -53,7 +53,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
 		int svgPathIndex = 0;
 
-	int width = 256, height = 256;
+		int width = 256, height = 256;
 		bool autoFrame = false;
 		enum {
 			RANGE_UNIT,
@@ -107,9 +107,11 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		if (!shape.validate()) {
 			ERR_FAIL_V_MSG(FAILED, "The geometry of the loaded shape is invalid.");
 		}
+#ifdef MSDFGEN_USE_SKIA
 		if (!msdfgen::resolveShapeGeometry(shape)) {
 			ERR_FAIL_V_MSG(FAILED, "Shape geometry preprocessing failed, skipping.");
 		}
+#endif
 		shape.normalize();
 		if (yFlip)
 			shape.inverseYAxis = !shape.inverseYAxis;
