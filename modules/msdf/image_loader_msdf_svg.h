@@ -23,6 +23,7 @@
 #define LARGE_VALUE 1e240
 #define SDF_ERROR_ESTIMATE_PRECISION 19
 #define DEFAULT_ANGLE_THRESHOLD 3.
+#define SDF_UPSAMPLE 2.f
 
 class ResourceImporterSVGDistanceField : public ResourceImporter {
 	GDCLASS(ResourceImporterSVGDistanceField, ResourceImporter);
@@ -182,7 +183,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		if (!skipColoring)
 			msdfgen::edgeColoringSimple(shape, angleThreshold, coloringSeed);
 
-		msdf = msdfgen::Bitmap<float, 4>(width, height);
+		msdf = msdfgen::Bitmap<float, 4>(width * SDF_UPSAMPLE, height * SDF_UPSAMPLE);
 
 		msdfgen::generateMTSDF(msdf, shape, range, scale, translate, errorCorrectionThreshold, overlapSupport);
 		if (orientation == GUESS) {
@@ -201,7 +202,6 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 			}
 		}
 		r_image->create(width, height, true, Image::Format::FORMAT_RGBA8);
-		r_image->resize(width, height);
 		r_image->lock();
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
@@ -304,6 +304,7 @@ Error ResourceImporterSVGDistanceField::import(const String &p_source_file, cons
 	image.instance();
 	String abs_path = f->get_path_absolute();
 	msdf_output(abs_path.utf8().ptrw(), image, state);
+	image->resize(image->get_width() / SDF_UPSAMPLE, image->get_height() / SDF_UPSAMPLE, Image::INTERPOLATE_LANCZOS);
 	Ref<ImageTexture> image_texture;
 	image_texture.instance();
 	image_texture->create_from_image(image, ImageTexture::FLAG_MIPMAPS |
