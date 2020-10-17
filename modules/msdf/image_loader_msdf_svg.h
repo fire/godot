@@ -203,7 +203,6 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		r_image->create(width, height, true, Image::Format::FORMAT_RGBA8);
 		r_image->resize(width, height);
 		r_image->lock();
-		msdfgen::simulate8bit(msdf);
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
 				Color c;
