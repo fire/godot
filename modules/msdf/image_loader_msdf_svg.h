@@ -307,7 +307,6 @@ Error ResourceImporterSVGDistanceField::import(const String &p_source_file, cons
 	Ref<ImageTexture> image_texture;
 	image_texture.instance();
 	image_texture->create_from_image(image, ImageTexture::FLAG_MIPMAPS |
-													ImageTexture::FLAG_REPEAT |
 													ImageTexture::FLAG_FILTER |
 													ImageTexture::FLAG_ANISOTROPIC_FILTER);
 	String save_path = p_save_path + ".res";
