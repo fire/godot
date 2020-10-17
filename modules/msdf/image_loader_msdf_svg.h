@@ -14,6 +14,7 @@
 #include "scene/resources/texture.h"
 
 #include "thirdparty/msdfgen/msdfgen.h"
+#include "thirdparty/msdfgen/core/ShapeDistanceFinder.h"
 
 #include "nanosvg.h"
 #include "thirdparty/msdfgen/ext/import-svg.h"
@@ -21,6 +22,7 @@
 
 #define LARGE_VALUE 1e240
 #define SDF_ERROR_ESTIMATE_PRECISION 19
+#define DEFAULT_ANGLE_THRESHOLD 3.
 
 class ResourceImporterSVGDistanceField : public ResourceImporter {
 	GDCLASS(ResourceImporterSVGDistanceField, ResourceImporter);
@@ -47,7 +49,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		bool auto_frame = false;
 	};
 
-	Error msdf_output(char *p_file_name, Ref< ::Image> &r_image, MSDFState &p_state) {
+	Error msdf_output(char *p_file_name, Ref< ::Image> r_image, MSDFState &p_state) {
 		bool overlapSupport = true;
 		bool scanlinePass = true;
 		msdfgen::FillRule fillRule = msdfgen::FILL_NONZERO;
@@ -64,8 +66,8 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		msdfgen::Vector2 translate;
 		msdfgen::Vector2 scale = 1;
 		bool scaleSpecified = false;
-		double angleThreshold = Math_PI;
-		double edgeThreshold = 1.001;
+		double angleThreshold = DEFAULT_ANGLE_THRESHOLD;
+		double errorCorrectionThreshold = MSDFGEN_DEFAULT_ERROR_CORRECTION_THRESHOLD;
 		bool yFlip = false;
 		bool printMetrics = false;
 		bool estimateError = false;
@@ -179,42 +181,36 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 
 		if (!skipColoring)
 			msdfgen::edgeColoringSimple(shape, angleThreshold, coloringSeed);
+
 		msdf = msdfgen::Bitmap<float, 4>(width, height);
 
-		msdfgen::generateMTSDF(msdf, shape, range, scale, translate, scanlinePass ? 0 : edgeThreshold, overlapSupport);
-
+		msdfgen::generateMTSDF(msdf, shape, range, scale, translate, errorCorrectionThreshold, overlapSupport);
 		if (orientation == GUESS) {
 			// Get sign of signed distance outside bounds
 			msdfgen::Point2 p(bounds.l - (bounds.r - bounds.l) - 1, bounds.b - (bounds.t - bounds.b) - 1);
-			double dummy;
-			msdfgen::SignedDistance minDistance;
-			for (std::vector<msdfgen::Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour)
-				for (std::vector<msdfgen::EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge) {
-					msdfgen::SignedDistance distance = (*edge)->signedDistance(p, dummy);
-					if (distance < minDistance)
-						minDistance = distance;
-				}
-			orientation = minDistance.distance <= 0 ? KEEP : REVERSE;
+			double distance = msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, p);
+			orientation = distance <= 0 ? KEEP : REVERSE;
 		}
 		if (orientation == REVERSE) {
 			invertColor<4>(msdf);
 		}
 		if (scanlinePass) {
 			msdfgen::distanceSignCorrection(msdf, shape, scale, translate, fillRule);
-			if (edgeThreshold > 0) {
-				msdfgen::msdfErrorCorrection(msdf, edgeThreshold / (scale * range));
+			if (errorCorrectionThreshold > 0) {
+				msdfgen::msdfErrorCorrection(msdf, errorCorrectionThreshold / (scale * range));
 			}
 		}
-		r_image->create(width, height, false, Image::Format::FORMAT_RGBA8);
+		r_image->create(width, height, true, Image::Format::FORMAT_RGBA8);
 		r_image->resize(width, height);
 		r_image->lock();
+		msdfgen::simulate8bit(msdf);
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
 				Color c;
 				const float *split_pixel = msdf(j, i);
-				c.r = split_pixel[0];
-				c.g = split_pixel[1];
-				c.b = split_pixel[2];
+				c.b = split_pixel[0];
+				c.r = split_pixel[1];
+				c.g = split_pixel[2];
 				c.a = split_pixel[3];
 				r_image->set_pixel(j, i, c);
 			}
@@ -316,7 +312,7 @@ Error ResourceImporterSVGDistanceField::import(const String &p_source_file, cons
 													ImageTexture::FLAG_ANISOTROPIC_FILTER);
 	String save_path = p_save_path + ".res";
 	r_gen_files->push_back(save_path);
-	return ResourceSaver::save(save_path, image_texture);
+	return ResourceSaver::save(save_path, image_texture, ResourceSaver::FLAG_CHANGE_PATH);
 }
 
 ResourceImporterSVGDistanceField::ResourceImporterSVGDistanceField() {
