@@ -208,14 +208,15 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 			for (int j = 0; j < width; j++) {
 				Color c;
 				const float *split_pixel = msdf(j, i);
-				c.b = split_pixel[0];
-				c.r = split_pixel[1];
-				c.g = split_pixel[2];
+				c.r = split_pixel[0];
+				c.g = split_pixel[1];
+				c.b = split_pixel[2];
 				c.a = split_pixel[3];
 				r_image->set_pixel(j, i, c);
 			}
 		}
 		r_image->unlock();
+		r_image->generate_mipmaps();
 
 		if (estimateError) {
 			double sdfError = estimateSDFError(msdf, shape, scale, translate, SDF_ERROR_ESTIMATE_PRECISION, fillRule);
