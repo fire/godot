@@ -183,7 +183,7 @@ class ResourceImporterSVGDistanceField : public ResourceImporter {
 		if (!skipColoring)
 			msdfgen::edgeColoringSimple(shape, angleThreshold, coloringSeed);
 
-		msdf = msdfgen::Bitmap<float, 4>(width * SDF_UPSAMPLE, height * SDF_UPSAMPLE);
+		msdf = msdfgen::Bitmap<float, 4>(width, height);
 
 		msdfgen::generateMTSDF(msdf, shape, range, scale, translate, errorCorrectionThreshold, overlapSupport);
 		if (orientation == GUESS) {
@@ -304,7 +304,6 @@ Error ResourceImporterSVGDistanceField::import(const String &p_source_file, cons
 	image.instance();
 	String abs_path = f->get_path_absolute();
 	msdf_output(abs_path.utf8().ptrw(), image, state);
-	image->resize(image->get_width() / SDF_UPSAMPLE, image->get_height() / SDF_UPSAMPLE, Image::INTERPOLATE_LANCZOS);
 	Ref<ImageTexture> image_texture;
 	image_texture.instance();
 	image_texture->create_from_image(image, ImageTexture::FLAG_MIPMAPS |
