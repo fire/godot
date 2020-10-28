@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  image_etc.cpp                                                        */
+/*  image_betsy.cp                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -40,9 +40,9 @@
 #include "betsy/EncoderBC1.h"
 
 namespace betsy {
-extern void initBetsyPlatform();
-extern void shutdownBetsyPlatform();
-extern void pollPlatformWindow();
+void initBetsyPlatform() {}
+void shutdownBetsyPlatform() {}
+void pollPlatformWindow() {}
 } // namespace betsy
 
 void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
