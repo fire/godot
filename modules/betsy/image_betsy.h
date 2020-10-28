@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  image_etc.h                                                          */
+/*  image_betsy.h                                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,9 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef IMAGE_ETC1_H
-#define IMAGE_ETC1_H
+#ifndef IMAGE_BETSY_H
+#define IMAGE_BETSY_H
+#include "core/image.h"
 
-void _register_etc_compress_func();
+void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
+void _compress_etc1(Image *p_img, float p_lossy_quality);
+void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels);
+void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels);
 
-#endif // IMAGE_ETC_H
+#endif // IMAGE_BETSY_H

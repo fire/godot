@@ -31,9 +31,13 @@
 #include "register_types.h"
 
 #include "image_betsy.h"
+#include "core/image.h"
 
 void register_betsy_types() {
-	_register_etc_compress_func();
+	Image::_image_compress_etc1_func = _compress_etc1;
+	Image::_image_compress_etc2_func = _compress_etc2;
+	Image::set_compress_bc_func(_compress_bc);
+	Image::_image_compress_bc_func = _compress_bc;
 }
 
 void unregister_betsy_types() {

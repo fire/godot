@@ -45,28 +45,7 @@ extern void shutdownBetsyPlatform();
 extern void pollPlatformWindow();
 } // namespace betsy
 
-static Image::Format _get_etc2_mode(Image::UsedChannels format) {
-	switch (format) {
-		case Image::USED_CHANNELS_R:
-			return Image::FORMAT_ETC2_R11;
-
-		case Image::USED_CHANNELS_RG:
-			return Image::FORMAT_ETC2_RG11;
-
-		case Image::USED_CHANNELS_RGB:
-			return Image::FORMAT_ETC2_RGB8;
-
-		case Image::USED_CHANNELS_RGBA:
-			return Image::FORMAT_ETC2_RGBA8;
-
-		// TODO: would be nice if we could use FORMAT_ETC2_RGB8A1 for FORMAT_RGBA5551
-		default:
-			// TODO: Kept for compatibility, but should be investigated whether it's correct or if it should error out
-			return Image::FORMAT_ETC2_RGBA8;
-	}
-}
-
-static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
+void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
 	Image::Format img_format = p_img->get_format();
 
 	if (img_format >= Image::FORMAT_DXT1) {
@@ -99,15 +78,15 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	encoder.deinitResources();
 }
 
-static void _compress_etc1(Image *p_img, float p_lossy_quality) {
+void _compress_etc1(Image *p_img, float p_lossy_quality) {
 	_compress_etc(p_img, p_lossy_quality, true, Image::USED_CHANNELS_RGB);
 }
 
-static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
+void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
 	_compress_etc(p_img, p_lossy_quality, false, p_channels);
 }
 
-static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
+void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
 	Image::Format img_format = p_img->get_format();
 
 	if (img_format >= Image::FORMAT_DXT1) {
@@ -138,8 +117,3 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	encoder.deinitResources();
 }
 
-void _register_etc_compress_func() {
-	Image::_image_compress_etc1_func = _compress_etc1;
-	Image::_image_compress_etc2_func = _compress_etc2;
-	Image::_image_compress_bc_func = _compress_bc;
-}

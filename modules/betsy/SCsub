@@ -6,17 +6,18 @@ Import("env_modules")
 env_betsy = env_modules.Clone()
 
 # Thirdparty source files
-# Not unbundled so far since not widespread as shared library
 thirdparty_dir = "thirdparty/betsy/include"
 thirdparty_sources = [
 ]
 thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
 env_betsy.Prepend(CPPPATH=[thirdparty_dir])
+env_betsy.Prepend(CPPPATH="thirdparty/betsy/Dependencies/SDL/Windows/include")
 
 env_thirdparty = env_betsy.Clone()
 env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(env.modules_sources, Glob("thirdparty/betsy/src/betsy/*.cpp"))
+env_thirdparty.add_source_files(env.modules_sources, Glob("thirdparty/betsy/src/*.cpp"))
 env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
 
 # Godot source files

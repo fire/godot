@@ -218,7 +218,7 @@ static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChann
 	_compress_etc(p_img, p_lossy_quality, false, p_channels);
 }
 
-void _register_etc_compress_func() {
+void _register_betsy_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
 	Image::_image_compress_etc2_func = _compress_etc2;
 }

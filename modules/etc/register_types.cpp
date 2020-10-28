@@ -39,7 +39,7 @@ void register_etc_types() {
 	resource_loader_pkm.instance();
 	ResourceLoader::add_resource_format_loader(resource_loader_pkm);
 
-	_register_etc_compress_func();
+	_register_betsy_compress_func();
 }
 
 void unregister_etc_types() {

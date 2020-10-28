@@ -1,7 +1,6 @@
 
 #include "GL/gl3w.h"
 
-#include "FreeImage.h"
 #include "SDL.h"
 
 #include <stdio.h>
@@ -31,8 +30,6 @@ namespace betsy
 			SDL_Quit();
 			abort();
 		}
-
-		FreeImage_Initialise( TRUE );
 
 		int width = 1280;
 		int height = 720;
@@ -98,8 +95,6 @@ namespace betsy
 
 	void shutdownBetsyPlatform()
 	{
-		FreeImage_DeInitialise();
-
 		SDL_GL_DeleteContext( g_glContext );
 		g_glContext = 0;
 		SDL_Quit();
