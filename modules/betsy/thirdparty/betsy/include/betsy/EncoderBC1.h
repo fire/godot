@@ -5,6 +5,8 @@
 
 #include "GL/glcorearb.h"
 
+#include "core/image.h"
+
 namespace betsy
 {
 	struct CpuImage;
@@ -49,7 +51,7 @@ namespace betsy
 		@param bDither
 			Use Floyd-steinberg dithering. Anti-banding method.
 		*/
-		void initResources( const CpuImage &srcImage, const bool useBC3, const bool bDither );
+		void initResources( const Image *srcImage, const bool useBC3, const bool bDither );
 		void deinitResources();
 
 		void execute01();
@@ -57,6 +59,6 @@ namespace betsy
 		void execute03();
 
 		void startDownload();
-		void downloadTo( CpuImage &outImage );
+		void downloadTo( Image *outImage );
 	};
 }  // namespace betsy

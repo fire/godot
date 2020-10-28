@@ -10,6 +10,8 @@
 #include <memory.h>
 #include <stdio.h>
 
+#include "core/image.h"
+
 namespace betsy
 {
 	struct Bc1Tables
@@ -47,13 +49,12 @@ namespace betsy
 	//-------------------------------------------------------------------------
 	EncoderBC1::~EncoderBC1() { assert( !m_srcTexture && "deinitResources not called!" ); }
 	//-------------------------------------------------------------------------
-	void EncoderBC1::initResources( const CpuImage &srcImage, const bool useBC3, const bool bDither )
+	void EncoderBC1::initResources( const Image *srcImage, const bool useBC3, const bool bDither )
 	{
-		m_width = srcImage.width;
-		m_height = srcImage.height;
+		m_width = srcImage->get_width();
+		m_height = srcImage->get_height();
 
-		const PixelFormat srcFormat =
-			srcImage.format == PFG_RGBA8_UNORM_SRGB ? PFG_RGBA8_UNORM : srcImage.format;
+		const PixelFormat srcFormat = PFG_RGBA8_UNORM;
 
 		m_srcTexture = createTexture( TextureParams( m_width, m_height, srcFormat, "m_srcTexture" ) );
 
@@ -81,8 +82,8 @@ namespace betsy
 			m_stitchPso = createComputePsoFromFile( "etc2_rgba_stitch.glsl", "../Data/" );
 		}
 
-		StagingTexture stagingTex = createStagingTexture( m_width, m_height, srcImage.format, true );
-		memcpy( stagingTex.data, srcImage.data, stagingTex.sizeBytes );
+		StagingTexture stagingTex = createStagingTexture( m_width, m_height, srcFormat, true );
+		memcpy( stagingTex.data, srcImage->get_data().ptr(), stagingTex.sizeBytes );
 		uploadStagingTexture( stagingTex, m_srcTexture );
 		destroyStagingTexture( stagingTex );
 	}
@@ -179,12 +180,14 @@ namespace betsy
 								m_downloadStaging );
 	}
 	//-------------------------------------------------------------------------
-	void EncoderBC1::downloadTo( CpuImage &outImage )
+	void EncoderBC1::downloadTo( Image *outImage )
 	{
 		glFinish();
-		outImage.width = m_width;
-		outImage.height = m_height;
-		outImage.format = m_stitchedTarget ? PFG_BC3_UNORM : PFG_BC1_UNORM;
-		outImage.data = reinterpret_cast<uint8_t *>( m_downloadStaging.data );
+		PackedByteArray data;
+		Image::Format format = Image::FORMAT_DXT5;
+		size_t size = m_width * m_height * sizeof( uint );
+		data.resize( size );
+		copymem(data.ptrw(), m_downloadStaging.data, size);
+		outImage->create( m_width, m_height, false, format, data);
 	}
 }  // namespace betsy

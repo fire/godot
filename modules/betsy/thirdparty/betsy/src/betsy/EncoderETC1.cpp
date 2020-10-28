@@ -10,6 +10,7 @@
 #include <limits>
 
 #include "ETC1_tables.inl"
+
 #include "core/image.h"
 
 namespace betsy

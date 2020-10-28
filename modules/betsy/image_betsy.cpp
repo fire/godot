@@ -37,6 +37,7 @@
 
 #include "betsy/EncoderETC1.h"
 #include "betsy/EncoderETC2.h"
+#include "betsy/EncoderBC1.h"
 
 namespace betsy {
 extern void initBetsyPlatform();
@@ -64,37 +65,6 @@ static Image::Format _get_etc2_mode(Image::UsedChannels format) {
 			return Image::FORMAT_ETC2_RGBA8;
 	}
 }
-
-// static Etc::Image::Format _image_format_to_etc2comp_format(Image::Format format) {
-// 	switch (format) {
-// 		case Image::FORMAT_ETC:
-// 			return Etc::Image::Format::ETC1;
-
-// 		case Image::FORMAT_ETC2_R11:
-// 			return Etc::Image::Format::R11;
-
-// 		case Image::FORMAT_ETC2_R11S:
-// 			return Etc::Image::Format::SIGNED_R11;
-
-// 		case Image::FORMAT_ETC2_RG11:
-// 			return Etc::Image::Format::RG11;
-
-// 		case Image::FORMAT_ETC2_RG11S:
-// 			return Etc::Image::Format::SIGNED_RG11;
-
-// 		case Image::FORMAT_ETC2_RGB8:
-// 			return Etc::Image::Format::RGB8;
-
-// 		case Image::FORMAT_ETC2_RGBA8:
-// 			return Etc::Image::Format::RGBA8;
-
-// 		case Image::FORMAT_ETC2_RGB8A1:
-// 			return Etc::Image::Format::RGB8A1;
-
-// 		default:
-// 			ERR_FAIL_V(Etc::Image::Format::UNKNOWN);
-// 	}
-// }
 
 static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
 	Image::Format img_format = p_img->get_format();
@@ -124,11 +94,9 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		}
 		betsy::pollPlatformWindow();
 	}
-	// saveToDisk( encoder, params );
-	encoder.deinitResources();
-
 	print_verbose("ETC: Time encoding: " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 	encoder.downloadTo(p_img);
+	encoder.deinitResources();
 }
 
 static void _compress_etc1(Image *p_img, float p_lossy_quality) {
@@ -139,7 +107,39 @@ static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChann
 	_compress_etc(p_img, p_lossy_quality, false, p_channels);
 }
 
+static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
+	Image::Format img_format = p_img->get_format();
+
+	if (img_format >= Image::FORMAT_DXT1) {
+		return; //do not compress, already compressed
+	}
+
+	if (img_format > Image::FORMAT_RGBA8) {
+		// TODO: we should be able to handle FORMAT_RGBA4444 and FORMAT_RGBA5551 eventually
+		return;
+	}	
+	uint64_t t = OS::get_singleton()->get_ticks_msec();
+	betsy::EncoderBC1 encoder;
+	bool dither = false;
+	bool usingRenderDoc = false;
+	bool rgba = true;
+	encoder.initResources(p_img, rgba, dither);
+	size_t repeat = usingRenderDoc ? 2u : 1u;
+	while (repeat--) {
+		encoder.execute01();
+		encoder.execute02();
+		if (usingRenderDoc) {
+			encoder.execute03(); // Not needed in offline mode
+		}
+		betsy::pollPlatformWindow();
+	}
+	print_verbose("ETC: Time encoding: " + rtos(OS::get_singleton()->get_ticks_msec() - t));
+	encoder.downloadTo(p_img);
+	encoder.deinitResources();
+}
+
 void _register_etc_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
 	Image::_image_compress_etc2_func = _compress_etc2;
+	Image::_image_compress_bc_func = _compress_bc;
 }
