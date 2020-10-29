@@ -104,6 +104,11 @@ private:
 		FOLDER_EXPAND_ALL,
 		FOLDER_COLLAPSE_ALL,
 	};
+	enum DependencyColumn {
+		DEPS_PATH_COLUMN,
+		DEPS_RESOURCE_COLUMN,
+		DEPS_CHECKBOX_COLUMN
+	};
 
 	FileSortOption file_sort = FILE_SORT_NAME;
 
@@ -147,6 +152,10 @@ private:
 	DependencyRemoveDialog *remove_dialog;
 
 	EditorDirDialog *move_dialog;
+	EditorDirDialog *move_with_deps_dialog;
+	ConfirmationDialog *new_deps_dialog;
+
+	Tree *new_deps_tree;
 	ConfirmationDialog *rename_dialog;
 	LineEdit *rename_dialog_text;
 	ConfirmationDialog *duplicate_dialog;
@@ -157,6 +166,8 @@ private:
 	LineEdit *make_scene_dialog_text;
 	ConfirmationDialog *overwrite_dialog;
 	ScriptCreateDialog *make_script_dialog;
+	ConfirmationDialog *ignore_overwrite_with_deps_dialog;
+	ScriptCreateDialog *make_script_dialog_text;
 	CreateDialog *new_resource_dialog;
 
 	bool always_show_folders;
@@ -237,8 +248,10 @@ private:
 	void _duplicate_operation_confirm();
 	void _move_with_overwrite();
 	bool _check_existing();
-	void _move_operation_confirm(const String &p_to_path, bool p_overwrite = false);
 
+	void _move_operation_with_deps_confirm(const String &p_to_path);
+	void _move_operation_confirm(const String &p_to_path, bool overwrite = false, bool with_dependencies = false);
+	void _scan_dependencies_to_delete(String old_path, Set<String> &dependencies_to_delete);
 	void _tree_rmb_option(int p_option);
 	void _file_list_rmb_option(int p_option);
 	void _file_option(int p_option, const Vector<String> &p_selected);
@@ -250,6 +263,9 @@ private:
 
 	void _set_scanning_mode();
 	void _rescan();
+
+	void _find_to_dependency_delete(TreeItem *p_item, Array &paths);
+	void _move_dependencies(String p_to_path, bool p_move_dependencies);
 
 	void _toggle_split_mode(bool p_active);
 
@@ -299,6 +315,7 @@ private:
 	void _update_display_mode(bool p_force = false);
 
 	Vector<String> _tree_get_selected(bool remove_self_inclusion = true);
+	void _scan_file_dependencies(String p_path, Set<String> &p_file_dependencies);
 
 	bool _is_file_type_disabled_by_feature_profile(const StringName &p_class);
 
