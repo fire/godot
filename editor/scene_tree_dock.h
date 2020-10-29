@@ -93,6 +93,7 @@ class SceneTreeDock : public VBoxContainer {
 		TOOL_CREATE_USER_INTERFACE,
 		TOOL_CREATE_FAVORITE,
 
+		TOOL_PROPERTY_EDIT,
 	};
 
 	enum {
@@ -111,6 +112,7 @@ class SceneTreeDock : public VBoxContainer {
 	Button *button_instance;
 	Button *button_create_script;
 	Button *button_detach_script;
+	Button *button_property_editor;
 
 	Button *button_2d;
 	Button *button_3d;
@@ -243,6 +245,45 @@ class SceneTreeDock : public VBoxContainer {
 
 	bool profile_allow_editing;
 	bool profile_allow_script_editing;
+
+	ConfirmationDialog *property_editor = nullptr;
+	Tree *property_editor_tree = nullptr;
+	LineEdit *property_editor_search_box = nullptr;
+	CheckBox *exact_search_button = nullptr;
+	ConfirmationDialog *_create_scene_property_editor();
+	AcceptDialog *edit_variable_dialog = memnew(AcceptDialog);
+	EditorInspector *edit_variable_edit = memnew(EditorInspector);
+	Timer *property_search_timer = memnew(Timer);
+	struct VariantInfo {
+		Variant variant;
+		PropertyInfo info;
+		String path;
+		bool operator<(const VariantInfo &p_in) const {
+			return p_in.path < path && p_in.info.name < info.name && p_in.variant < variant;
+		}
+		bool operator==(const VariantInfo &p_in) const {
+			return p_in.path == path && p_in.info.name == info.name && p_in.variant == variant;
+		}
+	};
+
+public:
+	enum PropertyEditorTable {
+		PROPERTY_EDITOR_TABLE_PATH = 0,
+		PROPERTY_EDITOR_TABLE_NAME = 1,
+		PROPERTY_EDITOR_TABLE_VALUE = 2,
+		PROPERTY_EDITOR_TABLE_EDIT = 3,
+		PROPERTY_EDITOR_TABLE_RELOAD = 4
+	};
+	void _scene_property_editor_update();
+	void _update_scene_property_editor(int32_t &r_count, Vector<VariantInfo> &r_queue, String p_search_term, Tree *p_tree, TreeItem *p_tree_item, Node *p_root, Node *p_current_node);
+	void _scene_property_editor_changed(String p_search_term);
+	void _scene_property_editor_text_changed();
+	void _scene_property_editor_button_pressed(Object *p_item, int32_t p_column, int32_t p_id);
+	void _scene_property_editor_action_activated();
+	void _scene_property_editor_select(String p_path, String p_name);
+	void _count_scene_property_editor(int32_t &r_count, Node *p_root, Node *p_current_node);
+	void _scene_property_editor_closed();
+	void _focus_filter(String p_name);
 
 protected:
 	void _notification(int p_what);
