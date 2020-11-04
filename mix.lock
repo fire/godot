@@ -1,0 +1,9 @@
+%{
+  "bunch": {:hex, :bunch, "1.3.0", "51b4423088b7fb9e21eae6d6bc5e5d219d955ea5556fbd6130bfb6213df4be32", [:mix], [], "hexpm", "9ad233a2bacc0dae8aa6553a9b9057f27446443b1c5903c3479b6f9f3820ce2d"},
+  "bunch_native": {:hex, :bunch_native, "0.3.0", "a292baf340608d07bf2f2bbc7928a29648c15c90192e8f4c50b77ea16366d61c", [:mix], [{:bundlex, "~> 0.4.0", [hex: :bundlex, repo: "hexpm", optional: false]}], "hexpm", "8a3b4b4bc6de06f863469f6f06a0a37026bd87b0dcaa2dba688ea9da9b18b4c1"},
+  "bundlex": {:hex, :bundlex, "0.4.0", "bec7f07206022f5aac33bf835cce88d90cc49c115d181fbe0d9edea393edb2d6", [:mix], [{:bunch, "~> 1.0", [hex: :bunch, repo: "hexpm", optional: false]}, {:qex, "~> 0.5", [hex: :qex, repo: "hexpm", optional: false]}, {:secure_random, "~> 0.5", [hex: :secure_random, repo: "hexpm", optional: false]}], "hexpm", "5fe9c9624ced9cfac9a432f7c1966c8d2059aa0a9e5fe8d0cf5b0161b4dc8c63"},
+  "qex": {:hex, :qex, "0.5.0", "5a3a9becf67d4006377c4c247ffdaaa8ae5b3634a0caadb788dc24d6125068f4", [:mix], [], "hexpm", "4ad6f6421163cd8204509a119a5c9813cbb969cfb8d802a9dc49b968bffbac2a"},
+  "secure_random": {:hex, :secure_random, "0.5.1", "c5532b37c89d175c328f5196a0c2a5680b15ebce3e654da37129a9fe40ebf51b", [:mix], [], "hexpm", "1b9754f15e3940a143baafd19da12293f100044df69ea12db5d72878312ae6ab"},
+  "shmex": {:hex, :shmex, "0.3.0", "5b995fa0bba3ff48fb9a93fdd116f5e6f7c0012da00775564a8d29d199618b8c", [:mix], [{:bunch_native, "~> 0.3.0", [hex: :bunch_native, repo: "hexpm", optional: false]}, {:bundlex, "~> 0.4.0", [hex: :bundlex, repo: "hexpm", optional: false]}], "hexpm", "05b2cc456eb549bd40a53bf641c47008acba0185f25c1906b934b0b91c36f1c4"},
+  "unifex": {:git, "https://github.com/membraneframework/unifex.git", "02c0564781ea5300486f96c9b9f9ce851d9211d7", [tag: "02c0564781ea5300486f96c9b9f9ce851d9211d7"]},
+}

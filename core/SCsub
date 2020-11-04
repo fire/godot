@@ -6,7 +6,6 @@ import core_builders
 
 env.core_sources = []
 
-
 # Generate AES256 script encryption key
 import os
 

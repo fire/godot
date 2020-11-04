@@ -40,6 +40,7 @@ vs_sources = []
 for name, path in env.module_list.items():
     env.modules_sources = []
 
+    env.Append(LINKFLAGS=["-fPIC"])
     if not os.path.isabs(path):
         SConscript(name + "/SCsub")  # Built-in.
     else:

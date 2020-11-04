@@ -36,7 +36,7 @@
 #include "main/main.h"
 #include "os_linuxbsd.h"
 
-int main(int argc, char *argv[]) {
+int godot_main(int argc, char *argv[]) {
 	OS_LinuxBSD os;
 
 	setlocale(LC_CTYPE, "");
@@ -67,4 +67,8 @@ int main(int argc, char *argv[]) {
 	free(cwd);
 
 	return os.get_exit_code();
+}
+
+int main(int argc, char *argv[]) {
+	return godot_main(argc, argv);
 }
