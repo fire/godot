@@ -31,6 +31,9 @@
 #include "environment.h"
 
 #include "core/config/project_settings.h"
+#include "core/core_string_names.h"
+#include "core/error/error_macros.h"
+#include "core/variant/variant.h"
 #include "servers/rendering_server.h"
 #include "texture.h"
 
@@ -891,23 +894,59 @@ float Environment::get_adjustment_saturation() const {
 	return adjustment_saturation;
 }
 
-void Environment::set_adjustment_color_correction(const Ref<Texture2D> &p_ramp) {
-	adjustment_color_correction = p_ramp;
+void Environment::set_use_1d_color_correction(bool p_1d_ramp) {
+	use_1d_color_correction = p_1d_ramp;
 	_update_adjustment();
 }
 
-Ref<Texture2D> Environment::get_adjustment_color_correction() const {
-	return adjustment_color_correction;
+bool Environment::get_use_1d_color_correction() const {
+	return use_1d_color_correction;
+}
+
+void Environment::set_adjustment_1d_color_correction(Ref<Texture2D> p_ramp) {
+	adjustment_1d_color_correction = p_ramp;
+	Ref<GradientTexture> grad_tex = adjustment_1d_color_correction;
+	if (grad_tex.is_valid()) {
+		if (!grad_tex->is_connected(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment))) {
+			grad_tex->connect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment));
+			if (grad_tex->get_gradient().is_valid() && !grad_tex->get_gradient()->is_connected(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment))) {
+				grad_tex->get_gradient()->connect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment));
+			}
+		} else if (grad_tex->is_connected(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment))) {
+			grad_tex->disconnect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment));
+			if (grad_tex->get_gradient().is_valid() && grad_tex->get_gradient()->is_connected(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment))) {
+				grad_tex->get_gradient()->disconnect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Environment::_update_adjustment));
+			}
+		}
+	}
+	_update_adjustment();
+}
+
+Ref<Texture2D> Environment::get_adjustment_1d_color_correction() const {
+	return adjustment_1d_color_correction;
+}
+
+void Environment::set_adjustment_3d_color_correction(Ref<Texture3D> p_ramp) {
+	adjustment_3d_color_correction = p_ramp;
+	_update_adjustment();
+}
+
+Ref<Texture3D> Environment::get_adjustment_3d_color_correction() const {
+	return adjustment_3d_color_correction;
 }
 
 void Environment::_update_adjustment() {
+	RID color_correction_1d_ramp = adjustment_1d_color_correction.is_valid() ? adjustment_1d_color_correction->get_rid() : RID();
+	RID color_correction_3d_ramp = adjustment_3d_color_correction.is_valid() ? adjustment_3d_color_correction->get_rid() : RID();
 	RS::get_singleton()->environment_set_adjustment(
 			environment,
 			adjustment_enabled,
 			adjustment_brightness,
 			adjustment_contrast,
 			adjustment_saturation,
-			adjustment_color_correction.is_valid() ? adjustment_color_correction->get_rid() : RID());
+			use_1d_color_correction,
+			color_correction_1d_ramp,
+			color_correction_3d_ramp);
 }
 
 // Private methods, constructor and destructor
@@ -1311,15 +1350,21 @@ void Environment::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_adjustment_contrast"), &Environment::get_adjustment_contrast);
 	ClassDB::bind_method(D_METHOD("set_adjustment_saturation", "saturation"), &Environment::set_adjustment_saturation);
 	ClassDB::bind_method(D_METHOD("get_adjustment_saturation"), &Environment::get_adjustment_saturation);
-	ClassDB::bind_method(D_METHOD("set_adjustment_color_correction", "color_correction"), &Environment::set_adjustment_color_correction);
-	ClassDB::bind_method(D_METHOD("get_adjustment_color_correction"), &Environment::get_adjustment_color_correction);
+	ClassDB::bind_method(D_METHOD("set_use_1d_color_correction", "use_1d_color_correction"), &Environment::set_use_1d_color_correction);
+	ClassDB::bind_method(D_METHOD("get_use_1d_color_correction"), &Environment::get_use_1d_color_correction);
+	ClassDB::bind_method(D_METHOD("set_adjustment_1d_color_correction", "1d_ramp"), &Environment::set_adjustment_1d_color_correction);
+	ClassDB::bind_method(D_METHOD("get_adjustment_1d_color_correction"), &Environment::get_adjustment_1d_color_correction);
+	ClassDB::bind_method(D_METHOD("set_adjustment_3d_color_correction", "3d_ramp"), &Environment::set_adjustment_3d_color_correction);
+	ClassDB::bind_method(D_METHOD("get_adjustment_3d_color_correction"), &Environment::get_adjustment_3d_color_correction);
 
 	ADD_GROUP("Adjustments", "adjustment_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "adjustment_enabled"), "set_adjustment_enabled", "is_adjustment_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjustment_brightness", PROPERTY_HINT_RANGE, "0.01,8,0.01"), "set_adjustment_brightness", "get_adjustment_brightness");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjustment_contrast", PROPERTY_HINT_RANGE, "0.01,8,0.01"), "set_adjustment_contrast", "get_adjustment_contrast");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjustment_saturation", PROPERTY_HINT_RANGE, "0.01,8,0.01"), "set_adjustment_saturation", "get_adjustment_saturation");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "adjustment_color_correction", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D"), "set_adjustment_color_correction", "get_adjustment_color_correction");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "adjustment_use_1d_color_correction"), "set_use_1d_color_correction", "get_use_1d_color_correction");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "adjustment_1d_color_correction", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D"), "set_adjustment_1d_color_correction", "get_adjustment_1d_color_correction");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "adjustment_3d_color_correction", PROPERTY_HINT_RESOURCE_TYPE, "Texture3D"), "set_adjustment_3d_color_correction", "get_adjustment_3d_color_correction");
 
 	// Constants
 

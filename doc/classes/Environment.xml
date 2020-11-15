@@ -43,8 +43,14 @@
 		<member name="adjustment_brightness" type="float" setter="set_adjustment_brightness" getter="get_adjustment_brightness" default="1.0">
 			The global brightness value of the rendered scene. Effective only if [code]adjustment_enabled[/code] is [code]true[/code].
 		</member>
-		<member name="adjustment_color_correction" type="Texture2D" setter="set_adjustment_color_correction" getter="get_adjustment_color_correction">
+		<member name="adjustment_1d_color_correction" type="Texture2D" setter="set_adjustment_1d_color_correction" getter="get_adjustment_1d_color_correction">
 			Applies the provided [Texture2D] resource to affect the global color aspect of the rendered scene. Effective only if [code]adjustment_enabled[/code] is [code]true[/code].
+			A [Texture2D] which represents an 1 dimensional lookup table.
+			[GradientTexture] is supported.
+		</member>
+		<member name="adjustment_3d_color_correction" type="Texture3D" setter="set_adjustment_3d_color_correction" getter="get_adjustment_3d_color_correction">
+			Applies the provided [Texture3D] resource to affect the global color aspect of the rendered scene. Effective only if [code]adjustment_enabled[/code] is [code]true[/code].
+			One is a [Texture3D] which represents a 3D lookup table.
 		</member>
 		<member name="adjustment_contrast" type="float" setter="set_adjustment_contrast" getter="get_adjustment_contrast" default="1.0">
 			The global contrast value of the rendered scene (default value is 1). Effective only if [code]adjustment_enabled[/code] is [code]true[/code].

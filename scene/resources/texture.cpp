@@ -829,11 +829,17 @@ void ImageTexture3D::_update(const TypedArray<Image> &p_data) {
 }
 
 Error ImageTexture3D::create(Image::Format p_format, int p_width, int p_height, int p_depth, bool p_mipmaps, const Vector<Ref<Image>> &p_data) {
-	RID tex = RenderingServer::get_singleton()->texture_3d_create(p_format, p_width, p_height, p_depth, p_mipmaps, p_data);
+	RID tex = RS::get_singleton()->texture_3d_create(p_format, p_width, p_height, p_depth, p_mipmaps, p_data);
 	ERR_FAIL_COND_V(tex.is_null(), ERR_CANT_CREATE);
-
+	format = p_format;
+	width = p_width;
+	height = p_height;
+	depth = p_depth;
+	mipmaps = p_mipmaps;
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_replace(texture, tex);
+	} else {
+		texture = tex;
 	}
 
 	return OK;

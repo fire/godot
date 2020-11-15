@@ -181,7 +181,7 @@ class RasterizerEffectsRD {
 
 		uint32_t glow_texture_size[2];
 		float glow_intensity;
-		uint32_t pad3;
+		uint32_t use_1d_ramp;
 
 		uint32_t glow_mode;
 		float glow_levels[7];
@@ -198,7 +198,7 @@ class RasterizerEffectsRD {
 
 	/* tonemap actually writes to a framebuffer, which is
 	 * better to do using the raster pipeline rather than
-	 * comptute, as that framebuffer might be in different formats
+	 * compute, as that framebuffer might be in different formats
 	 */
 	struct Tonemap {
 		TonemapPushConstant push_constant;
@@ -654,7 +654,9 @@ public:
 		float saturation = 1.0;
 
 		bool use_color_correction = false;
-		RID color_correction_texture;
+		bool use_1d_ramp = false;
+		RID color_correction_texture_1d;
+		RID color_correction_texture_3d;
 
 		bool use_fxaa = false;
 		bool use_debanding = false;

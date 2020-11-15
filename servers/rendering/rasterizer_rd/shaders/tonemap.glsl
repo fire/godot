@@ -23,7 +23,8 @@ layout(location = 0) in vec2 uv_interp;
 layout(set = 0, binding = 0) uniform sampler2D source_color;
 layout(set = 1, binding = 0) uniform sampler2D source_auto_exposure;
 layout(set = 2, binding = 0) uniform sampler2D source_glow;
-layout(set = 3, binding = 0) uniform sampler3D color_correction;
+layout(set = 3, binding = 0) uniform sampler2D color_correction_1d;
+layout(set = 4, binding = 0) uniform sampler3D color_correction_3d;
 
 layout(push_constant, binding = 1, std430) uniform Params {
 	vec3 bcs;
@@ -35,9 +36,9 @@ layout(push_constant, binding = 1, std430) uniform Params {
 	uint tonemapper;
 
 	uvec2 glow_texture_size;
-
 	float glow_intensity;
-	uint pad3;
+	uint use_1d_ramp;
+
 	uint glow_mode;
 	float glow_levels[7];
 
@@ -256,8 +257,15 @@ vec3 apply_bcs(vec3 color, vec3 bcs) {
 	return color;
 }
 
-vec3 apply_color_correction(vec3 color, sampler3D correction_tex) {
-	return texture(correction_tex, color).rgb;
+vec3 apply_color_correction_1d(vec3 color, sampler2D correction_tex) {
+	color.r = texture(correction_tex, vec2(color.r, 0.0f)).r;
+	color.g = texture(correction_tex, vec2(color.g, 0.0f)).g;
+	color.b = texture(correction_tex, vec2(color.b, 0.0f)).b;
+	return color;
+}
+
+vec3 apply_color_correction_3d(vec3 color, sampler3D correction_tex) {
+	return textureLod(correction_tex, color, 0.0).rgb;
 }
 
 vec3 do_fxaa(vec3 color, float exposure, vec2 uv_interp) {
@@ -366,8 +374,10 @@ void main() {
 		color = apply_bcs(color, params.bcs);
 	}
 
-	if (params.use_color_correction) {
-		color = apply_color_correction(color, color_correction);
+	if (params.use_color_correction && bool(params.use_1d_ramp)) {
+		color = apply_color_correction_1d(color, color_correction_1d);
+	} else if (params.use_color_correction && !bool(params.use_1d_ramp)) {
+		color = apply_color_correction_3d(color, color_correction_3d);
 	}
 
 	frag_color = vec4(color, 1.0f);
