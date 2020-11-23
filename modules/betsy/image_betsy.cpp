@@ -30,10 +30,10 @@
 
 #include "image_betsy.h"
 
-#include "core/image.h"
+#include "core/io/image.h"
 #include "core/os/copymem.h"
 #include "core/os/os.h"
-#include "core/print_string.h"
+#include "core/string/print_string.h"
 
 #include "betsy/EncoderETC1.h"
 #include "betsy/EncoderETC2.h"
@@ -45,46 +45,46 @@ void shutdownBetsyPlatform() {}
 void pollPlatformWindow() {}
 } // namespace betsy
 
-void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
-	Image::Format img_format = p_img->get_format();
-
-	if (img_format >= Image::FORMAT_DXT1) {
-		return; //do not compress, already compressed
-	}
-
-	if (img_format > Image::FORMAT_RGBA8) {
-		// TODO: we should be able to handle FORMAT_RGBA4444 and FORMAT_RGBA5551 eventually
-		return;
-	}	
-	uint64_t t = OS::get_singleton()->get_ticks_msec();
-
-	betsy::EncoderETC2 encoder;
-	bool dither = false;
-	bool usingRenderDoc = false;
-	bool etc2_rgba = true;
-	encoder.initResources(p_img, etc2_rgba, dither);
-	size_t repeat = usingRenderDoc ? 2u : 1u;
-	while (repeat--) {
-		encoder.execute00();
-		encoder.execute01(betsy::EncoderETC1::Etc1Quality::cHighQuality);
-		encoder.execute02();
-		if (usingRenderDoc) {
-			encoder.execute03(); // Not needed in offline mode
-		}
-		betsy::pollPlatformWindow();
-	}
-	print_verbose("ETC: Time encoding: " + rtos(OS::get_singleton()->get_ticks_msec() - t));
-	encoder.downloadTo(p_img);
-	encoder.deinitResources();
-}
-
-void _compress_etc1(Image *p_img, float p_lossy_quality) {
-	_compress_etc(p_img, p_lossy_quality, true, Image::USED_CHANNELS_RGB);
-}
-
-void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
-	_compress_etc(p_img, p_lossy_quality, false, p_channels);
-}
+//void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
+//	Image::Format img_format = p_img->get_format();
+//
+//	if (img_format >= Image::FORMAT_DXT1) {
+//		return; //do not compress, already compressed
+//	}
+//
+//	if (img_format > Image::FORMAT_RGBA8) {
+//		// TODO: we should be able to handle FORMAT_RGBA4444 and FORMAT_RGBA5551 eventually
+//		return;
+//	}	
+//	uint64_t t = OS::get_singleton()->get_ticks_msec();
+//
+//	betsy::EncoderETC2 encoder;
+//	bool dither = false;
+//	bool usingRenderDoc = false;
+//	bool etc2_rgba = true;
+//	encoder.initResources(p_img, etc2_rgba, dither);
+//	size_t repeat = usingRenderDoc ? 2u : 1u;
+//	while (repeat--) {
+//		encoder.execute00();
+//		encoder.execute01(betsy::EncoderETC1::Etc1Quality::cHighQuality);
+//		encoder.execute02();
+//		if (usingRenderDoc) {
+//			encoder.execute03(); // Not needed in offline mode
+//		}
+//		betsy::pollPlatformWindow();
+//	}
+//	print_verbose("ETC: Time encoding: " + rtos(OS::get_singleton()->get_ticks_msec() - t));
+//	encoder.downloadTo(p_img);
+//	encoder.deinitResources();
+//}
+//
+//void _compress_etc1(Image *p_img, float p_lossy_quality) {
+//	_compress_etc(p_img, p_lossy_quality, true, Image::USED_CHANNELS_RGB);
+//}
+//
+//void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
+//	_compress_etc(p_img, p_lossy_quality, false, p_channels);
+//}
 
 void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
 	Image::Format img_format = p_img->get_format();

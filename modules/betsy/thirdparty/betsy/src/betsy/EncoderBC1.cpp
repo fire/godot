@@ -10,7 +10,7 @@
 #include <memory.h>
 #include <stdio.h>
 
-#include "core/image.h"
+#include "core/io/image.h"
 
 namespace betsy
 {
@@ -185,7 +185,7 @@ namespace betsy
 		glFinish();
 		PackedByteArray data;
 		Image::Format format = Image::FORMAT_DXT5;
-		size_t size = m_width * m_height * sizeof( uint );
+		size_t size = m_width * m_height * sizeof( uint8_t );
 		data.resize( size );
 		copymem(data.ptrw(), m_downloadStaging.data, size);
 		outImage->create( m_width, m_height, false, format, data);

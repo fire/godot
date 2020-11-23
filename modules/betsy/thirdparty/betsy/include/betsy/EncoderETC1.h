@@ -5,7 +5,7 @@
 
 #include "GL/glcorearb.h"
 
-#include "core/image.h"
+#include "core/io/image.h"
 
 namespace betsy
 {

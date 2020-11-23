@@ -11,7 +11,7 @@
 
 #include "ETC1_tables.inl"
 
-#include "core/image.h"
+#include "core/io/image.h"
 
 namespace betsy
 {
@@ -340,11 +340,11 @@ namespace betsy
 	{
 		glFinish();
 		PackedByteArray data;
-		size_t size = m_width * m_height * sizeof( uint ) - sizeof( uint ) / 4;
+		size_t size = m_width * m_height * sizeof( uint8_t ) - sizeof( uint8_t ) / 4;
 		Image::Format format = Image::FORMAT_RGB8;
 		if( hasAlpha() )
 		{
-			size = m_width * m_height * sizeof( uint );
+			size = m_width * m_height * sizeof( uint8_t );
 			format = Image::FORMAT_RGBA8;
 		}
 		data.resize( size );

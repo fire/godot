@@ -31,11 +31,11 @@
 #include "register_types.h"
 
 #include "image_betsy.h"
-#include "core/image.h"
+#include "core/io/image.h"
 
 void register_betsy_types() {
-	Image::_image_compress_etc1_func = _compress_etc1;
-	Image::_image_compress_etc2_func = _compress_etc2;
+	//Image::_image_compress_etc1_func = _compress_etc1;
+	//Image::_image_compress_etc2_func = _compress_etc2;
 	Image::set_compress_bc_func(_compress_bc);
 	Image::_image_compress_bc_func = _compress_bc;
 }

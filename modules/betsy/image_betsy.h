@@ -30,11 +30,11 @@
 
 #ifndef IMAGE_BETSY_H
 #define IMAGE_BETSY_H
-#include "core/image.h"
+#include "core/io/image.h"
 
-void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
-void _compress_etc1(Image *p_img, float p_lossy_quality);
-void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels);
+//void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
+//void _compress_etc1(Image *p_img, float p_lossy_quality);
+//void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels);
 void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels);
 
 #endif // IMAGE_BETSY_H
