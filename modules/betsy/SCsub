@@ -16,7 +16,8 @@ env_betsy.Prepend(CPPPATH="thirdparty/betsy/Dependencies/SDL/Windows/include")
 
 env_thirdparty = env_betsy.Clone()
 env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, Glob("thirdparty/betsy/src/betsy/*.cpp"))
+betsy_source = Glob("thirdparty/betsy/src/betsy/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, betsy_source)
 env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
 
 # Godot source files

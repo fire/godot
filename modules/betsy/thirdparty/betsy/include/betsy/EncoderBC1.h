@@ -1,9 +1,7 @@
 
 #pragma once
 
-#include "betsy/EncoderGL.h"
-
-#include "GL/glcorearb.h"
+#include "betsy/EncoderVulkan.h"
 
 #include "core/io/image.h"
 
@@ -15,20 +13,20 @@ namespace betsy
 	@brief The EncoderBC1 class
 		Supports BC1 (565) and BC3 (BC1 565 RGB + Alpha encoded using BC4)
 	*/
-	class EncoderBC1 : public EncoderGL
+	class EncoderBC1 : public EncoderVulkan
 	{
 	protected:
 		uint32_t m_width;
 		uint32_t m_height;
 
-		GLuint m_srcTexture;
-		GLuint m_bc1TargetRes;
-		GLuint m_bc4TargetRes;    // Only used for BC3
-		GLuint m_stitchedTarget;  // Only used for BC3
-		GLuint m_dstTexture;
+		uint32_t m_srcTexture;
+		uint32_t m_bc1TargetRes;
+		uint32_t m_bc4TargetRes;    // Only used for BC3
+		uint32_t m_stitchedTarget;  // Only used for BC3
+		uint32_t m_dstTexture;
 
 		// Tables that contain the lowest error when all pixels have the same index
-		GLuint m_bc1TablesSsbo;
+		uint32_t m_bc1TablesSsbo;
 
 		StagingTexture m_downloadStaging;
 

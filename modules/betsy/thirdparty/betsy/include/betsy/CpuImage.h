@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "betsy/EncoderGL.h"
+#include "betsy/EncoderVulkan.h"
 
 namespace betsy
 {

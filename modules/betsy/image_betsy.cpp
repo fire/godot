@@ -35,8 +35,8 @@
 #include "core/os/os.h"
 #include "core/string/print_string.h"
 
-#include "betsy/EncoderETC1.h"
-#include "betsy/EncoderETC2.h"
+//#include "betsy/EncoderETC1.h"
+//#include "betsy/EncoderETC2.h"
 #include "betsy/EncoderBC1.h"
 
 namespace betsy {

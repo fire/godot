@@ -1,9 +1,7 @@
 
 #pragma once
 
-#include "betsy/EncoderGL.h"
-
-#include "GL/glcorearb.h"
+#include "betsy/EncoderVulkan.h"
 
 namespace betsy
 {
@@ -14,16 +12,16 @@ namespace betsy
 		Handles BC4 and BC5 compression.
 		Note that BC5 is just two BC4 blocks together.
 	*/
-	class EncoderBC4 : public EncoderGL
+	class EncoderBC4 : public EncoderVulkan
 	{
 	protected:
 		uint32_t m_width;
 		uint32_t m_height;
 
-		GLuint m_srcTexture;
-		GLuint m_bc4TargetRes[2];
-		GLuint m_stitchedTarget;  // Only used for BC5
-		GLuint m_dstTexture;
+		uint32_t m_srcTexture;
+		uint32_t m_bc4TargetRes[2];
+		uint32_t m_stitchedTarget;  // Only used for BC5
+		uint32_t m_dstTexture;
 
 		bool m_encodeSNorm;
 
