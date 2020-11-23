@@ -5289,9 +5289,6 @@ void RasterizerSceneRD::_render_buffers_post_process_and_tonemap(RID p_render_bu
 		//tonemap
 		RasterizerEffectsRD::TonemapSettings tonemap;
 
-		tonemap.color_correction_texture_3d = storage->texture_rd_get_default(RasterizerStorageRD::DEFAULT_RD_TEXTURE_3D_WHITE);
-		tonemap.color_correction_texture_1d = storage->texture_rd_get_default(RasterizerStorageRD::DEFAULT_RD_TEXTURE_WHITE);
-
 		if (can_use_effects && env && env->auto_exposure && rb->luminance.current.is_valid()) {
 			tonemap.use_auto_exposure = true;
 			tonemap.exposure_texture = rb->luminance.current;
@@ -5333,15 +5330,13 @@ void RasterizerSceneRD::_render_buffers_post_process_and_tonemap(RID p_render_bu
 			tonemap.brightness = env->adjustments_brightness;
 			tonemap.contrast = env->adjustments_contrast;
 			tonemap.saturation = env->adjustments_saturation;
-			tonemap.use_1d_ramp = env->use_1d_ramp;
-			if (env->adjustments_enabled && env->use_1d_ramp && env->color_correction_1d.is_valid()) {
-				tonemap.use_color_correction = env->color_correction_1d.is_valid();
-				tonemap.color_correction_texture_1d = storage->texture_get_rd_texture(env->color_correction_1d);
-			} else if (env->adjustments_enabled && !env->use_1d_ramp && env->color_correction_3d.is_valid()) {
-				tonemap.use_color_correction = env->color_correction_3d.is_valid();
-				tonemap.color_correction_texture_3d = storage->texture_get_rd_texture(env->color_correction_3d);
+			tonemap.use_1d_color_correction = env->use_1d_color_correction;
+			if (env->adjustments_enabled && env->color_correction.is_valid()) {
+				tonemap.use_color_correction = true;
+				tonemap.color_correction_texture = storage->texture_get_rd_texture(env->color_correction);
 			} else {
 				tonemap.use_color_correction = false;
+				tonemap.color_correction_texture = storage->texture_rd_get_default(RasterizerStorageRD::DEFAULT_RD_TEXTURE_WHITE);
 			}
 		}
 
@@ -5412,7 +5407,7 @@ void RasterizerSceneRD::_render_buffers_debug_draw(RID p_render_buffers, RID p_s
 	}
 }
 
-void RasterizerSceneRD::environment_set_adjustment(RID p_env, bool p_enable, float p_brightness, float p_contrast, float p_saturation, bool p_use_1d_ramp, RID p_1d_ramp, RID p_3d_ramp) {
+void RasterizerSceneRD::environment_set_adjustment(RID p_env, bool p_enable, float p_brightness, float p_contrast, float p_saturation, bool p_use_1d_color_correction, RID p_color_correction) {
 	Environment *env = environment_owner.getornull(p_env);
 	ERR_FAIL_COND(!env);
 
@@ -5420,9 +5415,8 @@ void RasterizerSceneRD::environment_set_adjustment(RID p_env, bool p_enable, flo
 	env->adjustments_brightness = p_brightness;
 	env->adjustments_contrast = p_contrast;
 	env->adjustments_saturation = p_saturation;
-	env->use_1d_ramp = p_use_1d_ramp;
-	env->color_correction_1d = p_1d_ramp;
-	env->color_correction_3d = p_3d_ramp;
+	env->use_1d_color_correction = p_use_1d_color_correction;
+	env->color_correction = p_color_correction;
 }
 
 void RasterizerSceneRD::_sdfgi_debug_draw(RID p_render_buffers, const CameraMatrix &p_projection, const Transform &p_transform) {

@@ -167,6 +167,8 @@ class RasterizerEffectsRD {
 	enum TonemapMode {
 		TONEMAP_MODE_NORMAL,
 		TONEMAP_MODE_BICUBIC_GLOW_FILTER,
+		TONEMAP_MODE_1D_LUT,
+		TONEMAP_MODE_BICUBIC_GLOW_FILTER_1D_LUT,
 		TONEMAP_MODE_MAX
 	};
 
@@ -654,9 +656,8 @@ public:
 		float saturation = 1.0;
 
 		bool use_color_correction = false;
-		bool use_1d_ramp = false;
-		RID color_correction_texture_1d;
-		RID color_correction_texture_3d;
+		bool use_1d_color_correction = false;
+		RID color_correction_texture;
 
 		bool use_fxaa = false;
 		bool use_debanding = false;

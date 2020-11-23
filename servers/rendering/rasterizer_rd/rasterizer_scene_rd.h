@@ -770,9 +770,8 @@ private:
 		float adjustments_brightness = 1.0f;
 		float adjustments_contrast = 1.0f;
 		float adjustments_saturation = 1.0f;
-		bool use_1d_ramp = false;
-		RID color_correction_1d = RID();
-		RID color_correction_3d = RID();
+		bool use_1d_color_correction = false;
+		RID color_correction = RID();
 	};
 
 	RS::EnvironmentSSAOQuality ssao_quality = RS::ENV_SSAO_QUALITY_MEDIUM;
@@ -1581,7 +1580,7 @@ public:
 	RS::EnvironmentSSRRoughnessQuality environment_get_ssr_roughness_quality() const;
 
 	void environment_set_tonemap(RID p_env, RS::EnvironmentToneMapper p_tone_mapper, float p_exposure, float p_white, bool p_auto_exposure, float p_min_luminance, float p_max_luminance, float p_auto_exp_speed, float p_auto_exp_scale);
-	void environment_set_adjustment(RID p_env, bool p_enable, float p_brightness, float p_contrast, float p_saturation, bool p_use_1d_ramp, RID p_1d_ramp, RID p_3d_ramp);
+	void environment_set_adjustment(RID p_env, bool p_enable, float p_brightness, float p_contrast, float p_saturation, bool p_use_1d_color_correction, RID p_color_correction);
 
 	virtual Ref<Image> environment_bake_panorama(RID p_env, bool p_bake_irradiance, const Size2i &p_size);
 

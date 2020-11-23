@@ -718,7 +718,10 @@ void RasterizerEffectsRD::tonemapper(RID p_source_color, RID p_dst_framebuffer, 
 	tonemap.push_constant.glow_texture_size[1] = p_settings.glow_texture_size.y;
 	tonemap.push_constant.glow_mode = p_settings.glow_mode;
 
-	TonemapMode mode = p_settings.glow_use_bicubic_upscale ? TONEMAP_MODE_BICUBIC_GLOW_FILTER : TONEMAP_MODE_NORMAL;
+	int mode = p_settings.glow_use_bicubic_upscale ? TONEMAP_MODE_BICUBIC_GLOW_FILTER : TONEMAP_MODE_NORMAL;
+	if (p_settings.use_1d_color_correction) {
+		mode += 2;
+	}
 
 	tonemap.push_constant.tonemapper = p_settings.tonemap_mode;
 	tonemap.push_constant.use_auto_exposure = p_settings.use_auto_exposure;
@@ -733,15 +736,12 @@ void RasterizerEffectsRD::tonemapper(RID p_source_color, RID p_dst_framebuffer, 
 	tonemap.push_constant.pixel_size[0] = 1.0 / p_settings.texture_size.x;
 	tonemap.push_constant.pixel_size[1] = 1.0 / p_settings.texture_size.y;
 
-	tonemap.push_constant.use_1d_ramp = p_settings.use_1d_ramp;
-
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(p_dst_framebuffer, RD::INITIAL_ACTION_DROP, RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_DROP, RD::FINAL_ACTION_DISCARD);
 	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, tonemap.pipelines[mode].get_render_pipeline(RD::INVALID_ID, RD::get_singleton()->framebuffer_get_format(p_dst_framebuffer)));
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_source_color), 0);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.exposure_texture), 1);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.glow_texture, true), 2);
-	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.color_correction_texture_1d), 3);
-	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.color_correction_texture_3d), 4);
+	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_settings.color_correction_texture), 3);
 	RD::get_singleton()->draw_list_bind_index_array(draw_list, index_array);
 
 	RD::get_singleton()->draw_list_set_push_constant(draw_list, &tonemap.push_constant, sizeof(TonemapPushConstant));
@@ -1426,6 +1426,8 @@ RasterizerEffectsRD::RasterizerEffectsRD() {
 		Vector<String> tonemap_modes;
 		tonemap_modes.push_back("\n");
 		tonemap_modes.push_back("\n#define USE_GLOW_FILTER_BICUBIC\n");
+		tonemap_modes.push_back("\n#define USE_1D_LUT\n");
+		tonemap_modes.push_back("\n#define USE_GLOW_FILTER_BICUBIC\n#define USE_1D_LUT\n");
 
 		tonemap.shader.initialize(tonemap_modes);
 

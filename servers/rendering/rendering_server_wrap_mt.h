@@ -504,7 +504,7 @@ public:
 
 	FUNC9(environment_set_tonemap, RID, EnvironmentToneMapper, float, float, bool, float, float, float, float)
 
-	FUNC8(environment_set_adjustment, RID, bool, float, float, float, bool, RID, RID)
+	FUNC7(environment_set_adjustment, RID, bool, float, float, float, bool, RID)
 
 	FUNC9(environment_set_fog, RID, bool, const Color &, float, float, float, float, float, float)
 
