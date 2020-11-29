@@ -1,0 +1,12 @@
+# SCsub
+
+Import('env')
+
+module_env = env.Clone()
+module_env.Append(CPPDEFINES=['HAVE_CONFIG_H', 'PACKAGE=', 'VERSION=', "CPU_CLIPS_POSITIVE=0", "CPU_CLIPS_NEGATIVE=0"])
+module_env.Prepend(CPPPATH=['thirdparty/libsamplerate/src'])
+module_env.Prepend(CPPPATH=['include'])
+env_thirdparty = module_env.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, Glob("thirdparty/libsamplerate/src/*.c"))
+module_env.add_source_files(env.modules_sources, "*.cpp")
