@@ -295,7 +295,6 @@ public:
 	GLTFCameraIndex _convert_camera(Ref<GLTFState> state, Camera3D *p_camera);
 	void _convert_light_to_gltf(Light3D *light, Ref<GLTFState> state, Node3D *spatial, Ref<GLTFNode> gltf_node);
 	GLTFLightIndex _convert_light(Ref<GLTFState> state, Light3D *p_light);
-	void _convert_skeletons(Ref<GLTFState> state);
 	GLTFSkeletonIndex _convert_skeleton(Ref<GLTFState> state, Skeleton3D *p_skeleton,
 			GLTFNodeIndex p_node_index);
 	void _convert_spatial(Ref<GLTFState> state, Node3D *p_spatial, Ref<GLTFNode> p_node);

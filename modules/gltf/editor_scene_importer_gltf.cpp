@@ -154,11 +154,27 @@ void PackedSceneGLTF::save_scene(Node *p_node, const String &p_path,
 	for (int node_i = 0; node_i < p_node->get_child_count(); node_i++) {
 		gltf_document->_convert_scene_node(state, p_node->get_child(node_i), p_node->get_child(node_i), scene_root, scene_root);
 	}
+	if (!state->buffers.size()) {
+		state->buffers.push_back(Vector<uint8_t>());
+	}
 	gltf_document->_convert_mesh_instances(state);
-	gltf_document->_convert_skeletons(state);
 	err = gltf_document->serialize(state, p_path);
 	if (r_err) {
 		*r_err = err;
+	}
+}
+
+void PackedSceneGLTF::_build_parent_hierachy(Ref<GLTFState> state) {
+	// build the hierarchy
+	for (GLTFNodeIndex node_i = 0; node_i < state->nodes.size(); node_i++) {
+		for (int j = 0; j < state->nodes[node_i]->children.size(); j++) {
+			GLTFNodeIndex child_i = state->nodes[node_i]->children[j];
+			ERR_FAIL_INDEX(child_i, state->nodes.size());
+			if (state->nodes.write[child_i]->parent != -1) {
+				continue;
+			}
+			state->nodes.write[child_i]->parent = node_i;
+		}
 	}
 }
 
