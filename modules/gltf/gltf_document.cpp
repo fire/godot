@@ -5785,7 +5785,7 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 		if (!skeleton->get_bone_count()) {
 			break;
 		}
-		Ref<Skin> skin = mi->get_skin()->duplicate();
+		Ref<Skin> skin = mi->get_skin();
 		if (skin.is_null()) {
 			skin = skeleton->register_skin(NULL)->get_skin();
 		}
