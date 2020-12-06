@@ -295,8 +295,7 @@ public:
 	GLTFCameraIndex _convert_camera(Ref<GLTFState> state, Camera3D *p_camera);
 	void _convert_light_to_gltf(Light3D *light, Ref<GLTFState> state, Node3D *spatial, Ref<GLTFNode> gltf_node);
 	GLTFLightIndex _convert_light(Ref<GLTFState> state, Light3D *p_light);
-	GLTFSkeletonIndex _convert_skeleton(Ref<GLTFState> state, Skeleton3D *p_skeleton,
-			GLTFNodeIndex p_node_index);
+	GLTFSkeletonIndex _convert_skeleton(Ref<GLTFState> state, Skeleton3D *p_skeleton);
 	void _convert_spatial(Ref<GLTFState> state, Node3D *p_spatial, Ref<GLTFNode> p_node);
 	void _convert_scene_node(Ref<GLTFState> state, Node *p_current, Node *p_root,
 			const GLTFNodeIndex p_gltf_current,
@@ -305,8 +304,8 @@ public:
 	void _convert_csg_shape_to_gltf(Node *p_current, GLTFNodeIndex p_gltf_parent, Ref<GLTFNode> gltf_node, Ref<GLTFState> state);
 
 	void _create_gltf_node(Ref<GLTFState> state,
-			GLTFNodeIndex current_node_i,
 			Node *p_scene_parent,
+			GLTFNodeIndex current_node_i,
 			GLTFNodeIndex p_parent_node_index,
 			GLTFNodeIndex p_root_gltf_node,
 			Ref<GLTFNode> gltf_node);
