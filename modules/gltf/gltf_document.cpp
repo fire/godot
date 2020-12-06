@@ -5860,10 +5860,16 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 				Ref<GLTFNode> node = state->nodes.write[parent_joint_gltf_node];
 				node->children.push_back(joint_node_i);
 			} else {
-				ERR_CONTINUE(skeleton_gltf_i >= state->skeleton_to_node.size());
-				GLTFNodeIndex skeleton_gltf = state->skeleton_to_node[skeleton_gltf_i];
-				Ref<GLTFNode> node = state->nodes.write[skeleton_gltf];
-				node->children.push_back(joint_node_i);
+				Node * node_parent = skeleton->get_parent();
+				ERR_CONTINUE(!node_parent);
+				for (Map<GLTFNodeIndex, Node*>::Element* E = state->scene_nodes.front(); E; E = E->next()) {
+					if (E->get() == node_parent) {
+						GLTFNodeIndex gltf_node_i = E->key();
+						Ref<GLTFNode> node = state->nodes.write[gltf_node_i];
+						node->children.push_back(joint_node_i);
+						break;
+					}
+				}
 			}
 		}
 		_expand_skin(state, gltf_skin);
