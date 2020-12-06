@@ -6340,27 +6340,26 @@ void GLTFDocument::_convert_animation(Ref<GLTFState> state, AnimationPlayer *ap,
 				for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state->skeletons.size(); skeleton_i++) {
 					if (state->skeletons[skeleton_i]->godot_skeleton == cast_to<Skeleton3D>(godot_node)) {
 						skeleton = state->skeletons[skeleton_i]->godot_skeleton;
-						skeleton_gltf_i = skeleton_i;
-						break;
+						skeleton_gltf_i = skeleton_i;								
+						ERR_CONTINUE(!skeleton);
+						ERR_CONTINUE(skeleton_gltf_i == -1);
+						int32_t bone = skeleton->find_bone(suffix);
+						ERR_CONTINUE(bone == -1);
+						Transform xform = skeleton->get_bone_rest(bone);
+						Ref<GLTFSkeleton> skeleton_gltf = state->skeletons[skeleton_gltf_i];
+						if (!skeleton_gltf->godot_bone_node.has(bone)) {
+							continue;
+						}
+						GLTFNodeIndex node_i = skeleton_gltf->godot_bone_node[bone];
+						Map<int, GLTFAnimation::Track>::Element *property_track_i = gltf_animation->get_tracks().find(node_i);
+						GLTFAnimation::Track track;
+						if (property_track_i) {
+							track = property_track_i->get();
+						}
+						track = _convert_animation_track(state, track, animation, xform, track_i, node_i);
+						gltf_animation->get_tracks()[node_i] = track;
 					}
 				}
-				ERR_CONTINUE(!skeleton);
-				ERR_CONTINUE(skeleton_gltf_i == -1);
-				int32_t bone = skeleton->find_bone(suffix);
-				ERR_CONTINUE(bone == -1);
-				Transform xform = skeleton->get_bone_rest(bone);
-				Ref<GLTFSkeleton> skeleton_gltf = state->skeletons[skeleton_gltf_i];
-				if (!skeleton_gltf->godot_bone_node.has(bone)) {
-					continue;
-				}
-				GLTFNodeIndex node_i = skeleton_gltf->godot_bone_node[bone];
-				Map<int, GLTFAnimation::Track>::Element *property_track_i = gltf_animation->get_tracks().find(node_i);
-				GLTFAnimation::Track track;
-				if (property_track_i) {
-					track = property_track_i->get();
-				}
-				track = _convert_animation_track(state, track, animation, xform, track_i, node_i);
-				gltf_animation->get_tracks()[node_i] = track;
 			}
 		} else if (String(orig_track_path).find(":") == -1) {
 			const Node *node = ap->get_parent()->get_node_or_null(orig_track_path);
