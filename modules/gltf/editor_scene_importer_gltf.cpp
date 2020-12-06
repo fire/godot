@@ -150,8 +150,11 @@ void PackedSceneGLTF::save_scene(Node *p_node, const String &p_path,
 	gltf_document.instance();
 	Ref<GLTFState> state;
 	state.instance();
-	const GLTFNodeIndex scene_root = 0;
-	gltf_document->_convert_scene_node(state, p_node, p_node, scene_root, scene_root);
+	for (int node_i = 0; node_i < p_node->get_child_count(); node_i++) {
+		const GLTFNodeIndex scene_root = state->nodes.size();
+		state->root_nodes.push_back(scene_root);
+		gltf_document->_convert_scene_node(state, p_node->get_child(node_i), p_node, -1, scene_root);
+	}
 	if (!state->buffers.size()) {
 		state->buffers.push_back(Vector<uint8_t>());
 	}

@@ -5226,6 +5226,9 @@ void GLTFDocument::_create_gltf_node(Ref<GLTFState> state, Node *p_scene_parent,
 	if (current_node_i == p_parent_node_index) {
 		return;
 	}
+	if (p_parent_node_index == -1) {
+		return;
+	}
 	state->nodes.write[p_parent_node_index]->children.push_back(current_node_i);
 }
 
