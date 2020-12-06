@@ -5824,7 +5824,6 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 			joint_node->translation = xform.origin;
 			joint_node->joint = true;
 
-			int32_t parent = skeleton->get_bone_parent(bone_index);
 			int32_t joint_node_i = state->nodes.size();
 			state->nodes.push_back(joint_node);
 			gltf_skeleton->godot_bone_node.insert(bone_index, joint_node_i);
@@ -5845,7 +5844,6 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 		}
 		for (int32_t bind_i = 0; bind_i < skin->get_bind_count(); bind_i++) {
 			String bone_name = skeleton->get_bone_name(bind_i);
-			int32_t parent = skeleton->get_bone_parent(bind_i);
 			String godot_bone_name = skin->get_bind_name(bind_i);
 			int32_t bone = -1;
 			if (skin->get_bind_bone(bind_i) != -1) {
