@@ -5156,6 +5156,14 @@ void GLTFDocument::_convert_scene_node(Ref<GLTFState> state, Node *p_current, No
 
 	if (cast_to<MeshInstance3D>(p_current)) {
 		_convert_mesh_to_gltf(p_current, state, spatial, gltf_node);
+		MeshInstance3D *mi = cast_to<MeshInstance3D>(p_current);
+		NodePath skeleton_path = mi->get_skeleton_path();
+		Node *node = mi->get_node_or_null(skeleton_path);
+		Skeleton3D *skeleton = cast_to<Skeleton3D>(node);
+		if (skeleton) {
+			GLTFSkeletonIndex skeleton_i = _convert_skeleton(state, skeleton);
+			state->skeleton_to_node.insert(skeleton_i, p_gltf_parent);
+		}
 	} else if (cast_to<BoneAttachment3D>(p_current)) {
 		_convert_bone_attachment_to_gltf(p_current, state, gltf_node, retflag);
 		return;
@@ -5348,8 +5356,8 @@ void GLTFDocument::_convert_mult_mesh_instance_to_gltf(Node *p_scene_parent, con
 void GLTFDocument::_convert_skeleton_to_gltf(Node *p_scene_parent, Ref<GLTFState> state, const GLTFNodeIndex &p_parent_node_index, const GLTFNodeIndex &p_root_node_index, Ref<GLTFNode> gltf_node, Node *p_root_node) {
 	Skeleton3D *skeleton = Object::cast_to<Skeleton3D>(p_scene_parent);
 	if (skeleton) {
-		GLTFSkeletonIndex skeleton_i = _convert_skeleton(state, skeleton);
-		state->skeleton_to_node.insert(skeleton_i, p_parent_node_index);
+		// Remove placeholder skeleton3d node by not creating the gltf node
+		// Skins are per mesh
 		for (int node_i = 0; node_i < skeleton->get_child_count(); node_i++) {
 			_convert_scene_node(state, skeleton->get_child(node_i), p_root_node, p_parent_node_index, p_root_node_index);
 		}
@@ -6340,13 +6348,13 @@ void GLTFDocument::_convert_animation(Ref<GLTFState> state, AnimationPlayer *ap,
 				for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state->skeletons.size(); skeleton_i++) {
 					if (state->skeletons[skeleton_i]->godot_skeleton == cast_to<Skeleton3D>(godot_node)) {
 						skeleton = state->skeletons[skeleton_i]->godot_skeleton;
-						skeleton_gltf_i = skeleton_i;								
+						skeleton_gltf_i = skeleton_i;
 						ERR_CONTINUE(!skeleton);
 						ERR_CONTINUE(skeleton_gltf_i == -1);
+						Ref<GLTFSkeleton> skeleton_gltf = state->skeletons[skeleton_gltf_i];
 						int32_t bone = skeleton->find_bone(suffix);
 						ERR_CONTINUE(bone == -1);
 						Transform xform = skeleton->get_bone_rest(bone);
-						Ref<GLTFSkeleton> skeleton_gltf = state->skeletons[skeleton_gltf_i];
 						if (!skeleton_gltf->godot_bone_node.has(bone)) {
 							continue;
 						}
