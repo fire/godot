@@ -5859,13 +5859,12 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 				GLTFNodeIndex parent_joint_gltf_node = gltf_skin->joints[bone_parent];
 				Ref<GLTFNode> node = state->nodes.write[parent_joint_gltf_node];
 				node->children.push_back(joint_node_i);
-			} 
-			// else {
-			// 	ERR_CONTINUE(skeleton_gltf_i >= state->skeleton_to_node.size());
-			// 	GLTFNodeIndex skeleton_gltf = state->skeleton_to_node[skeleton_gltf_i];
-			// 	Ref<GLTFNode> node = state->nodes.write[skeleton_gltf];
-			// 	node->children.push_back(joint_node_i);
-			// }
+			} else {
+				ERR_CONTINUE(skeleton_gltf_i >= state->skeleton_to_node.size());
+				GLTFNodeIndex skeleton_gltf = state->skeleton_to_node[skeleton_gltf_i];
+				Ref<GLTFNode> node = state->nodes.write[skeleton_gltf];
+				node->children.push_back(joint_node_i);
+			}
 		}
 		_expand_skin(state, gltf_skin);
 		node->skin = state->skins.size();
