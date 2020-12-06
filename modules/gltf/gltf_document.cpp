@@ -6337,23 +6337,32 @@ void GLTFDocument::_convert_animation(Ref<GLTFState> state, AnimationPlayer *ap,
 				const NodePath node_path = node;
 				const String suffix = node_suffix[1];
 				Node *godot_node = ap->get_parent()->get_node_or_null(node_path);
+				Skeleton3D *skeleton = nullptr;
+				GLTFSkeletonIndex skeleton_gltf_i = -1;
 				for (GLTFSkeletonIndex skeleton_i = 0; skeleton_i < state->skeletons.size(); skeleton_i++) {
-					int32_t bone = state->skeletons[skeleton_i]->godot_skeleton->find_bone(suffix);
-					ERR_CONTINUE(bone == -1);
-					Transform xform = state->skeletons[skeleton_i]->godot_skeleton->get_bone_rest(bone);
-					if (!state->skeletons[skeleton_i]->godot_bone_node.has(bone)) {
-						continue;
+					if (state->skeletons[skeleton_i]->godot_skeleton == cast_to<Skeleton3D>(godot_node)) {
+						skeleton = state->skeletons[skeleton_i]->godot_skeleton;
+						skeleton_gltf_i = skeleton_i;
+						break;
 					}
-					GLTFNodeIndex node_i = state->skeletons[skeleton_i]->godot_bone_node[bone];
-					Map<int, GLTFAnimation::Track>::Element *property_track_i = gltf_animation->get_tracks().find(node_i);
-					GLTFAnimation::Track track;
-					if (property_track_i) {
-						track = property_track_i->get();
-					}
-					track = _convert_animation_track(state, track, animation, xform, track_i, node_i);
-					gltf_animation->get_tracks()[node_i] = track;
-					break;
 				}
+				ERR_CONTINUE(!skeleton);
+				ERR_CONTINUE(skeleton_gltf_i == -1);
+				int32_t bone = skeleton->find_bone(suffix);
+				ERR_CONTINUE(bone == -1);
+				Transform xform = skeleton->get_bone_rest(bone);
+				Ref<GLTFSkeleton> skeleton_gltf = state->skeletons[skeleton_gltf_i];
+				if (!skeleton_gltf->godot_bone_node.has(bone)) {
+					continue;
+				}
+				GLTFNodeIndex node_i = skeleton_gltf->godot_bone_node[bone];
+				Map<int, GLTFAnimation::Track>::Element *property_track_i = gltf_animation->get_tracks().find(node_i);
+				GLTFAnimation::Track track;
+				if (property_track_i) {
+					track = property_track_i->get();
+				}
+				track = _convert_animation_track(state, track, animation, xform, track_i, node_i);
+				gltf_animation->get_tracks()[node_i] = track;
 			}
 		} else if (String(orig_track_path).find(":") == -1) {
 			const Node *node = ap->get_parent()->get_node_or_null(orig_track_path);
