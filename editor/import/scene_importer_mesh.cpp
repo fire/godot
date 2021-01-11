@@ -29,8 +29,13 @@
 /*************************************************************************/
 
 #include "scene_importer_mesh.h"
+#include "thirdparty/opensubdiv/far/primvarRefiner.h"
+#include "thirdparty/opensubdiv/far/topologyDescriptor.h"
 
 #include "scene/resources/surface_tool.h"
+#include "thirdparty/opensubdiv/far/topologyRefiner.h"
+
+typedef OpenSubdiv::v3_4_3::Far::TopologyDescriptor Descriptor;
 
 void EditorSceneImporterMesh::add_blend_shape(const String &p_name) {
 	ERR_FAIL_COND(surfaces.size() > 0);
@@ -150,6 +155,15 @@ void EditorSceneImporterMesh::generate_lods() {
 	for (int i = 0; i < surfaces.size(); i++) {
 		if (surfaces[i].primitive != Mesh::PRIMITIVE_TRIANGLES) {
 			continue;
+		}
+		Ref<SurfaceTool> st;
+		st.instance();
+		st->create_from_triangle_arrays(surfaces[i].arrays);
+		st->deindex();
+		st->index();
+		surfaces.write[i].arrays = st->commit_to_arrays();
+		if (!Vector<int>(surfaces[i].arrays[RS::ARRAY_BONES]).size()) {
+			surfaces.write[i].arrays = subdivide(surfaces[i].arrays, 1);
 		}
 
 		surfaces.write[i].lods.clear();
@@ -361,4 +375,333 @@ void EditorSceneImporterMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_get_data"), &EditorSceneImporterMesh::_get_data);
 
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_data", "_get_data");
+}
+
+Array EditorSceneImporterMesh::subdivide(Array p_mesh_arrays, int p_level) {
+	struct Vertex {
+		void Clear() { x = y = z = 0; }
+		void AddWithWeight(Vertex const &src, float weight) {
+			x += weight * src.x;
+			y += weight * src.y;
+			z += weight * src.z;
+		}
+		float x, y, z;
+	};
+
+	struct VertexUV {
+		void Clear() {
+			u = v = 0.0f;
+		}
+
+		void AddWithWeight(VertexUV const &src, float weight) {
+			u += weight * src.u;
+			v += weight * src.v;
+		}
+
+		// Basic 'uv' layout channel
+		float u, v;
+	};
+
+	struct VertexBones {
+		void Clear() {
+			b0 = b1 = b2 = b3 = 0;
+		}
+
+		void AddWithWeight(VertexBones const &src, float weight) {
+			b0 = src.b0;
+			b1 = src.b1;
+			b2 = src.b2;
+			b3 = src.b3;
+		}
+
+		int b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+	};
+	struct VertexWeights {
+		void Clear() {
+			w0 = w1 = w2 = w3 = 0.0f;
+		}
+
+		void AddWithWeight(VertexWeights const &src, float weight) {
+			w0 += weight * src.w0;
+			w1 += weight * src.w1;
+			w2 += weight * src.w2;
+			w3 += weight * src.w3;
+		}
+
+		float w0 = 0.0f, w1 = 0.0f, w2 = 0.0f, w3 = 0.f;
+	};
+	struct SurfaceData {
+		Vector<int> mesh_to_subdiv_index_map;
+	};
+	Vector<SurfaceData> surface_data;
+	Vector<int> mesh_to_subdiv_index_map;
+	int subdiv_vertex_count = 0;
+	int subdiv_index_count = 0;
+	int subdiv_uv_count = 0;
+	int subdiv_bone_count = 0;
+	int subdiv_weight_count = 0;
+	ERR_FAIL_COND_V(p_level <= 0, p_mesh_arrays);
+	bool has_bones = false;
+
+	ERR_FAIL_COND_V(p_level <= 0, p_mesh_arrays);
+
+	has_bones = Array(p_mesh_arrays[Mesh::ARRAY_BONES]).size();
+	int surface_count = 1;
+	surface_data.resize(surface_count);
+
+	Vector<Vector3> subdiv_vertex_array;
+	Vector<Vector2> subdiv_uv_array;
+
+	Vector<VertexBones> subdiv_bones_array;
+	Vector<VertexWeights> subdiv_weights_array;
+	Vector<int> subdiv_index_array;
+
+	int subdiv_face_count = 0;
+	Vector<int> face_to_surface_index_map;
+
+	Map<Vector3, int> vertex_map;
+
+	// Gather all vertices and faces from surfaces
+	SurfaceData &surface = surface_data.write[0];
+	Vector<Vector3> vertex_array = p_mesh_arrays[Mesh::ARRAY_VERTEX];
+	Vector<int> index_array = p_mesh_arrays[Mesh::ARRAY_INDEX];
+	Vector<Vector2> uv_array = p_mesh_arrays[Mesh::ARRAY_TEX_UV];
+	Vector<int> bones_array = p_mesh_arrays[Mesh::ARRAY_BONES];
+	Vector<float> weights_array = p_mesh_arrays[Mesh::ARRAY_WEIGHTS];
+
+	int index_count = index_array.size();
+
+	// Remove duplicated vertices to link faces properly
+	{
+		int vertex_source_count = vertex_array.size();
+
+		surface.mesh_to_subdiv_index_map.resize(vertex_source_count);
+		subdiv_vertex_array.resize(subdiv_vertex_count + vertex_source_count);
+		subdiv_uv_array.resize(subdiv_vertex_count + vertex_source_count);
+		subdiv_bones_array.resize(subdiv_vertex_count + vertex_source_count);
+		subdiv_weights_array.resize(subdiv_vertex_count + vertex_source_count);
+
+		int vertex_index_out = 0;
+		for (int vertex_index = 0; vertex_index < vertex_source_count; ++vertex_index) {
+			const Vector3 &vertex = vertex_array[vertex_index];
+			Map<Vector3, int>::Element *found_vertex = vertex_map.find(vertex);
+			if (found_vertex) {
+				surface.mesh_to_subdiv_index_map.write[vertex_index] = found_vertex->value();
+			} else {
+				int subdiv_vertex_index = subdiv_vertex_count + vertex_index_out;
+				vertex_map[vertex] = subdiv_vertex_index;
+				if (uv_array.size()) {
+					Vector2 uv = uv_array.write[vertex_index];
+					surface.mesh_to_subdiv_index_map.write[vertex_index] = subdiv_vertex_index;
+					subdiv_uv_array.write[subdiv_vertex_index] = uv;
+				}
+				if (bones_array.size()) {
+					surface.mesh_to_subdiv_index_map.write[vertex_index] = subdiv_vertex_index;
+					VertexBones bones;
+					bones.b0 = bones_array.write[vertex_index * 4 + 0];
+					bones.b1 = bones_array.write[vertex_index * 4 + 1];
+					bones.b2 = bones_array.write[vertex_index * 4 + 2];
+					bones.b3 = bones_array.write[vertex_index * 4 + 3];
+					subdiv_bones_array.write[subdiv_vertex_index] = bones;
+					VertexWeights weights;
+					weights.w0 = weights_array.write[vertex_index * 4 + 0];
+					weights.w1 = weights_array.write[vertex_index * 4 + 1];
+					weights.w2 = weights_array.write[vertex_index * 4 + 2];
+					weights.w3 = weights_array.write[vertex_index * 4 + 3];
+					subdiv_weights_array.write[subdiv_vertex_index] = weights;
+				}
+				subdiv_vertex_array.write[subdiv_vertex_index] = vertex;
+				++vertex_index_out;
+			}
+		}
+		subdiv_vertex_count += vertex_index_out;
+	}
+	subdiv_vertex_array.resize(subdiv_vertex_count);
+
+	// Add vertex indices
+	{
+		subdiv_index_array.resize(subdiv_index_count + index_count);
+		for (int index = 0; index < index_count; ++index) {
+			int subdiv_index = subdiv_index_count + index;
+			subdiv_index_array.write[subdiv_index] = surface.mesh_to_subdiv_index_map[index_array[index]];
+		}
+
+		subdiv_index_count += index_count;
+
+		int face_count = index_count / 3;
+
+		face_to_surface_index_map.resize(subdiv_face_count + face_count);
+		for (int face_index = 0; face_index < face_count; ++face_index) {
+			face_to_surface_index_map.write[subdiv_face_count + face_index] = 0;
+		}
+
+		subdiv_face_count += face_count;
+	}
+
+	// Generate subdivision data
+	Vector<int> index_arrays_out;
+	Vector<Vector3> normal_arrays_out;
+	{
+		// Create per-face vertex count
+		Vector<int> subdiv_face_vertex_count;
+		{
+			subdiv_face_vertex_count.resize(subdiv_face_count);
+			for (int face_index = 0; face_index < subdiv_face_count; ++face_index) {
+				subdiv_face_vertex_count.write[face_index] = 3;
+			}
+		}		
+		Vector<int> subdiv_uv_vertex_count;
+		{
+			subdiv_uv_vertex_count.resize(subdiv_uv_count);
+			for (int uv_index = 0; uv_index < subdiv_uv_count; ++uv_index) {
+				subdiv_uv_vertex_count.write[uv_index] = 3;
+			}
+		}
+		Vector<int> subdiv_bone_vertex_count;
+		{
+			subdiv_bone_vertex_count.resize(subdiv_bone_count);
+			for (int bone_index = 0; bone_index < subdiv_bone_count; ++bone_index) {
+				subdiv_bone_vertex_count.write[bone_index] = 3;
+			}
+		}		
+		Vector<int> subdiv_weights_vertex_count;
+		{
+			subdiv_weights_vertex_count.resize(subdiv_weight_count);
+			for (int weight_index = 0; weight_index < subdiv_weight_count; ++weight_index) {
+				subdiv_weights_vertex_count.write[weight_index] = 3;
+			}
+		}
+		OpenSubdiv::Far::TopologyDescriptor desc;
+		desc.numVertices = subdiv_vertex_count;
+		desc.numFaces = subdiv_face_count;
+		desc.numVertsPerFace = subdiv_face_vertex_count.ptr();
+		desc.vertIndicesPerFace = subdiv_index_array.ptr();
+		const int num_channels = 3;
+		const int channel_uv = 0;
+		const int channel_bones = 1;
+		const int channel_weights = 2;
+		Descriptor::FVarChannel channels[num_channels];
+		channels[channel_uv].numValues = subdiv_uv_count;
+		channels[channel_uv].valueIndices = subdiv_uv_vertex_count.ptr();
+		channels[channel_bones].numValues = subdiv_bone_count;
+		channels[channel_bones].valueIndices = subdiv_bone_vertex_count.ptr();
+		channels[channel_weights].numValues = subdiv_weight_count;
+		channels[channel_weights].valueIndices = subdiv_weights_vertex_count.ptr();
+
+		desc.numFVarChannels = num_channels;
+		desc.fvarChannels = channels;
+
+		// Create topology refiner
+		OpenSubdiv::Sdc::SchemeType type = OpenSubdiv::Sdc::SCHEME_CATMARK;
+
+		OpenSubdiv::Sdc::Options options;
+		options.SetVtxBoundaryInterpolation(OpenSubdiv::Sdc::Options::VTX_BOUNDARY_EDGE_ONLY);
+		options.SetFVarLinearInterpolation(OpenSubdiv::Sdc::Options::FVAR_LINEAR_NONE);
+		options.SetCreasingMethod(OpenSubdiv::Sdc::Options::CREASE_UNIFORM);
+		options.SetTriangleSubdivision(OpenSubdiv::Sdc::Options::TRI_SUB_SMOOTH);
+
+		OpenSubdiv::Far::TopologyRefinerFactory<Descriptor>::Options create_options(type, options);
+		if (refiner) {
+			delete refiner;
+			refiner = NULL;
+		}
+		refiner = OpenSubdiv::Far::TopologyRefinerFactory<Descriptor>::Create(desc, create_options);
+		ERR_FAIL_COND_V(!refiner, p_mesh_arrays);
+
+		OpenSubdiv::Far::TopologyRefiner::UniformOptions refine_options(p_level);
+		refine_options.fullTopologyInLastLevel = true;
+		refiner->RefineUniform(refine_options);
+
+		subdiv_vertex_count = refiner->GetNumVerticesTotal();
+		subdiv_uv_count = refiner->GetNumFVarValuesTotal(channel_uv);
+		subdiv_bone_count = refiner->GetNumFVarValuesTotal(channel_bones);
+		subdiv_weight_count = refiner->GetNumFVarValuesTotal(channel_weights);
+		// Create subdivision vertices
+		{
+			subdiv_vertex_array.resize(subdiv_vertex_count);
+			subdiv_uv_array.resize(subdiv_uv_count);
+			// Interpolate vertex primvar data
+			OpenSubdiv::Far::PrimvarRefiner primvar_refiner(*refiner);
+
+			Vertex *src = (Vertex *)subdiv_vertex_array.ptrw();
+			VertexUV *src_uv = (VertexUV *)subdiv_uv_array.ptrw();
+			VertexBones *src_bones = (VertexBones *)subdiv_bones_array.ptrw();
+			VertexWeights *src_weights = (VertexWeights *)subdiv_weights_array.ptrw();
+			for (int level = 0; level < p_level; ++level) {
+				Vertex *dst = src + refiner->GetLevel(level).GetNumVertices();
+				primvar_refiner.Interpolate(level + 1, src, dst);
+				src = dst;
+				VertexUV *dst_uv = src_uv + refiner->GetLevel(level).GetNumFVarValues(channel_uv);
+				primvar_refiner.InterpolateFaceVarying(level + 1, src_uv, dst_uv, channel_uv);
+				src_uv = dst_uv;
+				if (!bones_array.size()) {
+					continue;
+				}
+				VertexBones *dst_bones = src_bones + refiner->GetLevel(level).GetNumFVarValues(channel_bones);
+				primvar_refiner.InterpolateFaceVarying(level + 1, src_bones, dst_bones, channel_bones);
+				src_bones = dst_bones;
+				VertexWeights *dst_weights = src_weights + refiner->GetLevel(level).GetNumFVarValues(channel_weights);
+				primvar_refiner.InterpolateFaceVarying(level + 1, src_weights, dst_weights, channel_weights);
+				src_weights = dst_weights;
+			}
+		}
+
+		// Create subdivision faces
+		{
+			OpenSubdiv::Far::TopologyLevel const &last_level = refiner->GetLevel(p_level);
+			int face_count_out = last_level.GetNumFaces();
+
+			int vertex_index_offset = subdiv_vertex_count - last_level.GetNumVertices();
+
+			for (int face_index = 0; face_index < face_count_out; ++face_index) {
+				int parent_face_index = last_level.GetFaceParentFace(face_index);
+				for (int level_index = p_level - 1; level_index > 0; --level_index) {
+					OpenSubdiv::Far::TopologyLevel const &prev_level = refiner->GetLevel(level_index);
+					parent_face_index = prev_level.GetFaceParentFace(parent_face_index);
+				}
+
+				Vector<int> &index_array_surface_out = index_arrays_out;
+				OpenSubdiv::Far::ConstIndexArray face_vertices = last_level.GetFaceVertices(face_index);
+				ERR_FAIL_COND_V(face_vertices.size() != 4, p_mesh_arrays);
+
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[0]);
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[1]);
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[2]);
+
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[0]);
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[2]);
+				index_array_surface_out.push_back(vertex_index_offset + face_vertices[3]);
+			}
+		}
+		delete refiner;
+		refiner = nullptr;
+	}
+	const Vector<int> &index_array_out = index_arrays_out;
+	Array subdiv_mesh_arrays;
+	subdiv_mesh_arrays.resize(Mesh::ARRAY_MAX);
+	subdiv_mesh_arrays[Mesh::ARRAY_VERTEX] = subdiv_vertex_array;
+	subdiv_mesh_arrays[Mesh::ARRAY_INDEX] = index_array_out;
+
+	if (bones_array.size()) {
+		Vector<int> bone_out;
+		int bone_influences = 4;
+		if ((subdiv_bones_array.size() / subdiv_vertex_count) % 8 == 0) {
+			bone_influences = 8;
+		}
+		bone_out.resize(subdiv_vertex_count * bone_influences);
+		memcpy(bone_out.ptrw(), subdiv_bones_array.ptrw(), subdiv_bone_count * bone_influences * sizeof(int));
+		subdiv_mesh_arrays[Mesh::ARRAY_BONES] = bone_out;
+		Vector<float> weight_out;
+		weight_out.resize(subdiv_vertex_count * bone_influences);
+		memcpy(weight_out.ptrw(), subdiv_weights_array.ptrw(), subdiv_weight_count * bone_influences * sizeof(float));
+		subdiv_mesh_arrays[Mesh::ARRAY_WEIGHTS] = weight_out;
+	}
+	subdiv_mesh_arrays[Mesh::ARRAY_TEX_UV] = subdiv_uv_array;
+
+	Ref<SurfaceTool> st;
+	st.instance();
+	st->create_from_triangle_arrays(subdiv_mesh_arrays);
+	st->generate_normals();
+	st->generate_tangents();
+	return st->commit_to_arrays();
 }

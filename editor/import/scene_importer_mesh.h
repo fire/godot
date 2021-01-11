@@ -33,6 +33,9 @@
 
 #include "core/io/resource.h"
 #include "scene/resources/mesh.h"
+
+#include "thirdparty/opensubdiv/far/topologyRefiner.h"
+
 // The following classes are used by importers instead of ArrayMesh and MeshInstance3D
 // so the data is not registered (hence, quality loss), importing happens faster and
 // its easier to modify before saving
@@ -60,6 +63,7 @@ class EditorSceneImporterMesh : public Resource {
 	Mesh::BlendShapeMode blend_shape_mode = Mesh::BLEND_SHAPE_MODE_NORMALIZED;
 
 	Ref<ArrayMesh> mesh;
+	OpenSubdiv::Far::TopologyRefiner *refiner = nullptr;
 
 protected:
 	void _set_data(const Dictionary &p_data);
@@ -68,6 +72,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	Array subdivide(Array p_mesh_arrays, int p_level);
+
 	void add_blend_shape(const String &p_name);
 	int get_blend_shape_count() const;
 	String get_blend_shape_name(int p_blend_shape) const;
@@ -92,5 +98,12 @@ public:
 	bool has_mesh() const;
 	Ref<ArrayMesh> get_mesh();
 	void clear();
+
+	~EditorSceneImporterMesh() {
+		if (refiner) {
+			delete refiner;
+			refiner = NULL;
+		}
+	}
 };
 #endif // EDITOR_SCENE_IMPORTER_MESH_H
