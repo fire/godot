@@ -87,7 +87,7 @@ private:
 		bool custom_pose_enable = false;
 		Transform custom_pose;
 
-		float global_pose_override_amount = 0.0;
+		real_t global_pose_override_amount = 0.0;
 		bool global_pose_override_reset = false;
 		Transform global_pose_override;
 
@@ -162,7 +162,7 @@ public:
 	Transform get_bone_global_pose(int p_bone) const;
 
 	void clear_bones_global_pose_override();
-	void set_bone_global_pose_override(int p_bone, const Transform &p_pose, float p_amount, bool p_persistent = false);
+	void set_bone_global_pose_override(int p_bone, const Transform &p_pose, real_t p_amount, bool p_persistent = false);
 
 	void set_bone_enabled(int p_bone, bool p_enabled);
 	bool is_bone_enabled(int p_bone) const;

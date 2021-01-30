@@ -132,12 +132,12 @@ Color SpriteBase3D::get_modulate() const {
 	return modulate;
 }
 
-void SpriteBase3D::set_pixel_size(float p_amount) {
+void SpriteBase3D::set_pixel_size(real_t p_amount) {
 	pixel_size = p_amount;
 	_queue_update();
 }
 
-float SpriteBase3D::get_pixel_size() const {
+real_t SpriteBase3D::get_pixel_size() const {
 	return pixel_size;
 }
 
@@ -201,7 +201,7 @@ Ref<TriangleMesh> SpriteBase3D::generate_triangle_mesh() const {
 		return Ref<TriangleMesh>();
 	}
 
-	float pixel_size = get_pixel_size();
+	real_t pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
@@ -396,7 +396,7 @@ void Sprite3D::_draw() {
 	Color color = _get_color_accum();
 	color.a *= get_opacity();
 
-	float pixel_size = get_pixel_size();
+	real_t pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
@@ -724,7 +724,7 @@ void AnimatedSprite3D::_draw() {
 	Color color = _get_color_accum();
 	color.a *= get_opacity();
 
-	float pixel_size = get_pixel_size();
+	real_t pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
