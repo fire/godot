@@ -1,0 +1,1 @@
+ispc bc7e.ispc --arch=x86-64 --addressing=64 -O3 --target=sse2-i32x8,sse4,avx,avx2 --woff --pic --opt=disable-assertions -h "bc7e_ispc.h"
