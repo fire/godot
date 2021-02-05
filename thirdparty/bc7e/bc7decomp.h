@@ -7,6 +7,8 @@
 #define DETEX_INLINE_ONLY
 #define DETEX_RESTRICT
 #endif
+#include <stdint.h>
+#include <stdbool.h>
 
 enum {
 	/* Function returns false (invalid block) when the compressed block */

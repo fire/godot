@@ -480,14 +480,7 @@ Error ResourceImporterTexture::import(const String &p_source_file, const String 
 				if (channels == Image::DETECTED_LA || channels == Image::DETECTED_RGBA) {
 					can_bptc = false;
 				}
-			} else if (is_ldr) {
-
-				//handle "RGBA Only" setting
-				if (bptc_ldr == 1 && channels != Image::DETECTED_LA && channels != Image::DETECTED_RGBA) {
-					can_bptc = false;
-				}
 			}
-
 			formats_imported.push_back("bptc");
 		}
 

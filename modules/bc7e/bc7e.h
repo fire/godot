@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 // Copyright (C) 2018-2020 Binomial LLC, All rights reserved. Apache 2.0 license - see LICENSE.
 
 #ifndef BC7E_H
@@ -38,7 +39,7 @@
 #include "thirdparty/bc7e/bc7e_ispc_avx2.h"
 #include "thirdparty/bc7e/bc7e_ispc_sse4.h"
 
-#include "core/variant/variant.h"
+#include "core/variant.h"
 
 struct color_quad_u8 {
 	uint8_t m_c[4];
@@ -117,7 +118,7 @@ public:
 	}
 
 	image_u8 &set_all(const color_quad_u8 &p) {
-		for (uint32_t i = 0; i < m_pixels.size(); i++) {
+		for (int32_t i = 0; i < m_pixels.size(); i++) {
 			m_pixels.write[i] = p;
 		}
 		return *this;
@@ -130,8 +131,8 @@ public:
 
 		image_u8 new_image(new_width, new_height);
 
-		const uint32_t w = std::min(m_width, new_width);
-		const uint32_t h = std::min(m_height, new_height);
+		const uint32_t w = MIN(m_width, new_width);
+		const uint32_t h = MIN(m_height, new_height);
 
 		for (uint32_t y = 0; y < h; y++) {
 			for (uint32_t x = 0; x < w; x++) {
@@ -143,9 +144,9 @@ public:
 	}
 
 	image_u8 &swap(image_u8 &other) {
-		std::swap(m_width, other.m_width);
-		std::swap(m_height, other.m_height);
-		std::swap(m_pixels, other.m_pixels);
+		SWAP(m_width, other.m_width);
+		SWAP(m_height, other.m_height);
+		SWAP(m_pixels, other.m_pixels);
 		return *this;
 	}
 

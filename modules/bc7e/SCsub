@@ -16,21 +16,29 @@ thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 env_bc7e.Prepend(CPPPATH=[thirdparty_dir])
 
 thirdparty_dir = "#thirdparty/bc7e/"
-thirdparty_ispc_sources = [
-	"bc7e.ispc"
-]
-thirdparty_o_sources = [thirdparty_dir + file + ".o" for file in thirdparty_ispc_sources] + [thirdparty_dir + file + "_avx2.o" for file in thirdparty_ispc_sources ] \
-	+ [thirdparty_dir + file + "_avx.o" for file in thirdparty_ispc_sources] + [thirdparty_dir + file + "_sse4.o" for file in thirdparty_ispc_sources] \
-	+ [thirdparty_dir + file + "_sse2.o" for file in thirdparty_ispc_sources]
+thirdparty_ispc_sources = ["bc7e.ispc"]
+thirdparty_o_sources = (
+    [thirdparty_dir + file + ".o" for file in thirdparty_ispc_sources]
+    + [thirdparty_dir + file + "_avx2.o" for file in thirdparty_ispc_sources]
+    + [thirdparty_dir + file + "_avx.o" for file in thirdparty_ispc_sources]
+    + [thirdparty_dir + file + "_sse4.o" for file in thirdparty_ispc_sources]
+    + [thirdparty_dir + file + "_sse2.o" for file in thirdparty_ispc_sources]
+)
 thirdparty_ispc_sources = [thirdparty_dir + file for file in thirdparty_ispc_sources]
 env_thirdparty = env_bc7e.Clone()
 
 # Weird interaction with chkstk on mingw and msvc ispc
 
 env_thirdparty.Append(
-	BUILDERS={
-	"ISPC": Builder(action="ispc $SOURCE --arch=x86-64 -O3 --target=sse2-i32x8,sse4,avx,avx2 --woff --pic --opt=disable-assertions -o $TARGET", suffix=".ispc.o", src_suffix=".ispc", single_source=True)
-})
+    BUILDERS={
+        "ISPC": Builder(
+            action="ispc $SOURCE --arch=x86-64 -O3 --target=sse2-i32x8,sse4,avx,avx2 --woff --pic --opt=disable-assertions -o $TARGET",
+            suffix=".ispc.o",
+            src_suffix=".ispc",
+            single_source=True,
+        )
+    }
+)
 
 env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
