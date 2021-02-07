@@ -61,8 +61,6 @@ void AudioStreamPlayer::_mix_to_bus(const AudioFrame *p_frames, int p_amount) {
 		if (!targets[c])
 			break;
 		for (int i = 0; i < p_amount; i++) {
-			CRASH_COND_MSG(p_frames[i].l != p_frames[i].l, "The processed effect samples are NaN");
-			CRASH_COND_MSG(p_frames[i].r != p_frames[i].r, "The processed effect samples are NaN");
 			targets[c][i] += p_frames[i];
 		}
 	}
@@ -75,6 +73,8 @@ void AudioStreamPlayer::_mix_internal(bool p_fadeout) {
 	int buffer_size = mix_buffer.size();
 
 	if (p_fadeout) {
+		buffer = fadeout_buffer.ptrw();
+		buffer_size = mix_buffer.size();
 		// Short fadeout ramp
 		buffer_size = MIN(buffer_size, 128);
 	}
