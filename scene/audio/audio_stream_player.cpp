@@ -31,6 +31,7 @@
 #include "audio_stream_player.h"
 
 #include "core/engine.h"
+#include "core/error_macros.h"
 
 void AudioStreamPlayer::_mix_to_bus(const AudioFrame *p_frames, int p_amount) {
 
@@ -60,6 +61,8 @@ void AudioStreamPlayer::_mix_to_bus(const AudioFrame *p_frames, int p_amount) {
 		if (!targets[c])
 			break;
 		for (int i = 0; i < p_amount; i++) {
+			CRASH_COND_MSG(p_frames[i].l != p_frames[i].l, "The processed effect samples are NaN");
+			CRASH_COND_MSG(p_frames[i].r != p_frames[i].r, "The processed effect samples are NaN");
 			targets[c][i] += p_frames[i];
 		}
 	}

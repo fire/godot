@@ -267,7 +267,9 @@ void AudioServer::_driver_process(int p_frames, int32_t *p_buffer) {
 
 				const AudioFrame *buf = master->channels[k].buffer.ptr();
 
-				for (int j = 0; j < to_copy; j++) {
+				for (int j = 0; j < to_copy; j++) {						
+					CRASH_COND_MSG(buf[j].l != buf[j].l, "The processed effect samples are NaN");
+					CRASH_COND_MSG(buf[j].r != buf[j].r, "The processed effect samples are NaN");
 
 					float l = CLAMP(buf[from + j].l, -1.0, 1.0);
 					int32_t vl = l * ((1 << 20) - 1);
@@ -388,15 +390,15 @@ void AudioServer::_mix_step() {
 					SWAP(bus->channels.write[k].buffer, temp_buffer.write[k]);
 				}
 
-				// Check if any of the processed effect samples are NaN, and if so ignore the processed buffer
-				for (int k = 0; k < bus->channels.size(); k++) {
-					float sanityCheck = 0.0f;
-					const AudioFrame *buf = bus->channels.write[k].buffer.ptr();
-					for (uint32_t jj = 0; jj < buffer_size; jj++) {
-						sanityCheck += (buf[jj].l + buf[jj].r);	
-					}
-					CRASH_COND_MSG(sanityCheck != sanityCheck, "The processed effect samples are NaN");		
-				}
+				// // Check if any of the processed effect samples are NaN, and if so ignore the processed buffer
+				// for (int k = 0; k < bus->channels.size(); k++) {
+				// 	float sanityCheck = 0.0f;
+				// 	const AudioFrame *buf = bus->channels.write[k].buffer.ptr();
+				// 	for (uint32_t jj = 0; jj < buffer_size; jj++) {
+				// 		sanityCheck += (buf[jj].l + buf[jj].r);
+				// 		CRASH_COND_MSG(sanityCheck != sanityCheck, "The processed effect samples are NaN");
+				// 	}
+				// }
 
 #ifdef DEBUG_ENABLED
 				bus->effects.write[j].prof_time += OS::get_singleton()->get_ticks_usec() - ticks;
