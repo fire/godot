@@ -72,6 +72,8 @@ void AudioStreamPlayer::_mix_internal(bool p_fadeout) {
 	int buffer_size = mix_buffer.size();
 
 	if (p_fadeout) {
+		buffer = fadeout_buffer.ptrw();
+		buffer_size = mix_buffer.size();
 		// Short fadeout ramp
 		buffer_size = MIN(buffer_size, 128);
 	}

@@ -382,10 +382,19 @@ void AudioServer::_mix_step() {
 
 				//swap buffers, so internal buffer always has the right data
 				for (int k = 0; k < bus->channels.size(); k++) {
-
 					if (!(buses[i]->channels[k].active || bus->channels[k].effect_instances[j]->process_silence()))
 						continue;
 					SWAP(bus->channels.write[k].buffer, temp_buffer.write[k]);
+				}
+
+				// Check if any of the processed effect samples are NaN, and if so ignore the processed buffer
+				for (int k = 0; k < bus->channels.size(); k++) {
+					float sanityCheck = 0.0f;
+					const AudioFrame *buf = bus->channels.write[k].buffer.ptr();
+					for (uint32_t jj = 0; jj < buffer_size; jj++) {
+						sanityCheck += (buf[jj].l + buf[jj].r);	
+					}
+					CRASH_COND_MSG(sanityCheck != sanityCheck, "The processed effect samples are NaN");		
 				}
 
 #ifdef DEBUG_ENABLED
