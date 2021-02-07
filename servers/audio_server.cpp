@@ -395,9 +395,7 @@ void AudioServer::_mix_step() {
 					for (uint32_t jj = 0; jj < buffer_size; jj++) {
 						sanityCheck += (buf[jj].l + buf[jj].r);	
 					}
-					if (sanityCheck != sanityCheck) {
-						SWAP(bus->channels.write[k].buffer, temp_buffer.write[k]);
-					}					
+					CRASH_COND_MSG(sanityCheck != sanityCheck, "The processed effect samples are NaN");		
 				}
 
 #ifdef DEBUG_ENABLED
