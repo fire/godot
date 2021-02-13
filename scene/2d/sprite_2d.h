@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -39,21 +39,21 @@ class Sprite2D : public Node2D {
 
 	Ref<Texture2D> texture;
 	Color specular_color;
-	float shininess;
+	float shininess = 0.0;
 
-	bool centered;
+	bool centered = true;
 	Point2 offset;
 
-	bool hflip;
-	bool vflip;
-	bool region;
+	bool hflip = false;
+	bool vflip = false;
+	bool region = false;
 	Rect2 region_rect;
-	bool region_filter_clip;
+	bool region_filter_clip = false;
 
-	int frame;
+	int frame = 0;
 
-	int vframes;
-	int hframes;
+	int vframes = 1;
+	int hframes = 1;
 
 	void _get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_filter_clip) const;
 

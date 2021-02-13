@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -32,7 +32,7 @@
 
 #include "collision_solver_2d_sw.h"
 #include "core/os/os.h"
-#include "core/pair.h"
+#include "core/templates/pair.h"
 #include "physics_server_2d_sw.h"
 _FORCE_INLINE_ static bool _can_collide_with(CollisionObject2DSW *p_object, uint32_t p_collision_mask, bool p_collide_with_bodies, bool p_collide_with_areas) {
 	if (!(p_object->get_collision_layer() & p_collision_mask)) {
@@ -278,9 +278,9 @@ bool PhysicsDirectSpaceState2DSW::cast_motion(const RID &p_shape, const Transfor
 			continue;
 		}
 
-		//test initial overlap
+		//test initial overlap, ignore objects it's inside of.
 		if (CollisionSolver2DSW::solve(shape, p_xform, Vector2(), col_obj->get_shape(shape_idx), col_obj_xform, Vector2(), nullptr, nullptr, nullptr, p_margin)) {
-			return false;
+			continue;
 		}
 
 		//just do kinematic solving
@@ -376,24 +376,24 @@ struct _RestCallbackData2D {
 	Vector2 best_normal;
 	real_t best_len;
 	Vector2 valid_dir;
-	real_t valid_depth;
 	real_t min_allowed_depth;
 };
 
 static void _rest_cbk_result(const Vector2 &p_point_A, const Vector2 &p_point_B, void *p_userdata) {
 	_RestCallbackData2D *rd = (_RestCallbackData2D *)p_userdata;
 
-	if (rd->valid_dir != Vector2()) {
-		if (p_point_A.distance_squared_to(p_point_B) > rd->valid_depth * rd->valid_depth) {
-			return;
-		}
-		if (rd->valid_dir.dot((p_point_A - p_point_B).normalized()) < Math_PI * 0.25) {
-			return;
-		}
-	}
-
 	Vector2 contact_rel = p_point_B - p_point_A;
 	real_t len = contact_rel.length();
+
+	if (len == 0) {
+		return;
+	}
+
+	Vector2 normal = contact_rel / len;
+
+	if (rd->valid_dir != Vector2() && rd->valid_dir.dot(normal) > -CMP_EPSILON) {
+		return;
+	}
 
 	if (len < rd->min_allowed_depth) {
 		return;
@@ -405,7 +405,7 @@ static void _rest_cbk_result(const Vector2 &p_point_A, const Vector2 &p_point_B,
 
 	rd->best_len = len;
 	rd->best_contact = p_point_B;
-	rd->best_normal = contact_rel / len;
+	rd->best_normal = normal;
 	rd->best_object = rd->object;
 	rd->best_shape = rd->shape;
 	rd->best_local_shape = rd->local_shape;
@@ -440,7 +440,6 @@ bool PhysicsDirectSpaceState2DSW::rest_info(RID p_shape, const Transform2D &p_sh
 		}
 
 		rcd.valid_dir = Vector2();
-		rcd.valid_depth = 0;
 		rcd.object = col_obj;
 		rcd.shape = shape_idx;
 		rcd.local_shape = 0;
@@ -603,7 +602,6 @@ int Space2DSW::test_body_ray_separation(Body2DSW *p_body, const Transform2D &p_t
  * direction. Use a short ray shape if you want to achieve a similar effect.
  *
 					if (col_obj->is_shape_set_as_one_way_collision(shape_idx)) {
-
 						cbk.valid_dir = col_obj_shape_xform.get_axis(1).normalized();
 						cbk.valid_depth = p_margin; //only valid depth is the collision margin
 						cbk.invalid_by_dir = 0;
@@ -644,9 +642,9 @@ int Space2DSW::test_body_ray_separation(Body2DSW *p_body, const Transform2D &p_t
 								Vector2 a = sr[k * 2 + 0];
 								Vector2 b = sr[k * 2 + 1];
 
-								recover_motion += (b - a) * 0.4;
+								recover_motion += (b - a) / cbk.amount;
 
-								float depth = a.distance_to(b);
+								real_t depth = a.distance_to(b);
 								if (depth > result.collision_depth) {
 									result.collision_depth = depth;
 									result.collision_point = b;
@@ -741,7 +739,7 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 	ExcludedShapeSW excluded_shape_pairs[max_excluded_shape_pairs];
 	int excluded_shape_pair_count = 0;
 
-	float separation_margin = MIN(p_margin, MAX(0.0, p_motion.length() - CMP_EPSILON)); //don't separate by more than the intended motion
+	real_t separation_margin = MIN(p_margin, MAX(0.0, p_motion.length() - CMP_EPSILON)); //don't separate by more than the intended motion
 
 	Transform2D body_transform = p_from;
 
@@ -795,7 +793,7 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 					if (col_obj->is_shape_set_as_one_way_collision(shape_idx)) {
 						cbk.valid_dir = col_obj_shape_xform.get_axis(1).normalized();
 
-						float owc_margin = col_obj->get_shape_one_way_collision_margin(shape_idx);
+						real_t owc_margin = col_obj->get_shape_one_way_collision_margin(shape_idx);
 						cbk.valid_depth = MAX(owc_margin, p_margin); //user specified, but never less than actual margin or it won't work
 						cbk.invalid_by_dir = 0;
 
@@ -806,7 +804,7 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 								Vector2 lv = b->get_linear_velocity();
 								//compute displacement from linear velocity
 								Vector2 motion = lv * PhysicsDirectBodyState2DSW::singleton->step;
-								float motion_len = motion.length();
+								real_t motion_len = motion.length();
 								motion.normalize();
 								cbk.valid_depth += motion_len * MAX(motion.dot(-cbk.valid_dir), 0.0);
 							}
@@ -851,7 +849,7 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 			for (int i = 0; i < cbk.amount; i++) {
 				Vector2 a = sr[i * 2 + 0];
 				Vector2 b = sr[i * 2 + 1];
-				recover_motion += (b - a) * 0.4;
+				recover_motion += (b - a) / cbk.amount;
 			}
 
 			if (recover_motion == Vector2()) {
@@ -1003,7 +1001,7 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 		best_shape = -1; //no best shape with cast, reset to -1
 	}
 
-	{
+	if (safe < 1) {
 		//it collided, let's get the rest info in unsafe advance
 		Transform2D ugt = body_transform;
 		ugt.elements[2] += p_motion * unsafe;
@@ -1062,10 +1060,8 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 
 				if (col_obj->is_shape_set_as_one_way_collision(shape_idx)) {
 					rcd.valid_dir = col_obj_shape_xform.get_axis(1).normalized();
-					rcd.valid_depth = 10e20;
 				} else {
 					rcd.valid_dir = Vector2();
-					rcd.valid_depth = 0;
 				}
 
 				rcd.object = col_obj;
@@ -1332,7 +1328,7 @@ Space2DSW::Space2DSW() {
 
 	constraint_bias = 0.2;
 	body_linear_velocity_sleep_threshold = GLOBAL_DEF("physics/2d/sleep_threshold_linear", 2.0);
-	body_angular_velocity_sleep_threshold = GLOBAL_DEF("physics/2d/sleep_threshold_angular", (8.0 / 180.0 * Math_PI));
+	body_angular_velocity_sleep_threshold = GLOBAL_DEF("physics/2d/sleep_threshold_angular", Math::deg2rad(8.0));
 	body_time_to_sleep = GLOBAL_DEF("physics/2d/time_before_sleep", 0.5);
 	ProjectSettings::get_singleton()->set_custom_property_info("physics/2d/time_before_sleep", PropertyInfo(Variant::FLOAT, "physics/2d/time_before_sleep", PROPERTY_HINT_RANGE, "0,5,0.01,or_greater"));
 

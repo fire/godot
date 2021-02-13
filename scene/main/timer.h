@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -36,13 +36,13 @@
 class Timer : public Node {
 	GDCLASS(Timer, Node);
 
-	float wait_time;
-	bool one_shot;
-	bool autostart;
-	bool processing;
-	bool paused;
+	float wait_time = 1.0;
+	bool one_shot = false;
+	bool autostart = false;
+	bool processing = false;
+	bool paused = false;
 
-	double time_left;
+	double time_left = -1.0;
 
 protected:
 	void _notification(int p_what);
@@ -78,7 +78,7 @@ public:
 	Timer();
 
 private:
-	TimerProcessMode timer_process_mode;
+	TimerProcessMode timer_process_mode = TIMER_PROCESS_IDLE;
 	void _set_process(bool p_process, bool p_force = false);
 };
 

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,7 +30,7 @@
 
 #include "audio_stream_player_3d.h"
 
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "scene/3d/area_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/listener_3d.h"
@@ -42,8 +42,8 @@ class Spcap {
 private:
 	struct Speaker {
 		Vector3 direction;
-		real_t effective_number_of_speakers; // precalculated
-		mutable real_t squared_gain; // temporary
+		real_t effective_number_of_speakers = 0; // precalculated
+		mutable real_t squared_gain = 0; // temporary
 	};
 
 	Vector<Speaker> speakers;
@@ -327,9 +327,6 @@ float AudioStreamPlayer3D::_get_attenuation_db(float p_distance) const {
 	return att;
 }
 
-void _update_sound() {
-}
-
 void AudioStreamPlayer3D::_notification(int p_what) {
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 		velocity_tracker->reset(get_global_transform().origin);
@@ -487,7 +484,7 @@ void AudioStreamPlayer3D::_notification(int p_what) {
 				if (area) {
 					if (area->is_overriding_audio_bus()) {
 						//override audio bus
-						StringName bus_name = area->get_audio_bus();
+						StringName bus_name = area->get_audio_bus_name();
 						output.bus_index = AudioServer::get_singleton()->thread_find_bus_index(bus_name);
 					}
 
@@ -608,15 +605,11 @@ void AudioStreamPlayer3D::_notification(int p_what) {
 			setseek = setplay;
 			active = true;
 			setplay = -1;
-			//do not update, this makes it easier to animate (will shut off otherwise)
-			///_change_notify("playing"); //update property in editor
 		}
 
 		//stop playing if no longer active
 		if (!active) {
 			set_physics_process_internal(false);
-			//do not update, this makes it easier to animate (will shut off otherwise)
-			//_change_notify("playing"); //update property in editor
 			emit_signal("finished");
 		}
 	}
@@ -779,7 +772,7 @@ void AudioStreamPlayer3D::_validate_property(PropertyInfo &property) const {
 }
 
 void AudioStreamPlayer3D::_bus_layout_changed() {
-	_change_notify();
+	notify_property_list_changed();
 }
 
 void AudioStreamPlayer3D::set_max_distance(float p_metres) {
@@ -812,7 +805,6 @@ void AudioStreamPlayer3D::set_emission_angle(float p_angle) {
 	ERR_FAIL_COND(p_angle < 0 || p_angle > 90);
 	emission_angle = p_angle;
 	update_gizmo();
-	_change_notify("emission_angle");
 }
 
 float AudioStreamPlayer3D::get_emission_angle() const {
@@ -1005,31 +997,6 @@ void AudioStreamPlayer3D::_bind_methods() {
 }
 
 AudioStreamPlayer3D::AudioStreamPlayer3D() {
-	unit_db = 0;
-	unit_size = 1;
-	attenuation_model = ATTENUATION_INVERSE_DISTANCE;
-	max_db = 3;
-	pitch_scale = 1.0;
-	autoplay = false;
-	setseek = -1;
-	active = false;
-	output_count = 0;
-	prev_output_count = 0;
-	max_distance = 0;
-	setplay = -1;
-	output_ready = false;
-	area_mask = 1;
-	emission_angle = 45;
-	emission_angle_enabled = false;
-	emission_angle_filter_attenuation_db = -12;
-	attenuation_filter_cutoff_hz = 5000;
-	attenuation_filter_db = -24;
-	out_of_range_mode = OUT_OF_RANGE_MIX;
-	doppler_tracking = DOPPLER_TRACKING_DISABLED;
-	stream_paused = false;
-	stream_paused_fade_in = false;
-	stream_paused_fade_out = false;
-
 	velocity_tracker.instance();
 	AudioServer::get_singleton()->connect("bus_layout_changed", callable_mp(this, &AudioStreamPlayer3D::_bus_layout_changed));
 	set_disable_scale(true);

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,7 +31,7 @@
 #include "animation_tree.h"
 
 #include "animation_blend_tree.h"
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "scene/scene_string_names.h"
 #include "servers/audio/audio_stream.h"
 
@@ -40,7 +40,7 @@ void AnimationNode::get_parameter_list(List<PropertyInfo> *r_list) const {
 		Array parameters = get_script_instance()->call("get_parameter_list");
 		for (int i = 0; i < parameters.size(); i++) {
 			Dictionary d = parameters[i];
-			ERR_CONTINUE(d.empty());
+			ERR_CONTINUE(d.is_empty());
 			r_list->push_back(PropertyInfo::from_dict(d));
 		}
 	}
@@ -158,7 +158,7 @@ float AnimationNode::blend_input(int p_input, float p_time, bool p_seek, float p
 	Ref<AnimationNode> node = blend_tree->get_node(node_name);
 
 	//inputs.write[p_input].last_pass = state->last_pass;
-	float activity = 0;
+	float activity = 0.0;
 	float ret = _blend_node(node_name, blend_tree->get_node_connection_array(node_name), nullptr, node, p_time, p_seek, p_blend, p_filter, p_optimize, &activity);
 
 	Vector<AnimationTree::Activity> *activity_ptr = state->tree->input_activity_map.getptr(base_path);
@@ -441,9 +441,6 @@ void AnimationNode::_bind_methods() {
 }
 
 AnimationNode::AnimationNode() {
-	state = nullptr;
-	parent = nullptr;
-	filter_enabled = false;
 }
 
 ////////////////////
@@ -820,6 +817,7 @@ void AnimationTree::_process_graph(float p_delta) {
 			Ref<Animation> a = as.animation;
 			float time = as.time;
 			float delta = as.delta;
+			float weight = as.blend;
 			bool seeked = as.seeked;
 
 			for (int i = 0; i < a->get_track_count(); i++) {
@@ -839,7 +837,7 @@ void AnimationTree::_process_graph(float p_delta) {
 
 				ERR_CONTINUE(blend_idx < 0 || blend_idx >= state.track_count);
 
-				float blend = (*as.track_blends)[blend_idx];
+				float blend = (*as.track_blends)[blend_idx] * weight;
 
 				if (blend < CMP_EPSILON) {
 					continue; //nothing to blend
@@ -1287,14 +1285,14 @@ String AnimationTree::get_configuration_warning() const {
 	String warning = Node::get_configuration_warning();
 
 	if (!root.is_valid()) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("No root AnimationNode for the graph is set.");
 	}
 
 	if (!has_node(animation_player)) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("Path to an AnimationPlayer node containing animations is not set.");
@@ -1302,12 +1300,12 @@ String AnimationTree::get_configuration_warning() const {
 		AnimationPlayer *player = Object::cast_to<AnimationPlayer>(get_node(animation_player));
 
 		if (!player) {
-			if (!warning.empty()) {
+			if (!warning.is_empty()) {
 				warning += "\n\n";
 			}
 			warning += TTR("Path set for AnimationPlayer does not lead to an AnimationPlayer node.");
 		} else if (!player->has_node(player->get_root())) {
-			if (!warning.empty()) {
+			if (!warning.is_empty()) {
 				warning += "\n\n";
 			}
 			warning += TTR("The AnimationPlayer root node is not a valid node.");
@@ -1396,7 +1394,7 @@ void AnimationTree::_update_properties() {
 
 	properties_dirty = false;
 
-	_change_notify();
+	notify_property_list_changed();
 }
 
 bool AnimationTree::_set(const StringName &p_name, const Variant &p_value) {
@@ -1406,9 +1404,6 @@ bool AnimationTree::_set(const StringName &p_name, const Variant &p_value) {
 
 	if (property_map.has(p_name)) {
 		property_map[p_name] = p_value;
-#ifdef TOOLS_ENABLED
-		_change_notify(p_name.operator String().utf8().get_data());
-#endif
 		return true;
 	}
 
@@ -1506,13 +1501,6 @@ void AnimationTree::_bind_methods() {
 }
 
 AnimationTree::AnimationTree() {
-	process_mode = ANIMATION_PROCESS_IDLE;
-	active = false;
-	cache_valid = false;
-	setup_pass = 1;
-	process_pass = 1;
-	started = true;
-	properties_dirty = true;
 }
 
 AnimationTree::~AnimationTree() {

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,7 +31,7 @@
 #ifndef GDSCRIPT_COMPILER_H
 #define GDSCRIPT_COMPILER_H
 
-#include "core/set.h"
+#include "core/templates/set.h"
 #include "gdscript.h"
 #include "gdscript_codegen.h"
 #include "gdscript_function.h"
@@ -133,8 +133,8 @@ class GDScriptCompiler {
 	Error _parse_class_level(GDScript *p_script, const GDScriptParser::ClassNode *p_class, bool p_keep_state);
 	Error _parse_class_blocks(GDScript *p_script, const GDScriptParser::ClassNode *p_class, bool p_keep_state);
 	void _make_scripts(GDScript *p_script, const GDScriptParser::ClassNode *p_class, bool p_keep_state);
-	int err_line;
-	int err_column;
+	int err_line = 0;
+	int err_column = 0;
 	StringName source;
 	String error;
 	bool within_await = false;

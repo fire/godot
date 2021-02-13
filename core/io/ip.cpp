@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,9 +30,9 @@
 
 #include "ip.h"
 
-#include "core/hash_map.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
+#include "core/templates/hash_map.h"
 
 VARIANT_ENUM_CAST(IP::ResolverStatus);
 
@@ -71,7 +71,7 @@ struct _IP_ResolverPrivate {
 	Mutex mutex;
 	Semaphore sem;
 
-	Thread *thread;
+	Thread thread;
 	//Semaphore* semaphore;
 	bool thread_abort;
 
@@ -141,7 +141,7 @@ IP::ResolverID IP::resolve_hostname_queue_item(const String &p_hostname, IP::Typ
 	} else {
 		resolver->queue[id].response = IP_Address();
 		resolver->queue[id].status = IP::RESOLVER_STATUS_WAITING;
-		if (resolver->thread) {
+		if (resolver->thread.is_started()) {
 			resolver->sem.post();
 		} else {
 			resolver->resolve_queues();
@@ -189,7 +189,7 @@ void IP::erase_resolve_item(ResolverID p_id) {
 void IP::clear_cache(const String &p_hostname) {
 	MutexLock lock(resolver->mutex);
 
-	if (p_hostname.empty()) {
+	if (p_hostname.is_empty()) {
 		resolver->cache.clear();
 	} else {
 		resolver->cache.erase(_IP_ResolverPrivate::get_cache_key(p_hostname, IP::TYPE_NONE));
@@ -285,26 +285,14 @@ IP::IP() {
 	singleton = this;
 	resolver = memnew(_IP_ResolverPrivate);
 
-#ifndef NO_THREADS
-
 	resolver->thread_abort = false;
-
-	resolver->thread = Thread::create(_IP_ResolverPrivate::_thread_function, resolver);
-#else
-	resolver->thread = nullptr;
-#endif
+	resolver->thread.start(_IP_ResolverPrivate::_thread_function, resolver);
 }
 
 IP::~IP() {
-#ifndef NO_THREADS
-	if (resolver->thread) {
-		resolver->thread_abort = true;
-		resolver->sem.post();
-		Thread::wait_to_finish(resolver->thread);
-		memdelete(resolver->thread);
-	}
-
-#endif
+	resolver->thread_abort = true;
+	resolver->sem.post();
+	resolver->thread.wait_to_finish();
 
 	memdelete(resolver);
 }

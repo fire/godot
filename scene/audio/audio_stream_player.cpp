@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,7 +30,7 @@
 
 #include "audio_stream_player.h"
 
-#include "core/engine.h"
+#include "core/config/engine.h"
 
 void AudioStreamPlayer::_mix_to_bus(const AudioFrame *p_frames, int p_amount) {
 	int bus_index = AudioServer::get_singleton()->thread_find_bus_index(bus);
@@ -344,7 +344,7 @@ void AudioStreamPlayer::_validate_property(PropertyInfo &property) const {
 }
 
 void AudioStreamPlayer::_bus_layout_changed() {
-	_change_notify();
+	notify_property_list_changed();
 }
 
 Ref<AudioStreamPlayback> AudioStreamPlayer::get_stream_playback() {
@@ -402,18 +402,7 @@ void AudioStreamPlayer::_bind_methods() {
 }
 
 AudioStreamPlayer::AudioStreamPlayer() {
-	mix_volume_db = 0;
-	pitch_scale = 1.0;
-	volume_db = 0;
-	autoplay = false;
-	setseek = -1;
-	active = false;
-	stream_paused = false;
-	stream_paused_fade = false;
-	mix_target = MIX_TARGET_STEREO;
 	fadeout_buffer.resize(512);
-	setstop = false;
-	use_fadeout = false;
 
 	AudioServer::get_singleton()->connect("bus_layout_changed", callable_mp(this, &AudioStreamPlayer::_bus_layout_changed));
 }

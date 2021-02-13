@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -91,7 +91,7 @@ Dictionary GIProbeData::_get_data() const {
 }
 
 void GIProbeData::allocate(const Transform &p_to_cell_xform, const AABB &p_aabb, const Vector3 &p_octree_size, const Vector<uint8_t> &p_octree_cells, const Vector<uint8_t> &p_data_cells, const Vector<uint8_t> &p_distance_field, const Vector<int> &p_level_counts) {
-	RS::get_singleton()->gi_probe_allocate(probe, p_to_cell_xform, p_aabb, p_octree_size, p_octree_cells, p_data_cells, p_distance_field, p_level_counts);
+	RS::get_singleton()->gi_probe_allocate_data(probe, p_to_cell_xform, p_aabb, p_octree_size, p_octree_cells, p_data_cells, p_distance_field, p_level_counts);
 	bounds = p_aabb;
 	to_cell_xform = p_to_cell_xform;
 	octree_size = p_octree_size;
@@ -286,17 +286,6 @@ void GIProbeData::_bind_methods() {
 }
 
 GIProbeData::GIProbeData() {
-	ao = 0.0;
-	ao_size = 0.5;
-	dynamic_range = 4;
-	energy = 1.0;
-	bias = 1.5;
-	normal_bias = 0.0;
-	propagation = 0.7;
-	anisotropy_strength = 0.5;
-	interior = false;
-	use_two_bounces = false;
-
 	probe = RS::get_singleton()->gi_probe_create();
 }
 
@@ -334,7 +323,6 @@ GIProbe::Subdiv GIProbe::get_subdiv() const {
 void GIProbe::set_extents(const Vector3 &p_extents) {
 	extents = p_extents;
 	update_gizmo();
-	_change_notify("extents");
 }
 
 Vector3 GIProbe::get_extents() const {
@@ -497,7 +485,7 @@ void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 		bake_end_function();
 	}
 
-	_change_notify(); //bake property may have changed
+	notify_property_list_changed(); //bake property may have changed
 }
 
 void GIProbe::_debug_bake() {
@@ -516,11 +504,14 @@ String GIProbe::get_configuration_warning() const {
 	String warning = VisualInstance3D::get_configuration_warning();
 
 	if (RenderingServer::get_singleton()->is_low_end()) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("GIProbes are not supported by the GLES2 video driver.\nUse a BakedLightmap instead.");
+	} else if (probe_data.is_null()) {
+		warning += TTR("No GIProbe data set, so this node is disabled. Bake static objects to enable GI.");
 	}
+
 	return warning;
 }
 
@@ -550,9 +541,6 @@ void GIProbe::_bind_methods() {
 }
 
 GIProbe::GIProbe() {
-	subdiv = SUBDIV_128;
-	extents = Vector3(10, 10, 10);
-
 	gi_probe = RS::get_singleton()->gi_probe_create();
 	set_disable_scale(true);
 }

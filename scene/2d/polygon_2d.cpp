@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -155,7 +155,7 @@ void Polygon2D::_notification(int p_what) {
 				Rect2 bounds;
 				int highest_idx = -1;
 				float highest_y = -1e20;
-				float sum = 0;
+				float sum = 0.0;
 
 				for (int i = 0; i < len; i++) {
 					if (i == 0) {
@@ -273,7 +273,7 @@ void Polygon2D::_notification(int p_what) {
 
 				//normalize the weights
 				for (int i = 0; i < vc; i++) {
-					float tw = 0;
+					float tw = 0.0;
 					for (int j = 0; j < 4; j++) {
 						tw += weightsw[i * 4 + j];
 					}
@@ -483,7 +483,6 @@ void Polygon2D::set_offset(const Vector2 &p_offset) {
 	offset = p_offset;
 	rect_cache_dirty = true;
 	update();
-	_change_notify("offset");
 }
 
 Vector2 Polygon2D::get_offset() const {
@@ -649,13 +648,4 @@ void Polygon2D::_bind_methods() {
 }
 
 Polygon2D::Polygon2D() {
-	invert = false;
-	invert_border = 100;
-	antialiased = false;
-	tex_rot = 0;
-	tex_tile = true;
-	tex_scale = Vector2(1, 1);
-	color = Color(1, 1, 1);
-	rect_cache_dirty = true;
-	internal_vertices = 0;
 }

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,7 +31,7 @@
 #include "space_3d_sw.h"
 
 #include "collision_solver_3d_sw.h"
-#include "core/project_settings.h"
+#include "core/config/project_settings.h"
 #include "physics_server_3d_sw.h"
 
 _FORCE_INLINE_ static bool _can_collide_with(CollisionObject3DSW *p_object, uint32_t p_collision_mask, bool p_collide_with_bodies, bool p_collide_with_areas) {
@@ -181,7 +181,7 @@ int PhysicsDirectSpaceState3DSW::intersect_shape(const RID &p_shape, const Trans
 		return 0;
 	}
 
-	Shape3DSW *shape = static_cast<PhysicsServer3DSW *>(PhysicsServer3D::get_singleton())->shape_owner.getornull(p_shape);
+	Shape3DSW *shape = PhysicsServer3DSW::singletonsw->shape_owner.getornull(p_shape);
 	ERR_FAIL_COND_V(!shape, 0);
 
 	AABB aabb = p_xform.xform(shape->get_aabb());
@@ -232,7 +232,7 @@ int PhysicsDirectSpaceState3DSW::intersect_shape(const RID &p_shape, const Trans
 }
 
 bool PhysicsDirectSpaceState3DSW::cast_motion(const RID &p_shape, const Transform &p_xform, const Vector3 &p_motion, real_t p_margin, real_t &p_closest_safe, real_t &p_closest_unsafe, const Set<RID> &p_exclude, uint32_t p_collision_mask, bool p_collide_with_bodies, bool p_collide_with_areas, ShapeRestInfo *r_info) {
-	Shape3DSW *shape = static_cast<PhysicsServer3DSW *>(PhysicsServer3D::get_singleton())->shape_owner.getornull(p_shape);
+	Shape3DSW *shape = PhysicsServer3DSW::singletonsw->shape_owner.getornull(p_shape);
 	ERR_FAIL_COND_V(!shape, false);
 
 	AABB aabb = p_xform.xform(shape->get_aabb());
@@ -274,11 +274,11 @@ bool PhysicsDirectSpaceState3DSW::cast_motion(const RID &p_shape, const Transfor
 			continue;
 		}
 
-		//test initial overlap
+		//test initial overlap, ignore objects it's inside of.
 		sep_axis = p_motion.normalized();
 
 		if (!CollisionSolver3DSW::solve_distance(shape, p_xform, col_obj->get_shape(shape_idx), col_obj_xform, point_A, point_B, aabb, &sep_axis)) {
-			return false;
+			continue;
 		}
 
 		//just do kinematic solving
@@ -340,7 +340,7 @@ bool PhysicsDirectSpaceState3DSW::collide_shape(RID p_shape, const Transform &p_
 		return false;
 	}
 
-	Shape3DSW *shape = static_cast<PhysicsServer3DSW *>(PhysicsServer3D::get_singleton())->shape_owner.getornull(p_shape);
+	Shape3DSW *shape = PhysicsServer3DSW::singletonsw->shape_owner.getornull(p_shape);
 	ERR_FAIL_COND_V(!shape, 0);
 
 	AABB aabb = p_shape_xform.xform(shape->get_aabb());
@@ -412,7 +412,7 @@ static void _rest_cbk_result(const Vector3 &p_point_A, const Vector3 &p_point_B,
 }
 
 bool PhysicsDirectSpaceState3DSW::rest_info(RID p_shape, const Transform &p_shape_xform, real_t p_margin, ShapeRestInfo *r_info, const Set<RID> &p_exclude, uint32_t p_collision_mask, bool p_collide_with_bodies, bool p_collide_with_areas) {
-	Shape3DSW *shape = static_cast<PhysicsServer3DSW *>(PhysicsServer3D::get_singleton())->shape_owner.getornull(p_shape);
+	Shape3DSW *shape = PhysicsServer3DSW::singletonsw->shape_owner.getornull(p_shape);
 	ERR_FAIL_COND_V(!shape, 0);
 
 	AABB aabb = p_shape_xform.xform(shape->get_aabb());
@@ -468,15 +468,15 @@ bool PhysicsDirectSpaceState3DSW::rest_info(RID p_shape, const Transform &p_shap
 }
 
 Vector3 PhysicsDirectSpaceState3DSW::get_closest_point_to_object_volume(RID p_object, const Vector3 p_point) const {
-	CollisionObject3DSW *obj = PhysicsServer3DSW::singleton->area_owner.getornull(p_object);
+	CollisionObject3DSW *obj = PhysicsServer3DSW::singletonsw->area_owner.getornull(p_object);
 	if (!obj) {
-		obj = PhysicsServer3DSW::singleton->body_owner.getornull(p_object);
+		obj = PhysicsServer3DSW::singletonsw->body_owner.getornull(p_object);
 	}
 	ERR_FAIL_COND_V(!obj, Vector3());
 
 	ERR_FAIL_COND_V(obj->get_space() != space, Vector3());
 
-	float min_distance = 1e20;
+	real_t min_distance = 1e20;
 	Vector3 min_point;
 
 	bool shapes_found = false;
@@ -492,7 +492,7 @@ Vector3 PhysicsDirectSpaceState3DSW::get_closest_point_to_object_volume(RID p_ob
 		Vector3 point = shape->get_closest_point_to(shape_xform.affine_inverse().xform(p_point));
 		point = shape_xform.xform(point);
 
-		float dist = point.distance_to(p_point);
+		real_t dist = point.distance_to(p_point);
 		if (dist < min_distance) {
 			min_distance = dist;
 			min_point = point;
@@ -649,9 +649,9 @@ int Space3DSW::test_body_ray_separation(Body3DSW *p_body, const Transform &p_tra
 								Vector3 a = sr[k * 2 + 0];
 								Vector3 b = sr[k * 2 + 1];
 
-								recover_motion += (b - a) * 0.4;
+								recover_motion += (b - a) / cbk.amount;
 
-								float depth = a.distance_to(b);
+								real_t depth = a.distance_to(b);
 								if (depth > result.collision_depth) {
 									result.collision_depth = depth;
 									result.collision_point = b;
@@ -791,7 +791,7 @@ bool Space3DSW::test_body_motion(Body3DSW *p_body, const Transform &p_from, cons
 			for (int i = 0; i < cbk.amount; i++) {
 				Vector3 a = sr[i * 2 + 0];
 				Vector3 b = sr[i * 2 + 1];
-				recover_motion += (b - a) * 0.4;
+				recover_motion += (b - a) / cbk.amount;
 			}
 
 			if (recover_motion == Vector3()) {
@@ -1211,7 +1211,7 @@ Space3DSW::Space3DSW() {
 
 	constraint_bias = 0.01;
 	body_linear_velocity_sleep_threshold = GLOBAL_DEF("physics/3d/sleep_threshold_linear", 0.1);
-	body_angular_velocity_sleep_threshold = GLOBAL_DEF("physics/3d/sleep_threshold_angular", (8.0 / 180.0 * Math_PI));
+	body_angular_velocity_sleep_threshold = GLOBAL_DEF("physics/3d/sleep_threshold_angular", Math::deg2rad(8.0));
 	body_time_to_sleep = GLOBAL_DEF("physics/3d/time_before_sleep", 0.5);
 	ProjectSettings::get_singleton()->set_custom_property_info("physics/3d/time_before_sleep", PropertyInfo(Variant::FLOAT, "physics/3d/time_before_sleep", PROPERTY_HINT_RANGE, "0,5,0.01,or_greater"));
 	body_angular_velocity_damp_ratio = 10;

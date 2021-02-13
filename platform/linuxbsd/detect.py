@@ -12,7 +12,6 @@ def get_name():
 
 
 def can_build():
-
     if os.name != "posix" or sys.platform == "darwin":
         return False
 
@@ -65,15 +64,15 @@ def get_opts():
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
         BoolVariable("use_lld", "Use the LLD linker", False),
         BoolVariable("use_thinlto", "Use ThinLTO", False),
-        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", False),
+        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", True),
         BoolVariable("use_coverage", "Test Godot coverage", False),
         BoolVariable("use_ubsan", "Use LLVM/GCC compiler undefined behavior sanitizer (UBSAN)", False),
         BoolVariable("use_asan", "Use LLVM/GCC compiler address sanitizer (ASAN))", False),
         BoolVariable("use_lsan", "Use LLVM/GCC compiler leak sanitizer (LSAN))", False),
         BoolVariable("use_tsan", "Use LLVM/GCC compiler thread sanitizer (TSAN))", False),
         BoolVariable("pulseaudio", "Detect and use PulseAudio", True),
-        BoolVariable("udev", "Use udev for gamepad connection callbacks", False),
-        EnumVariable("debug_symbols", "Add debugging symbols to release builds", "yes", ("yes", "no", "full")),
+        BoolVariable("udev", "Use udev for gamepad connection callbacks", True),
+        BoolVariable("debug_symbols", "Add debugging symbols to release/release_debug builds", True),
         BoolVariable("separate_debug_symbols", "Create a separate file containing debugging symbols", False),
         BoolVariable("touch", "Enable touch events", True),
         BoolVariable("execinfo", "Use libexecinfo on systems where glibc is not available", False),
@@ -81,12 +80,10 @@ def get_opts():
 
 
 def get_flags():
-
     return []
 
 
 def configure(env):
-
     ## Build type
 
     if env["target"] == "release":
@@ -95,9 +92,7 @@ def configure(env):
         else:  # optimize for size
             env.Prepend(CCFLAGS=["-Os"])
 
-        if env["debug_symbols"] == "yes":
-            env.Prepend(CCFLAGS=["-g1"])
-        if env["debug_symbols"] == "full":
+        if env["debug_symbols"]:
             env.Prepend(CCFLAGS=["-g2"])
 
     elif env["target"] == "release_debug":
@@ -107,9 +102,7 @@ def configure(env):
             env.Prepend(CCFLAGS=["-Os"])
         env.Prepend(CPPDEFINES=["DEBUG_ENABLED"])
 
-        if env["debug_symbols"] == "yes":
-            env.Prepend(CCFLAGS=["-g1"])
-        if env["debug_symbols"] == "full":
+        if env["debug_symbols"]:
             env.Prepend(CCFLAGS=["-g2"])
 
     elif env["target"] == "debug":
@@ -133,8 +126,6 @@ def configure(env):
         if "clang++" not in os.path.basename(env["CXX"]):
             env["CC"] = "clang"
             env["CXX"] = "clang++"
-            env["LINK"] = "clang++"
-        env.Append(CPPDEFINES=["TYPED_METHOD_BIND"])
         env.extra_suffix = ".llvm" + env.extra_suffix
 
     if env["use_lld"]:
@@ -211,13 +202,30 @@ def configure(env):
 
     # freetype depends on libpng and zlib, so bundling one of them while keeping others
     # as shared libraries leads to weird issues
-    if env["builtin_freetype"] or env["builtin_libpng"] or env["builtin_zlib"]:
+    if (
+        env["builtin_freetype"]
+        or env["builtin_libpng"]
+        or env["builtin_zlib"]
+        or env["builtin_graphite"]
+        or env["builtin_harfbuzz"]
+    ):
         env["builtin_freetype"] = True
         env["builtin_libpng"] = True
         env["builtin_zlib"] = True
+        env["builtin_graphite"] = True
+        env["builtin_harfbuzz"] = True
 
     if not env["builtin_freetype"]:
         env.ParseConfig("pkg-config freetype2 --cflags --libs")
+
+    if not env["builtin_graphite"]:
+        env.ParseConfig("pkg-config graphite2 --cflags --libs")
+
+    if not env["builtin_icu"]:
+        env.ParseConfig("pkg-config icu-uc --cflags --libs")
+
+    if not env["builtin_harfbuzz"]:
+        env.ParseConfig("pkg-config harfbuzz harfbuzz-icu --cflags --libs")
 
     if not env["builtin_libpng"]:
         env.ParseConfig("pkg-config libpng16 --cflags --libs")
@@ -382,4 +390,7 @@ def configure(env):
 
     # Link those statically for portability
     if env["use_static_cpp"]:
-        env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
+        # Workaround for GH-31743, Ubuntu 18.04 i386 crashes when it's used.
+        # That doesn't make any sense but it's likely a Ubuntu bug?
+        if is64 or env["bits"] == "64":
+            env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])

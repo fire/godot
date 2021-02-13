@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -34,7 +34,7 @@
 #include "bullet_physics_server.h"
 #include "bullet_types_converter.h"
 #include "bullet_utilities.h"
-#include "core/project_settings.h"
+#include "core/config/project_settings.h"
 #include "shape_owner_bullet.h"
 
 #include <BulletCollision/CollisionDispatch/btInternalEdgeUtility.h>
@@ -480,7 +480,11 @@ void HeightMapShapeBullet::set_data(const Variant &p_data) {
 	Vector<real_t> l_heights;
 	Variant l_heights_v = d["heights"];
 
+#ifdef REAL_T_IS_DOUBLE
+	if (l_heights_v.get_type() == Variant::PACKED_FLOAT64_ARRAY) {
+#else
 	if (l_heights_v.get_type() == Variant::PACKED_FLOAT32_ARRAY) {
+#endif
 		// Ready-to-use heights can be passed
 
 		l_heights = l_heights_v;
@@ -503,7 +507,7 @@ void HeightMapShapeBullet::set_data(const Variant &p_data) {
 
 		real_t *w = l_heights.ptrw();
 		const uint8_t *r = im_data.ptr();
-		float *rp = (float *)r;
+		real_t *rp = (real_t *)r;
 		// At this point, `rp` could be used directly for Bullet, but I don't know how safe it would be.
 
 		for (int i = 0; i < l_heights.size(); ++i) {
@@ -511,7 +515,11 @@ void HeightMapShapeBullet::set_data(const Variant &p_data) {
 		}
 
 	} else {
+#ifdef REAL_T_IS_DOUBLE
+		ERR_FAIL_MSG("Expected PackedFloat64Array or float Image.");
+#else
 		ERR_FAIL_MSG("Expected PackedFloat32Array or float Image.");
+#endif
 	}
 
 	ERR_FAIL_COND(l_width <= 0);

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -165,7 +165,6 @@ void TileMap::_update_quadrant_transform() {
 void TileMap::set_tileset(const Ref<TileSet> &p_tileset) {
 	if (tile_set.is_valid()) {
 		tile_set->disconnect("changed", callable_mp(this, &TileMap::_recreate_quadrants));
-		tile_set->remove_change_receptor(this);
 	}
 
 	_clear_quadrants();
@@ -173,7 +172,6 @@ void TileMap::set_tileset(const Ref<TileSet> &p_tileset) {
 
 	if (tile_set.is_valid()) {
 		tile_set->connect("changed", callable_mp(this, &TileMap::_recreate_quadrants));
-		tile_set->add_change_receptor(this);
 	} else {
 		clear();
 	}
@@ -1024,7 +1022,9 @@ void TileMap::update_dirty_bitmask() {
 
 void TileMap::fix_invalid_tiles() {
 	ERR_FAIL_COND_MSG(tile_set.is_null(), "Cannot fix invalid tiles if Tileset is not open.");
-	for (Map<PosKey, Cell>::Element *E = tile_map.front(); E; E = E->next()) {
+
+	Map<PosKey, Cell> temp_tile_map = tile_map;
+	for (Map<PosKey, Cell>::Element *E = temp_tile_map.front(); E; E = E->next()) {
 		if (!tile_set->has_tile(get_cell(E->key().x, E->key().y))) {
 			set_cell(E->key().x, E->key().y, INVALID_CELL);
 		}
@@ -1328,7 +1328,7 @@ void TileMap::set_collision_use_parent(bool p_use_parent) {
 	}
 
 	_recreate_quadrants();
-	_change_notify();
+	notify_property_list_changed();
 	update_configuration_warning();
 }
 
@@ -1714,7 +1714,7 @@ String TileMap::get_configuration_warning() const {
 	String warning = Node2D::get_configuration_warning();
 
 	if (use_parent && !collision_parent) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		return TTR("TileMap with Use Parent on needs a parent CollisionObject2D to give shapes to. Please use it as a child of Area2D, StaticBody2D, RigidBody2D, KinematicBody2D, etc. to give them a shape.");
@@ -1863,47 +1863,11 @@ void TileMap::_bind_methods() {
 	BIND_ENUM_CONSTANT(TILE_ORIGIN_BOTTOM_LEFT);
 }
 
-void TileMap::_changed_callback(Object *p_changed, const char *p_prop) {
-	if (tile_set.is_valid() && tile_set.ptr() == p_changed) {
-		emit_signal("settings_changed");
-	}
-}
-
 TileMap::TileMap() {
-	rect_cache_dirty = true;
-	used_size_cache_dirty = true;
-	pending_update = false;
-	quadrant_order_dirty = false;
-	quadrant_size = 16;
-	cell_size = Size2(64, 64);
-	custom_transform = Transform2D(64, 0, 0, 64, 0, 0);
-	collision_layer = 1;
-	collision_mask = 1;
-	friction = 1;
-	bounce = 0;
-	mode = MODE_SQUARE;
-	half_offset = HALF_OFFSET_DISABLED;
-	use_parent = false;
-	collision_parent = nullptr;
-	use_kinematic = false;
-	navigation = nullptr;
-	use_y_sort = false;
-	compatibility_mode = false;
-	centered_textures = false;
-	occluder_light_mask = 1;
-	clip_uv = false;
-	format = FORMAT_1; // Assume lowest possible format if none is present
-
-	fp_adjust = 0.00001;
-	tile_origin = TILE_ORIGIN_TOP_LEFT;
 	set_notify_transform(true);
 	set_notify_local_transform(false);
 }
 
 TileMap::~TileMap() {
-	if (tile_set.is_valid()) {
-		tile_set->remove_change_receptor(this);
-	}
-
 	clear();
 }

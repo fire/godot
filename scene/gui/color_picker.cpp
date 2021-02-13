@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -52,6 +52,7 @@ void ColorPicker::_notification(int p_what) {
 			btn_pick->set_icon(get_theme_icon("screen_picker", "ColorPicker"));
 			bt_add_preset->set_icon(get_theme_icon("add_preset"));
 
+			_update_controls();
 			_update_color();
 
 #ifdef TOOLS_ENABLED
@@ -66,7 +67,7 @@ void ColorPicker::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_PARENTED: {
 			for (int i = 0; i < 4; i++) {
-				set_margin((Margin)i, get_margin((Margin)i) + get_theme_constant("margin"));
+				set_offset((Side)i, get_offset((Side)i) + get_theme_constant("margin"));
 			}
 		} break;
 		case NOTIFICATION_VISIBILITY_CHANGED: {
@@ -591,7 +592,7 @@ void ColorPicker::_screen_input(const Ref<InputEvent> &p_event) {
 		}
 
 		Ref<Image> img = r->get_texture()->get_data();
-		if (img.is_valid() && !img->empty()) {
+		if (img.is_valid() && !img->is_empty()) {
 			Vector2 ofs = mev->get_global_position() - r->get_visible_rect().get_position();
 			Color c = img->get_pixel(ofs.x, r->get_visible_rect().size.height - ofs.y);
 
@@ -611,11 +612,11 @@ void ColorPicker::_screen_pick_pressed() {
 		screen = memnew(Control);
 		r->add_child(screen);
 		screen->set_as_top_level(true);
-		screen->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+		screen->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 		screen->set_default_cursor_shape(CURSOR_POINTING_HAND);
 		screen->connect("gui_input", callable_mp(this, &ColorPicker::_screen_input));
 		// It immediately toggles off in the first press otherwise.
-		screen->call_deferred("connect", "hide", Callable(btn_pick, "set_pressed"), varray(false));
+		screen->call_deferred("connect", "hidden", Callable(btn_pick, "set_pressed"), varray(false));
 	}
 	screen->raise();
 #ifndef _MSC_VER
@@ -718,17 +719,6 @@ void ColorPicker::_bind_methods() {
 
 ColorPicker::ColorPicker() :
 		BoxContainer(true) {
-	updating = true;
-	edit_alpha = true;
-	text_is_constructor = false;
-	hsv_mode_enabled = false;
-	raw_mode_enabled = false;
-	deferred_mode_enabled = false;
-	changing_color = false;
-	presets_enabled = true;
-	presets_visible = true;
-	screen = nullptr;
-
 	HBoxContainer *hb_edit = memnew(HBoxContainer);
 	add_child(hb_edit);
 	hb_edit->set_v_size_flags(SIZE_EXPAND_FILL);
@@ -973,7 +963,7 @@ void ColorPickerButton::_update_picker() {
 		popup = memnew(PopupPanel);
 		popup->set_wrap_controls(true);
 		picker = memnew(ColorPicker);
-		picker->set_anchors_and_margins_preset(PRESET_WIDE);
+		picker->set_anchors_and_offsets_preset(PRESET_WIDE);
 		popup->add_child(picker);
 		add_child(popup);
 		picker->connect("color_changed", callable_mp(this, &ColorPickerButton::_color_changed));
@@ -1001,12 +991,5 @@ void ColorPickerButton::_bind_methods() {
 }
 
 ColorPickerButton::ColorPickerButton() {
-	// Initialization is now done deferred,
-	// this improves performance in the inspector as the color picker
-	// can be expensive to initialize.
-	picker = nullptr;
-	popup = nullptr;
-	edit_alpha = true;
-
 	set_toggle_mode(true);
 }

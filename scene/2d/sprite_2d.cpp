@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -99,7 +99,8 @@ void Sprite2D::_get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_filter_c
 	if (centered) {
 		dest_offset -= frame_size / 2;
 	}
-	if (Engine::get_singleton()->get_use_pixel_snap()) {
+
+	if (get_viewport() && get_viewport()->is_snap_2d_transforms_to_pixel_enabled()) {
 		dest_offset = dest_offset.floor();
 	}
 
@@ -154,7 +155,6 @@ void Sprite2D::set_texture(const Ref<Texture2D> &p_texture) {
 	update();
 	emit_signal("texture_changed");
 	item_rect_changed();
-	_change_notify("texture");
 }
 
 Ref<Texture2D> Sprite2D::get_texture() const {
@@ -175,7 +175,6 @@ void Sprite2D::set_offset(const Point2 &p_offset) {
 	offset = p_offset;
 	update();
 	item_rect_changed();
-	_change_notify("offset");
 }
 
 Point2 Sprite2D::get_offset() const {
@@ -223,8 +222,6 @@ void Sprite2D::set_region_rect(const Rect2 &p_region_rect) {
 	if (region) {
 		item_rect_changed();
 	}
-
-	_change_notify("region_rect");
 }
 
 Rect2 Sprite2D::get_region_rect() const {
@@ -249,8 +246,6 @@ void Sprite2D::set_frame(int p_frame) {
 
 	frame = p_frame;
 
-	_change_notify("frame");
-	_change_notify("frame_coords");
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -274,7 +269,7 @@ void Sprite2D::set_vframes(int p_amount) {
 	vframes = p_amount;
 	update();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite2D::get_vframes() const {
@@ -286,7 +281,7 @@ void Sprite2D::set_hframes(int p_amount) {
 	hframes = p_amount;
 	update();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite2D::get_hframes() const {
@@ -366,7 +361,8 @@ Rect2 Sprite2D::get_rect() const {
 	if (centered) {
 		ofs -= Size2(s) / 2;
 	}
-	if (Engine::get_singleton()->get_use_pixel_snap()) {
+
+	if (get_viewport() && get_viewport()->is_snap_2d_transforms_to_pixel_enabled()) {
 		ofs = ofs.floor();
 	}
 
@@ -460,16 +456,6 @@ void Sprite2D::_bind_methods() {
 }
 
 Sprite2D::Sprite2D() {
-	centered = true;
-	hflip = false;
-	vflip = false;
-	region = false;
-	region_filter_clip = false;
-
-	frame = 0;
-
-	vframes = 1;
-	hframes = 1;
 }
 
 Sprite2D::~Sprite2D() {

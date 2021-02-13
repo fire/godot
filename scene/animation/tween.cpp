@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1098,7 +1098,7 @@ void Tween::seek(real_t p_time) {
 real_t Tween::tell() const {
 	// We want to grab the position of the furthest along tween
 	pending_update++;
-	real_t pos = 0;
+	real_t pos = 0.0;
 
 	// For each interpolation...
 	for (const List<InterpolateData>::Element *E = interpolates.front(); E; E = E->next()) {
@@ -1122,7 +1122,7 @@ real_t Tween::get_runtime() const {
 	pending_update++;
 
 	// For each interpolation...
-	real_t runtime = 0;
+	real_t runtime = 0.0;
 	for (const List<InterpolateData>::Element *E = interpolates.front(); E; E = E->next()) {
 		// Get the tween data and see if it's runtime is greater than the previous tweens
 		const InterpolateData &data = E->get();
@@ -1789,12 +1789,6 @@ void Tween::targeting_method(Object *p_object, StringName p_method, Object *p_in
 }
 
 Tween::Tween() {
-	// Initialize tween attributes
-	tween_process_mode = TWEEN_PROCESS_IDLE;
-	repeat = false;
-	speed_scale = 1;
-	pending_update = 0;
-	uid = 0;
 }
 
 Tween::~Tween() {

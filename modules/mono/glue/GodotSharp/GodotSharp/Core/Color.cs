@@ -104,7 +104,7 @@ namespace Godot
         /// <summary>
         /// The HSV hue of this color, on the range 0 to 1.
         /// </summary>
-        /// <value>Getting is a long process, refer to the source code for details. Setting uses <see cref="FromHsv"/>.</value>
+        /// <value>Getting is a long process, refer to the source code for details. Setting uses <see cref="FromHSV"/>.</value>
         public float h
         {
             get
@@ -145,14 +145,14 @@ namespace Godot
             }
             set
             {
-                this = FromHsv(value, s, v, a);
+                this = FromHSV(value, s, v, a);
             }
         }
 
         /// <summary>
         /// The HSV saturation of this color, on the range 0 to 1.
         /// </summary>
-        /// <value>Getting is equivalent to the ratio between the min and max RGB value. Setting uses <see cref="FromHsv"/>.</value>
+        /// <value>Getting is equivalent to the ratio between the min and max RGB value. Setting uses <see cref="FromHSV"/>.</value>
         public float s
         {
             get
@@ -166,14 +166,14 @@ namespace Godot
             }
             set
             {
-                this = FromHsv(h, value, v, a);
+                this = FromHSV(h, value, v, a);
             }
         }
 
         /// <summary>
         /// The HSV value (brightness) of this color, on the range 0 to 1.
         /// </summary>
-        /// <value>Getting is equivalent to using `Max()` on the RGB components. Setting uses <see cref="FromHsv"/>.</value>
+        /// <value>Getting is equivalent to using `Max()` on the RGB components. Setting uses <see cref="FromHSV"/>.</value>
         public float v
         {
             get
@@ -182,7 +182,7 @@ namespace Godot
             }
             set
             {
-                this = FromHsv(h, s, value, a);
+                this = FromHSV(h, s, value, a);
             }
         }
 
@@ -254,20 +254,6 @@ namespace Godot
             res.b = (b * a * sa + over.b * over.a) / res.a;
 
             return res;
-        }
-
-        /// <summary>
-        /// Returns the most contrasting color.
-        /// </summary>
-        /// <returns>The most contrasting color</returns>
-        public Color Contrasted()
-        {
-            return new Color(
-                (r + 0.5f) % 1.0f,
-                (g + 0.5f) % 1.0f,
-                (b + 0.5f) % 1.0f,
-                a
-            );
         }
 
         /// <summary>
@@ -351,8 +337,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 32-bit integer in ABGR format
-        /// (each byte represents a component of the ABGR profile).
+        /// Returns the color converted to an unsigned 32-bit integer in ABGR
+        /// format (each byte represents a color channel).
         /// ABGR is the reversed version of the default format.
         /// </summary>
         /// <returns>A uint representing this color in ABGR32 format.</returns>
@@ -370,8 +356,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 64-bit integer in ABGR format
-        /// (each word represents a component of the ABGR profile).
+        /// Returns the color converted to an unsigned 64-bit integer in ABGR
+        /// format (each word represents a color channel).
         /// ABGR is the reversed version of the default format.
         /// </summary>
         /// <returns>A ulong representing this color in ABGR64 format.</returns>
@@ -389,8 +375,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 32-bit integer in ARGB format
-        /// (each byte represents a component of the ARGB profile).
+        /// Returns the color converted to an unsigned 32-bit integer in ARGB
+        /// format (each byte represents a color channel).
         /// ARGB is more compatible with DirectX, but not used much in Godot.
         /// </summary>
         /// <returns>A uint representing this color in ARGB32 format.</returns>
@@ -408,8 +394,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 64-bit integer in ARGB format
-        /// (each word represents a component of the ARGB profile).
+        /// Returns the color converted to an unsigned 64-bit integer in ARGB
+        /// format (each word represents a color channel).
         /// ARGB is more compatible with DirectX, but not used much in Godot.
         /// </summary>
         /// <returns>A ulong representing this color in ARGB64 format.</returns>
@@ -427,8 +413,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 32-bit integer in RGBA format
-        /// (each byte represents a component of the RGBA profile).
+        /// Returns the color converted to an unsigned 32-bit integer in RGBA
+        /// format (each byte represents a color channel).
         /// RGBA is Godot's default and recommended format.
         /// </summary>
         /// <returns>A uint representing this color in RGBA32 format.</returns>
@@ -446,8 +432,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Returns the color's 64-bit integer in RGBA format
-        /// (each word represents a component of the RGBA profile).
+        /// Returns the color converted to an unsigned 64-bit integer in RGBA
+        /// format (each word represents a color channel).
         /// RGBA is Godot's default and recommended format.
         /// </summary>
         /// <returns>A ulong representing this color in RGBA64 format.</returns>
@@ -469,7 +455,7 @@ namespace Godot
         /// </summary>
         /// <param name="includeAlpha">Whether or not to include alpha. If false, the color is RGB instead of RGBA.</param>
         /// <returns>A string for the HTML hexadecimal representation of this color.</returns>
-        public string ToHtml(bool includeAlpha = true)
+        public string ToHTML(bool includeAlpha = true)
         {
             var txt = string.Empty;
 
@@ -486,7 +472,7 @@ namespace Godot
         }
 
         /// <summary>
-        /// Constructs a color from RGBA values on the range of 0 to 1.
+        /// Constructs a color from RGBA values, typically on the range of 0 to 1.
         /// </summary>
         /// <param name="r">The color's red component, typically on the range of 0 to 1.</param>
         /// <param name="g">The color's green component, typically on the range of 0 to 1.</param>
@@ -514,8 +500,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Constructs a color from a 32-bit integer
-        /// (each byte represents a component of the RGBA profile).
+        /// Constructs a color from an unsigned 32-bit integer in RGBA format
+        /// (each byte represents a color channel).
         /// </summary>
         /// <param name="rgba">The uint representing the color.</param>
         public Color(uint rgba)
@@ -530,8 +516,8 @@ namespace Godot
         }
 
         /// <summary>
-        /// Constructs a color from a 64-bit integer
-        /// (each word represents a component of the RGBA profile).
+        /// Constructs a color from an unsigned 64-bit integer in RGBA format
+        /// (each word represents a color channel).
         /// </summary>
         /// <param name="rgba">The ulong representing the color.</param>
         public Color(ulong rgba)
@@ -546,18 +532,50 @@ namespace Godot
         }
 
         /// <summary>
+        /// Constructs a color either from an HTML color code or from a
+        /// standardized color name. Supported
+        /// color names are the same as the <see cref="Colors"/> constants.
+        /// </summary>
+        /// <param name="code">The HTML color code or color name to construct from.</param>
+        public Color(string code)
+        {
+            if (HtmlIsValid(code))
+            {
+                this = FromHTML(code);
+            }
+            else
+            {
+                this = Named(code);
+            }
+        }
+
+        /// <summary>
+        /// Constructs a color either from an HTML color code or from a
+        /// standardized color name, with `alpha` on the range of 0 to 1. Supported
+        /// color names are the same as the <see cref="Colors"/> constants.
+        /// </summary>
+        /// <param name="code">The HTML color code or color name to construct from.</param>
+        /// <param name="alpha">The alpha (transparency) value, typically on the range of 0 to 1.</param>
+        public Color(string code, float alpha)
+        {
+            this = new Color(code);
+            a = alpha;
+        }
+
+        /// <summary>
         /// Constructs a color from the HTML hexadecimal color string in RGBA format.
         /// </summary>
         /// <param name="rgba">A string for the HTML hexadecimal representation of this color.</param>
-        public Color(string rgba)
+        private static Color FromHTML(string rgba)
         {
+            Color c;
             if (rgba.Length == 0)
             {
-                r = 0f;
-                g = 0f;
-                b = 0f;
-                a = 1.0f;
-                return;
+                c.r = 0f;
+                c.g = 0f;
+                c.b = 0f;
+                c.a = 1.0f;
+                return c;
             }
 
             if (rgba[0] == '#')
@@ -591,47 +609,48 @@ namespace Godot
                 throw new ArgumentOutOfRangeException("Invalid color code. Length is " + rgba.Length + " but a length of 6 or 8 is expected: " + rgba);
             }
 
-            a = 1.0f;
+            c.a = 1.0f;
             if (isShorthand)
             {
-                r = ParseCol4(rgba, 0) / 15f;
-                g = ParseCol4(rgba, 1) / 15f;
-                b = ParseCol4(rgba, 2) / 15f;
+                c.r = ParseCol4(rgba, 0) / 15f;
+                c.g = ParseCol4(rgba, 1) / 15f;
+                c.b = ParseCol4(rgba, 2) / 15f;
                 if (alpha)
                 {
-                    a = ParseCol4(rgba, 3) / 15f;
+                    c.a = ParseCol4(rgba, 3) / 15f;
                 }
             }
             else
             {
-                r = ParseCol8(rgba, 0) / 255f;
-                g = ParseCol8(rgba, 2) / 255f;
-                b = ParseCol8(rgba, 4) / 255f;
+                c.r = ParseCol8(rgba, 0) / 255f;
+                c.g = ParseCol8(rgba, 2) / 255f;
+                c.b = ParseCol8(rgba, 4) / 255f;
                 if (alpha)
                 {
-                    a = ParseCol8(rgba, 6) / 255f;
+                    c.a = ParseCol8(rgba, 6) / 255f;
                 }
             }
 
-            if (r < 0)
+            if (c.r < 0)
             {
                 throw new ArgumentOutOfRangeException("Invalid color code. Red part is not valid hexadecimal: " + rgba);
             }
 
-            if (g < 0)
+            if (c.g < 0)
             {
                 throw new ArgumentOutOfRangeException("Invalid color code. Green part is not valid hexadecimal: " + rgba);
             }
 
-            if (b < 0)
+            if (c.b < 0)
             {
                 throw new ArgumentOutOfRangeException("Invalid color code. Blue part is not valid hexadecimal: " + rgba);
             }
 
-            if (a < 0)
+            if (c.a < 0)
             {
                 throw new ArgumentOutOfRangeException("Invalid color code. Alpha part is not valid hexadecimal: " + rgba);
             }
+            return c;
         }
 
         /// <summary>
@@ -654,9 +673,8 @@ namespace Godot
         /// the constants defined in <see cref="Colors"/>.
         /// </summary>
         /// <param name="name">The name of the color.</param>
-        /// <param name="alpha">The alpha (transparency) component represented on the range of 0 to 1. Default: 1.</param>
         /// <returns>The constructed color.</returns>
-        public static Color ColorN(string name, float alpha = 1f)
+        private static Color Named(string name)
         {
             name = name.Replace(" ", String.Empty);
             name = name.Replace("-", String.Empty);
@@ -670,9 +688,7 @@ namespace Godot
                 throw new ArgumentOutOfRangeException($"Invalid Color Name: {name}");
             }
 
-            Color color = Colors.namedColors[name];
-            color.a = alpha;
-            return color;
+            return Colors.namedColors[name];
         }
 
         /// <summary>
@@ -685,11 +701,11 @@ namespace Godot
         /// <param name="value">The HSV value (brightness), typically on the range of 0 to 1.</param>
         /// <param name="alpha">The alpha (transparency) value, typically on the range of 0 to 1.</param>
         /// <returns>The constructed color.</returns>
-        public static Color FromHsv(float hue, float saturation, float value, float alpha = 1.0f)
+        public static Color FromHSV(float hue, float saturation, float value, float alpha = 1.0f)
         {
             if (saturation == 0)
             {
-                // acp_hromatic (grey)
+                // Achromatic (grey)
                 return new Color(value, value, value, alpha);
             }
 
@@ -729,7 +745,7 @@ namespace Godot
         /// <param name="hue">Output parameter for the HSV hue.</param>
         /// <param name="saturation">Output parameter for the HSV saturation.</param>
         /// <param name="value">Output parameter for the HSV value.</param>
-        public void ToHsv(out float hue, out float saturation, out float value)
+        public void ToHSV(out float hue, out float saturation, out float value)
         {
             float max = (float)Mathf.Max(r, Mathf.Max(g, b));
             float min = (float)Mathf.Min(r, Mathf.Min(g, b));
@@ -791,31 +807,10 @@ namespace Godot
             return ParseCol4(str, ofs) * 16 + ParseCol4(str, ofs + 1);
         }
 
-        private String ToHex32(float val)
+        private string ToHex32(float val)
         {
-            int v = Mathf.RoundToInt(Mathf.Clamp(val * 255, 0, 255));
-
-            var ret = string.Empty;
-
-            for (int i = 0; i < 2; i++)
-            {
-                char c;
-                int lv = v & 0xF;
-
-                if (lv < 10)
-                {
-                    c = (char)('0' + lv);
-                }
-                else
-                {
-                    c = (char)('a' + lv - 10);
-                }
-
-                v >>= 4;
-                ret = c + ret;
-            }
-
-            return ret;
+            byte b = (byte)Mathf.RoundToInt(Mathf.Clamp(val * 255, 0, 255));
+            return b.HexEncode();
         }
 
         internal static bool HtmlIsValid(string color)
@@ -838,7 +833,8 @@ namespace Godot
             }
 
             // Check if each hex digit is valid.
-            for (int i = 0; i < len; i++) {
+            for (int i = 0; i < len; i++)
+            {
                 if (ParseCol4(color, i) == -1)
                 {
                     return false;

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -42,7 +42,6 @@ class Camera3D : public Node3D {
 
 public:
 	enum Projection {
-
 		PROJECTION_PERSPECTIVE,
 		PROJECTION_ORTHOGONAL,
 		PROJECTION_FRUSTUM
@@ -58,26 +57,27 @@ public:
 	};
 
 private:
-	bool force_change;
-	bool current;
-	Viewport *viewport;
+	bool force_change = false;
+	bool current = false;
+	Viewport *viewport = nullptr;
 
-	Projection mode;
+	Projection mode = PROJECTION_PERSPECTIVE;
 
-	float fov;
-	float size;
+	float fov = 0.0;
+	float size = 1.0;
 	Vector2 frustum_offset;
-	float near, far;
-	float v_offset;
-	float h_offset;
-	KeepAspect keep_aspect;
+	float near = 0.0;
+	float far = 0.0;
+	float v_offset = 0.0;
+	float h_offset = 0.0;
+	KeepAspect keep_aspect = KEEP_HEIGHT;
 
 	RID camera;
 	RID scenario_id;
 
 	// String camera_group;
 
-	uint32_t layers;
+	uint32_t layers = 0xfffff;
 
 	Ref<Environment> environment;
 	Ref<CameraEffects> effects;
@@ -88,7 +88,7 @@ private:
 	friend class Viewport;
 	void _update_audio_listener_state();
 
-	DopplerTracking doppler_tracking;
+	DopplerTracking doppler_tracking = DOPPLER_TRACKING_DISABLED;
 	Ref<VelocityTracker3D> velocity_tracker;
 
 protected:
@@ -103,7 +103,6 @@ protected:
 
 public:
 	enum {
-
 		NOTIFICATION_BECAME_CURRENT = 50,
 		NOTIFICATION_LOST_CURRENT = 51
 	};
@@ -123,16 +122,16 @@ public:
 
 	float get_fov() const;
 	float get_size() const;
-	float get_zfar() const;
-	float get_znear() const;
+	float get_far() const;
+	float get_near() const;
 	Vector2 get_frustum_offset() const;
 
 	Projection get_projection() const;
 
 	void set_fov(float p_fov);
 	void set_size(float p_size);
-	void set_zfar(float p_zfar);
-	void set_znear(float p_znear);
+	void set_far(float p_far);
+	void set_near(float p_near);
 	void set_frustum_offset(Vector2 p_offset);
 
 	virtual Transform get_camera_transform() const;
@@ -193,13 +192,13 @@ public:
 	};
 
 private:
-	ProcessMode process_mode;
+	ProcessMode process_mode = CLIP_PROCESS_PHYSICS;
 	RID pyramid_shape;
-	float margin;
-	float clip_offset;
-	uint32_t collision_mask;
-	bool clip_to_areas;
-	bool clip_to_bodies;
+	float margin = 0.0;
+	float clip_offset = 0.0;
+	uint32_t collision_mask = 1;
+	bool clip_to_areas = false;
+	bool clip_to_bodies = true;
 
 	Set<RID> exclude;
 

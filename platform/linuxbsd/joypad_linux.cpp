@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -32,6 +32,7 @@
 
 #include "joypad_linux.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
@@ -48,15 +49,6 @@
 #ifdef UDEV_ENABLED
 static const char *ignore_str = "/dev/input/js";
 #endif
-
-JoypadLinux::Joypad::Joypad() {
-	fd = -1;
-	dpad = 0;
-	devpath = "";
-	for (int i = 0; i < MAX_ABS; i++) {
-		abs_info[i] = nullptr;
-	}
-}
 
 JoypadLinux::Joypad::~Joypad() {
 	for (int i = 0; i < MAX_ABS; i++) {
@@ -82,13 +74,12 @@ void JoypadLinux::Joypad::reset() {
 JoypadLinux::JoypadLinux(Input *in) {
 	exit_udev = false;
 	input = in;
-	joy_thread = Thread::create(joy_thread_func, this);
+	joy_thread.start(joy_thread_func, this);
 }
 
 JoypadLinux::~JoypadLinux() {
 	exit_udev = true;
-	Thread::wait_to_finish(joy_thread);
-	memdelete(joy_thread);
+	joy_thread.wait_to_finish();
 	close_joypad();
 }
 
@@ -192,13 +183,23 @@ void JoypadLinux::monitor_joypads() {
 		{
 			MutexLock lock(joy_mutex);
 
-			for (int i = 0; i < 32; i++) {
+			DIR *input_directory;
+			input_directory = opendir("/dev/input");
+			if (input_directory) {
+				struct dirent *current;
 				char fname[64];
-				sprintf(fname, "/dev/input/event%d", i);
-				if (attached_devices.find(fname) == -1) {
-					open_joypad(fname);
+
+				while ((current = readdir(input_directory)) != NULL) {
+					if (strncmp(current->d_name, "event", 5) != 0) {
+						continue;
+					}
+					sprintf(fname, "/dev/input/%.*s", 16, current->d_name);
+					if (attached_devices.find(fname) == -1) {
+						open_joypad(fname);
+					}
 				}
 			}
+			closedir(input_directory);
 		}
 		usleep(1000000); // 1s
 	}
@@ -459,9 +460,9 @@ void JoypadLinux::process_joypads() {
 							case ABS_HAT0X:
 								if (ev.value != 0) {
 									if (ev.value < 0) {
-										joy->dpad |= Input::HAT_MASK_LEFT;
+										joy->dpad = (joy->dpad | Input::HAT_MASK_LEFT) & ~Input::HAT_MASK_RIGHT;
 									} else {
-										joy->dpad |= Input::HAT_MASK_RIGHT;
+										joy->dpad = (joy->dpad | Input::HAT_MASK_RIGHT) & ~Input::HAT_MASK_LEFT;
 									}
 								} else {
 									joy->dpad &= ~(Input::HAT_MASK_LEFT | Input::HAT_MASK_RIGHT);
@@ -473,9 +474,9 @@ void JoypadLinux::process_joypads() {
 							case ABS_HAT0Y:
 								if (ev.value != 0) {
 									if (ev.value < 0) {
-										joy->dpad |= Input::HAT_MASK_UP;
+										joy->dpad = (joy->dpad | Input::HAT_MASK_UP) & ~Input::HAT_MASK_DOWN;
 									} else {
-										joy->dpad |= Input::HAT_MASK_DOWN;
+										joy->dpad = (joy->dpad | Input::HAT_MASK_DOWN) & ~Input::HAT_MASK_UP;
 									}
 								} else {
 									joy->dpad &= ~(Input::HAT_MASK_UP | Input::HAT_MASK_DOWN);

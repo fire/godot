@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -55,10 +55,12 @@ class SceneTreeDock : public VBoxContainer {
 	GDCLASS(SceneTreeDock, VBoxContainer);
 
 	enum Tool {
-
 		TOOL_NEW,
 		TOOL_INSTANCE,
 		TOOL_EXPAND_COLLAPSE,
+		TOOL_CUT,
+		TOOL_COPY,
+		TOOL_PASTE,
 		TOOL_RENAME,
 		TOOL_BATCH_RENAME,
 		TOOL_REPLACE,
@@ -91,6 +93,7 @@ class SceneTreeDock : public VBoxContainer {
 		TOOL_CREATE_USER_INTERFACE,
 		TOOL_CREATE_FAVORITE,
 
+		TOOL_PROPERTY_EDIT,
 	};
 
 	enum {
@@ -109,6 +112,7 @@ class SceneTreeDock : public VBoxContainer {
 	Button *button_instance;
 	Button *button_create_script;
 	Button *button_detach_script;
+	Button *button_property_editor;
 
 	Button *button_2d;
 	Button *button_3d;
@@ -126,6 +130,10 @@ class SceneTreeDock : public VBoxContainer {
 
 	EditorData *editor_data;
 	EditorSelection *editor_selection;
+
+	List<Node *> node_clipboard;
+	String clipboard_source_scene;
+	HashMap<String, Map<RES, RES>> clipboard_resource_remap;
 
 	ScriptCreateDialog *script_create_dialog;
 	AcceptDialog *accept;
@@ -184,7 +192,7 @@ class SceneTreeDock : public VBoxContainer {
 	void _script_created(Ref<Script> p_script);
 	void _script_creation_closed();
 
-	void _delete_confirm();
+	void _delete_confirm(bool p_cut = false);
 
 	void _toggle_editable_children_from_selection();
 	void _toggle_editable_children(Node *p_node);
@@ -204,7 +212,6 @@ class SceneTreeDock : public VBoxContainer {
 	bool _validate_no_foreign();
 	void _selection_changed();
 	void _update_script_button();
-	Node *_get_selection_group_tail(Node *p_node, List<Node *> p_list);
 
 	void _fill_path_renames(Vector<StringName> base_path, Vector<StringName> new_base_path, Node *p_node, List<Pair<NodePath, NodePath>> *p_renames);
 
@@ -232,8 +239,51 @@ class SceneTreeDock : public VBoxContainer {
 
 	void _feature_profile_changed();
 
+	void _clear_clipboard();
+	void _create_remap_for_node(Node *p_node, Map<RES, RES> &r_remap);
+	void _create_remap_for_resource(RES p_resource, Map<RES, RES> &r_remap);
+
 	bool profile_allow_editing;
 	bool profile_allow_script_editing;
+
+	ConfirmationDialog *property_editor = nullptr;
+	Tree *property_editor_tree = nullptr;
+	LineEdit *property_editor_search_box = nullptr;
+	CheckBox *exact_search_button = nullptr;
+	ConfirmationDialog *_create_scene_property_editor();
+	AcceptDialog *edit_variable_dialog = memnew(AcceptDialog);
+	EditorInspector *edit_variable_edit = memnew(EditorInspector);
+	Timer *property_search_timer = memnew(Timer);
+	struct VariantInfo {
+		Variant variant;
+		PropertyInfo info;
+		String path;
+		bool operator<(const VariantInfo &p_in) const {
+			return p_in.path < path && p_in.info.name < info.name && p_in.variant < variant;
+		}
+		bool operator==(const VariantInfo &p_in) const {
+			return p_in.path == path && p_in.info.name == info.name && p_in.variant == variant;
+		}
+	};
+
+public:
+	enum PropertyEditorTable {
+		PROPERTY_EDITOR_TABLE_PATH = 0,
+		PROPERTY_EDITOR_TABLE_NAME = 1,
+		PROPERTY_EDITOR_TABLE_VALUE = 2,
+		PROPERTY_EDITOR_TABLE_EDIT = 3,
+		PROPERTY_EDITOR_TABLE_RELOAD = 4
+	};
+	void _scene_property_editor_update();
+	void _update_scene_property_editor(int32_t &r_count, Vector<VariantInfo> &r_queue, String p_search_term, Tree *p_tree, TreeItem *p_tree_item, Node *p_root, Node *p_current_node);
+	void _scene_property_editor_changed(String p_search_term);
+	void _scene_property_editor_text_changed();
+	void _scene_property_editor_button_pressed(Object *p_item, int32_t p_column, int32_t p_id);
+	void _scene_property_editor_action_activated();
+	void _scene_property_editor_select(String p_path, String p_name);
+	void _count_scene_property_editor(int32_t &r_count, Node *p_root, Node *p_current_node);
+	void _scene_property_editor_closed();
+	void _focus_filter(String p_name);
 
 protected:
 	void _notification(int p_what);
@@ -269,6 +319,7 @@ public:
 	ScriptCreateDialog *get_script_create_dialog() { return script_create_dialog; }
 
 	SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSelection *p_editor_selection, EditorData &p_editor_data);
+	~SceneTreeDock();
 };
 
 #endif // SCENE_TREE_DOCK_H

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -38,14 +38,9 @@ class SpriteFrames : public Resource {
 	GDCLASS(SpriteFrames, Resource);
 
 	struct Anim {
-		float speed;
-		bool loop;
+		float speed = 5.0;
+		bool loop = true;
 		Vector<Ref<Texture2D>> frames;
-
-		Anim() {
-			loop = true;
-			speed = 5;
-		}
 	};
 
 	Map<StringName, Anim> animations;
@@ -109,20 +104,20 @@ class AnimatedSprite2D : public Node2D {
 	GDCLASS(AnimatedSprite2D, Node2D);
 
 	Ref<SpriteFrames> frames;
-	bool playing;
-	bool backwards;
-	StringName animation;
-	int frame;
-	float speed_scale;
+	bool playing = false;
+	bool backwards = false;
+	StringName animation = "default";
+	int frame = 0;
+	float speed_scale = 1.0f;
 
-	bool centered;
+	bool centered = true;
 	Point2 offset;
 
-	bool is_over;
-	float timeout;
+	bool is_over = false;
+	float timeout = 0.0;
 
-	bool hflip;
-	bool vflip;
+	bool hflip = false;
+	bool vflip = false;
 
 	void _res_changed();
 

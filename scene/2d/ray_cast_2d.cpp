@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,7 +31,7 @@
 #include "ray_cast_2d.h"
 
 #include "collision_object_2d.h"
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "physics_body_2d.h"
 #include "servers/physics_server_2d.h"
 
@@ -173,7 +173,7 @@ void RayCast2D::_notification(int p_what) {
 			}
 			draw_line(Vector2(), target_position, draw_col, 2);
 			Vector<Vector2> pts;
-			float tsize = 8;
+			float tsize = 8.0;
 			pts.push_back(xf.xform(Vector2(tsize, 0)));
 			pts.push_back(xf.xform(Vector2(0, Math_SQRT12 * tsize)));
 			pts.push_back(xf.xform(Vector2(0, -Math_SQRT12 * tsize)));
@@ -325,12 +325,4 @@ void RayCast2D::_bind_methods() {
 }
 
 RayCast2D::RayCast2D() {
-	enabled = true;
-	collided = false;
-	against_shape = 0;
-	collision_mask = 1;
-	target_position = Vector2(0, 50);
-	exclude_parent_body = true;
-	collide_with_bodies = true;
-	collide_with_areas = false;
 }

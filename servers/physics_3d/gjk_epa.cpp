@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -64,7 +64,7 @@ GJK-EPA collision solver by Nathanael Presson, 2008
 
 /* GJK	*/
 #define GJK_MAX_ITERATIONS	128
-#define GJK_ACCURARY		((real_t)0.0001)
+#define GJK_ACCURACY		((real_t)0.0001)
 #define GJK_MIN_DISTANCE	((real_t)0.0001)
 #define GJK_DUPLICATED_EPS	((real_t)0.0001)
 #define GJK_SIMPLEX2_EPS	((real_t)0.0)
@@ -72,10 +72,13 @@ GJK-EPA collision solver by Nathanael Presson, 2008
 #define GJK_SIMPLEX4_EPS	((real_t)0.0)
 
 /* EPA	*/
-#define EPA_MAX_VERTICES	64
+#define EPA_MAX_VERTICES	128
 #define EPA_MAX_FACES		(EPA_MAX_VERTICES*2)
 #define EPA_MAX_ITERATIONS	255
-#define EPA_ACCURACY		((real_t)0.0001)
+// -- GODOT start --
+//#define EPA_ACCURACY		((real_t)0.0001)
+#define EPA_ACCURACY		((real_t)0.00001)
+// -- GODOT end --
 #define EPA_FALLBACK		(10*EPA_ACCURACY)
 #define EPA_PLANE_EPS		((real_t)0.00001)
 #define EPA_INSIDE_EPS		((real_t)0.01)
@@ -102,7 +105,6 @@ typedef unsigned char	U1;
 
 // MinkowskiDiff
 struct	MinkowskiDiff {
-
 	const Shape3DSW* m_shapes[2];
 
 	Transform transform_A;
@@ -127,7 +129,6 @@ struct	MinkowskiDiff {
 			return ( Support1 ( d ) );
 		} else {
 			return ( Support0 ( d ) );
-
 }
 	}
 };
@@ -239,7 +240,7 @@ struct	GJK
 				/* Check for termination				*/
 				const real_t	omega=vec3_dot(m_ray,w)/rl;
 				alpha=MAX(omega,alpha);
-				if(((rl-alpha)-(GJK_ACCURARY*rl))<=0)
+				if(((rl-alpha)-(GJK_ACCURACY*rl))<=0)
 				{/* Return old simplex				*/
 					removevertice(m_simplices[m_current]);
 					break;
@@ -281,7 +282,6 @@ struct	GJK
 						}
 					}
 					if(mask==15) { m_status=eStatus::Inside;
-
 }
 				}
 				else
@@ -312,12 +312,10 @@ struct	GJK
 						axis[i]=1;
 						appendvertice(*m_simplex, axis);
 						if(EncloseOrigin()) {	return(true);
-
 }
 						removevertice(*m_simplex);
 						appendvertice(*m_simplex,-axis);
 						if(EncloseOrigin()) {	return(true);
-
 }
 						removevertice(*m_simplex);
 					}
@@ -335,12 +333,10 @@ struct	GJK
 						{
 							appendvertice(*m_simplex, p);
 							if(EncloseOrigin()) {	return(true);
-
 }
 							removevertice(*m_simplex);
 							appendvertice(*m_simplex,-p);
 							if(EncloseOrigin()) {	return(true);
-
 }
 							removevertice(*m_simplex);
 						}
@@ -355,12 +351,10 @@ struct	GJK
 					{
 						appendvertice(*m_simplex,n);
 						if(EncloseOrigin()) {	return(true);
-
 }
 						removevertice(*m_simplex);
 						appendvertice(*m_simplex,-n);
 						if(EncloseOrigin()) {	return(true);
-
 }
 						removevertice(*m_simplex);
 					}
@@ -372,7 +366,6 @@ struct	GJK
 						m_simplex->c[1]->w-m_simplex->c[3]->w,
 						m_simplex->c[2]->w-m_simplex->c[3]->w))>0) {
 						return(true);
-
 }
 				}
 				break;
@@ -476,7 +469,7 @@ struct	GJK
 			if(ng&&(Math::abs(vl)>GJK_SIMPLEX4_EPS))
 			{
 				real_t	mindist=-1;
-				real_t	subw[3];
+				real_t	subw[3] = {0.f, 0.f, 0.f};
 				U		subm=0;
 				for(U i=0;i<3;++i)
 				{
@@ -522,7 +515,6 @@ struct	GJK
 		{
 			Vector3	n;
 			real_t	d;
-			real_t	p;
 			sSV*		c[3];
 			sFace*		f[3];
 			sFace*		l[2];
@@ -580,7 +572,6 @@ struct	GJK
 				face->l[0]	=	nullptr;
 				face->l[1]	=	list.root;
 				if(list.root) { list.root->l[0]=face;
-
 }
 				list.root	=	face;
 				++list.count;
@@ -588,13 +579,10 @@ struct	GJK
 			static inline void		remove(sList& list,sFace* face)
 			{
 				if(face->l[1]) { face->l[1]->l[0]=face->l[0];
-
 }
 				if(face->l[0]) { face->l[0]->l[1]=face->l[1];
-
 }
 				if(face==list.root) { list.root=face->l[1];
-
 }
 				--list.count;
 			}
@@ -616,7 +604,6 @@ struct	GJK
 				GJK::sSimplex&	simplex=*gjk.m_simplex;
 				if((simplex.rank>1)&&gjk.EncloseOrigin())
 				{
-
 					/* Clean up				*/
 					while(m_hull.root)
 					{
@@ -676,9 +663,7 @@ struct	GJK
 										remove(m_hull,best);
 										append(m_stock,best);
 										best=findbest();
-										if(best->p>=outer.p) { outer=*best;
-
-}
+										outer=*best;
 									} else { m_status=eStatus::InvalidHull;break; }
 								} else { m_status=eStatus::AccuraryReached;break; }
 							} else { m_status=eStatus::OutOfVertices;break; }
@@ -704,25 +689,54 @@ struct	GJK
 					}
 				}
 				/* Fallback		*/
-				m_status	=	eStatus::FallBack;
-				m_normal	=	-guess;
-				const real_t	nl=m_normal.length();
-				if(nl>0) {
-					m_normal	=	m_normal/nl;
+				m_status = eStatus::FallBack;
+				m_normal = -guess;
+				const real_t nl = m_normal.length();
+				if (nl > 0) {
+					m_normal = m_normal/nl;
 				} else {
-					m_normal	=	Vector3(1,0,0);
-
-}
+					m_normal = Vector3(1,0,0);
+				}
 				m_depth	=	0;
 				m_result.rank=1;
 				m_result.c[0]=simplex.c[0];
 				m_result.p[0]=1;
 				return(m_status);
 			}
+
+			bool getedgedist(sFace* face, sSV* a, sSV* b, real_t& dist)
+			{
+				const Vector3 ba = b->w - a->w;
+				const Vector3 n_ab = vec3_cross(ba, face->n);   // Outward facing edge normal direction, on triangle plane
+				const real_t a_dot_nab = vec3_dot(a->w, n_ab);  // Only care about the sign to determine inside/outside, so not normalization required
+
+				if (a_dot_nab < 0) {
+					// Outside of edge a->b
+					const real_t ba_l2 = ba.length_squared();
+					const real_t a_dot_ba = vec3_dot(a->w, ba);
+					const real_t b_dot_ba = vec3_dot(b->w, ba);
+
+					if (a_dot_ba > 0) {
+						// Pick distance vertex a
+						dist = a->w.length();
+					} else if (b_dot_ba < 0) {
+						// Pick distance vertex b
+						dist = b->w.length();
+					} else {
+						// Pick distance to edge a->b
+						const real_t a_dot_b = vec3_dot(a->w, b->w);
+						dist = Math::sqrt(MAX((a->w.length_squared() * b->w.length_squared() - a_dot_b * a_dot_b) / ba_l2, 0.0));
+					}
+
+					return true;
+				}
+
+				return false;
+			}
+
 			sFace*				newface(sSV* a,sSV* b,sSV* c,bool forced)
 			{
-				if(m_stock.root)
-				{
+				if (m_stock.root) {
 					sFace*	face=m_stock.root;
 					remove(m_stock,face);
 					append(m_hull,face);
@@ -733,25 +747,23 @@ struct	GJK
 					face->n		=	vec3_cross(b->w-a->w,c->w-a->w);
 					const real_t	l=face->n.length();
 					const bool		v=l>EPA_ACCURACY;
-					face->p		=	MIN(MIN(
-						vec3_dot(a->w,vec3_cross(face->n,a->w-b->w)),
-						vec3_dot(b->w,vec3_cross(face->n,b->w-c->w))),
-						vec3_dot(c->w,vec3_cross(face->n,c->w-a->w)))	/
-						(v?l:1);
-					face->p		=	face->p>=-EPA_INSIDE_EPS?0:face->p;
-					if(v)
-					{
-						face->d		=	vec3_dot(a->w,face->n)/l;
+					if (v) {
+						if (!(getedgedist(face, a, b, face->d) ||
+							  getedgedist(face, b, c, face->d) ||
+							  getedgedist(face, c, a, face->d))) {
+							// Origin projects to the interior of the triangle
+							// Use distance to triangle plane
+							face->d = vec3_dot(a->w, face->n) / l;
+						}
 						face->n		/=	l;
-						if(forced||(face->d>=-EPA_PLANE_EPS))
-						{
+						if (forced||(face->d>=-EPA_PLANE_EPS)) {
 							return(face);
-						} else { m_status=eStatus::NonConvex;
-
-}
-					} else { m_status=eStatus::Degenerated;
-
-}
+						} else {
+							m_status=eStatus::NonConvex;
+						}
+					} else {
+						m_status=eStatus::Degenerated;
+					}
 					remove(m_hull,face);
 					append(m_stock,face);
 					return(nullptr);
@@ -766,15 +778,13 @@ struct	GJK
 			{
 				sFace*		minf=m_hull.root;
 				real_t	mind=minf->d*minf->d;
-				real_t	maxp=minf->p;
 				for(sFace* f=minf->l[1];f;f=f->l[1])
 				{
 					const real_t	sqd=f->d*f->d;
-					if((f->p>=maxp)&&(sqd<mind))
+					if(sqd<mind)
 					{
 						minf=f;
 						mind=sqd;
-						maxp=f->p;
 					}
 				}
 				return(minf);
@@ -793,7 +803,6 @@ struct	GJK
 						{
 							bind(nf,0,f,e);
 							if(horizon.cf) { bind(horizon.cf,1,nf,2); } else { horizon.ff=nf;
-
 }
 							horizon.cf=nf;
 							++horizon.nf;
@@ -917,7 +926,6 @@ bool Penetration(	const Shape3DSW*	shape0,
 				results.distance		=	-epa.m_depth;
 				return(true);
 			} else { results.status=sResults::EPA_Failed;
-
 }
 		}
 		break;
@@ -948,8 +956,6 @@ bool Penetration(	const Shape3DSW*	shape0,
 #undef EPA_FALLBACK
 #undef EPA_PLANE_EPS
 #undef EPA_INSIDE_EPS
-
-
 } // end of namespace
 
 /* clang-format on */

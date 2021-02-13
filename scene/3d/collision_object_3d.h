@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -37,33 +37,28 @@
 class CollisionObject3D : public Node3D {
 	GDCLASS(CollisionObject3D, Node3D);
 
-	bool area;
+	bool area = false;
 
 	RID rid;
 
 	struct ShapeData {
-		Object *owner;
+		Object *owner = nullptr;
 		Transform xform;
 		struct ShapeBase {
 			Ref<Shape3D> shape;
-			int index;
+			int index = 0;
 		};
 
 		Vector<ShapeBase> shapes;
-		bool disabled;
-
-		ShapeData() {
-			disabled = false;
-			owner = nullptr;
-		}
+		bool disabled = false;
 	};
 
-	int total_subshapes;
+	int total_subshapes = 0;
 
 	Map<uint32_t, ShapeData> shapes;
 
-	bool capture_input_on_drag;
-	bool ray_pickable;
+	bool capture_input_on_drag = false;
+	bool ray_pickable = true;
 
 	void _update_pickable();
 

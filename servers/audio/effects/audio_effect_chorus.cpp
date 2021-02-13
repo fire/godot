@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -84,7 +84,7 @@ void AudioEffectChorusInstance::_process_chunk(const AudioFrame *p_src_frames, A
 		if (v.cutoff == 0) {
 			continue;
 		}
-		float auxlp = expf(-2.0 * Math_PI * v.cutoff / mix_rate);
+		float auxlp = expf(-Math_TAU * v.cutoff / mix_rate);
 		float c1 = 1.0 - auxlp;
 		float c2 = auxlp;
 		AudioFrame h = filter_h[vc];
@@ -104,7 +104,7 @@ void AudioEffectChorusInstance::_process_chunk(const AudioFrame *p_src_frames, A
 
 			float phase = (float)(local_cycles & AudioEffectChorus::CYCLES_MASK) / (float)(1 << AudioEffectChorus::CYCLES_FRAC);
 
-			float wave_delay = sinf(phase * 2.0 * Math_PI) * max_depth_frames;
+			float wave_delay = sinf(phase * Math_TAU) * max_depth_frames;
 
 			int wave_delay_frames = lrint(floor(wave_delay));
 			float wave_delay_frac = wave_delay - (float)wave_delay_frames;

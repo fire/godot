@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -132,13 +132,13 @@ AABB CollisionPolygon3D::get_item_rect() const {
 	return aabb;
 }
 
-void CollisionPolygon3D::set_depth(float p_depth) {
+void CollisionPolygon3D::set_depth(real_t p_depth) {
 	depth = p_depth;
 	_build_polygon();
 	update_gizmo();
 }
 
-float CollisionPolygon3D::get_depth() const {
+real_t CollisionPolygon3D::get_depth() const {
 	return depth;
 }
 
@@ -159,14 +159,14 @@ String CollisionPolygon3D::get_configuration_warning() const {
 	String warning = Node3D::get_configuration_warning();
 
 	if (!Object::cast_to<CollisionObject3D>(get_parent())) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("CollisionPolygon3D only serves to provide a collision shape to a CollisionObject3D derived node. Please only use it as a child of Area3D, StaticBody3D, RigidBody3D, KinematicBody3D, etc. to give them a shape.");
 	}
 
-	if (polygon.empty()) {
-		if (!warning.empty()) {
+	if (polygon.is_empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("An empty CollisionPolygon3D has no effect on collision.");
@@ -197,10 +197,5 @@ void CollisionPolygon3D::_bind_methods() {
 }
 
 CollisionPolygon3D::CollisionPolygon3D() {
-	aabb = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2));
-	depth = 1.0;
 	set_notify_local_transform(true);
-	parent = nullptr;
-	owner_id = 0;
-	disabled = false;
 }

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,12 +31,12 @@
 #include "collision_polygon_2d.h"
 
 #include "collision_object_2d.h"
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "core/math/geometry_2d.h"
 #include "scene/resources/concave_polygon_shape_2d.h"
 #include "scene/resources/convex_polygon_shape_2d.h"
 
-#include "thirdparty/misc/triangulator.h"
+#include "thirdparty/misc/polypartition.h"
 
 void CollisionPolygon2D::_build_polygon() {
 	parent->shape_owner_clear_shapes(owner_id);
@@ -158,7 +158,7 @@ void CollisionPolygon2D::_notification(int p_what) {
 				Vector2 line_to(0, 20);
 				draw_line(Vector2(), line_to, dcol, 3);
 				Vector<Vector2> pts;
-				float tsize = 8;
+				real_t tsize = 8;
 				pts.push_back(line_to + (Vector2(0, tsize)));
 				pts.push_back(line_to + (Vector2(Math_SQRT12 * tsize, 0)));
 				pts.push_back(line_to + (Vector2(-Math_SQRT12 * tsize, 0)));
@@ -194,6 +194,7 @@ void CollisionPolygon2D::set_polygon(const Vector<Point2> &p_polygon) {
 
 	if (parent) {
 		_build_polygon();
+		_update_in_shape_owner();
 	}
 	update();
 	update_configuration_warning();
@@ -208,6 +209,7 @@ void CollisionPolygon2D::set_build_mode(BuildMode p_mode) {
 	build_mode = p_mode;
 	if (parent) {
 		_build_polygon();
+		_update_in_shape_owner();
 	}
 }
 
@@ -233,14 +235,14 @@ String CollisionPolygon2D::get_configuration_warning() const {
 	String warning = Node2D::get_configuration_warning();
 
 	if (!Object::cast_to<CollisionObject2D>(get_parent())) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("CollisionPolygon2D only serves to provide a collision shape to a CollisionObject2D derived node. Please only use it as a child of Area2D, StaticBody2D, RigidBody2D, KinematicBody2D, etc. to give them a shape.");
 	}
 
-	if (polygon.empty()) {
-		if (!warning.empty()) {
+	if (polygon.is_empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("An empty CollisionPolygon2D has no effect on collision.");
@@ -273,14 +275,14 @@ bool CollisionPolygon2D::is_one_way_collision_enabled() const {
 	return one_way_collision;
 }
 
-void CollisionPolygon2D::set_one_way_collision_margin(float p_margin) {
+void CollisionPolygon2D::set_one_way_collision_margin(real_t p_margin) {
 	one_way_collision_margin = p_margin;
 	if (parent) {
 		parent->shape_owner_set_one_way_collision_margin(owner_id, one_way_collision_margin);
 	}
 }
 
-float CollisionPolygon2D::get_one_way_collision_margin() const {
+real_t CollisionPolygon2D::get_one_way_collision_margin() const {
 	return one_way_collision_margin;
 }
 
@@ -308,12 +310,5 @@ void CollisionPolygon2D::_bind_methods() {
 }
 
 CollisionPolygon2D::CollisionPolygon2D() {
-	aabb = Rect2(-10, -10, 20, 20);
-	build_mode = BUILD_SOLIDS;
 	set_notify_local_transform(true);
-	parent = nullptr;
-	owner_id = 0;
-	disabled = false;
-	one_way_collision = false;
-	one_way_collision_margin = 1.0;
 }

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -34,7 +34,7 @@
 #include "core/os/dir_access.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
-#include "core/set.h"
+#include "core/templates/set.h"
 #include "scene/main/node.h"
 class FileAccess;
 
@@ -52,12 +52,12 @@ class EditorFileSystemDirectory : public Object {
 	struct FileInfo {
 		String file;
 		StringName type;
-		uint64_t modified_time;
-		uint64_t import_modified_time;
-		bool import_valid;
+		uint64_t modified_time = 0;
+		uint64_t import_modified_time = 0;
+		bool import_valid = false;
 		String import_group_file;
 		Vector<String> deps;
-		bool verified; //used for checking changes
+		bool verified = false; //used for checking changes
 		String script_class_name;
 		String script_class_extends;
 		String script_class_icon_path;
@@ -119,22 +119,15 @@ class EditorFileSystem : public Node {
 			ACTION_FILE_RELOAD
 		};
 
-		Action action;
-		EditorFileSystemDirectory *dir;
+		Action action = ACTION_NONE;
+		EditorFileSystemDirectory *dir = nullptr;
 		String file;
-		EditorFileSystemDirectory *new_dir;
-		EditorFileSystemDirectory::FileInfo *new_file;
-
-		ItemAction() {
-			action = ACTION_NONE;
-			dir = nullptr;
-			new_dir = nullptr;
-			new_file = nullptr;
-		}
+		EditorFileSystemDirectory *new_dir = nullptr;
+		EditorFileSystemDirectory::FileInfo *new_file = nullptr;
 	};
 
 	bool use_threads;
-	Thread *thread;
+	Thread thread;
 	static void _thread_func(void *_userdata);
 
 	EditorFileSystemDirectory *new_filesystem;
@@ -162,10 +155,10 @@ class EditorFileSystem : public Node {
 	/* Used for reading the filesystem cache file */
 	struct FileCache {
 		String type;
-		uint64_t modification_time;
-		uint64_t import_modification_time;
+		uint64_t modification_time = 0;
+		uint64_t import_modification_time = 0;
 		Vector<String> deps;
-		bool import_valid;
+		bool import_valid = false;
 		String import_group_file;
 		String script_class_name;
 		String script_class_extends;
@@ -175,9 +168,9 @@ class EditorFileSystem : public Node {
 	HashMap<String, FileCache> file_cache;
 
 	struct ScanProgress {
-		float low;
-		float hi;
-		mutable EditorProgressBG *progress;
+		float low = 0;
+		float hi = 0;
+		mutable EditorProgressBG *progress = nullptr;
 		void update(int p_current, int p_total) const;
 		ScanProgress get_sub(int p_current, int p_total) const;
 	};
@@ -196,7 +189,7 @@ class EditorFileSystem : public Node {
 
 	void _scan_new_dir(EditorFileSystemDirectory *p_dir, DirAccess *da, const ScanProgress &p_progress);
 
-	Thread *thread_sources;
+	Thread thread_sources;
 	bool scanning_changes;
 	bool scanning_changes_done;
 
@@ -220,7 +213,7 @@ class EditorFileSystem : public Node {
 
 	struct ImportFile {
 		String path;
-		int order;
+		int order = 0;
 		bool operator<(const ImportFile &p_if) const {
 			return order < p_if.order;
 		}
@@ -255,7 +248,6 @@ public:
 	float get_scanning_progress() const;
 	void scan();
 	void scan_changes();
-	void get_changed_sources(List<String> *r_changed);
 	void update_file(const String &p_file);
 
 	EditorFileSystemDirectory *get_filesystem_path(const String &p_path);

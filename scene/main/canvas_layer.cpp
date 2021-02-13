@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -303,17 +303,7 @@ void CanvasLayer::_bind_methods() {
 }
 
 CanvasLayer::CanvasLayer() {
-	vp = nullptr;
-	scale = Vector2(1, 1);
-	rot = 0;
-	locrotscale_dirty = false;
-	layer = 1;
 	canvas = RS::get_singleton()->canvas_create();
-	custom_viewport = nullptr;
-
-	sort_index = 0;
-	follow_viewport = false;
-	follow_viewport_scale = 1.0;
 }
 
 CanvasLayer::~CanvasLayer() {

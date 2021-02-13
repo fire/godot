@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,10 +31,11 @@
 #ifndef CSHARP_SCRIPT_H
 #define CSHARP_SCRIPT_H
 
+#include "core/doc_data.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "core/script_language.h"
-#include "core/self_list.h"
+#include "core/object/script_language.h"
+#include "core/templates/self_list.h"
 
 #include "mono_gc_handle.h"
 #include "mono_gd/gd_mono.h"
@@ -188,6 +189,14 @@ public:
 	bool has_source_code() const override;
 	String get_source_code() const override;
 	void set_source_code(const String &p_code) override;
+
+#ifdef TOOLS_ENABLED
+	virtual const Vector<DocData::ClassDoc> &get_documentation() const override {
+		// TODO
+		static Vector<DocData::ClassDoc> docs;
+		return docs;
+	}
+#endif // TOOLS_ENABLED
 
 	Error reload(bool p_keep_state = false) override;
 
@@ -533,7 +542,7 @@ public:
 
 class ResourceFormatLoaderCSharpScript : public ResourceFormatLoader {
 public:
-	RES load(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, bool p_no_cache = false) override;
+	RES load(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) override;
 	void get_recognized_extensions(List<String> *p_extensions) const override;
 	bool handles_type(const String &p_type) const override;
 	String get_resource_type(const String &p_path) const override;

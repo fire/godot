@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -94,20 +94,6 @@ static inline Vector2 interpolate(const Rect2 &r, const Vector2 &v) {
 //----------------------------------------------------------------------------
 
 LineBuilder::LineBuilder() {
-	joint_mode = Line2D::LINE_JOINT_SHARP;
-	width = 10;
-	curve = nullptr;
-	default_color = Color(0.4, 0.5, 1);
-	gradient = nullptr;
-	sharp_limit = 2.f;
-	round_precision = 8;
-	begin_cap_mode = Line2D::LINE_CAP_NONE;
-	end_cap_mode = Line2D::LINE_CAP_NONE;
-	tile_aspect = 1.f;
-
-	_interpolate_color = false;
-	_last_index[0] = 0;
-	_last_index[1] = 0;
 }
 
 void LineBuilder::clear_output() {
@@ -459,39 +445,6 @@ void LineBuilder::strip_begin(Vector2 up, Vector2 down, Color color, float uvx) 
 	_last_index[DOWN] = vi + 1;
 }
 
-void LineBuilder::strip_new_quad(Vector2 up, Vector2 down, Color color, float uvx) {
-	int vi = vertices.size();
-
-	vertices.push_back(vertices[_last_index[UP]]);
-	vertices.push_back(vertices[_last_index[DOWN]]);
-	vertices.push_back(up);
-	vertices.push_back(down);
-
-	if (_interpolate_color) {
-		colors.push_back(color);
-		colors.push_back(color);
-		colors.push_back(color);
-		colors.push_back(color);
-	}
-
-	if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
-		uvs.push_back(uvs[_last_index[UP]]);
-		uvs.push_back(uvs[_last_index[DOWN]]);
-		uvs.push_back(Vector2(uvx, UP));
-		uvs.push_back(Vector2(uvx, DOWN));
-	}
-
-	indices.push_back(vi);
-	indices.push_back(vi + 3);
-	indices.push_back(vi + 1);
-	indices.push_back(vi);
-	indices.push_back(vi + 2);
-	indices.push_back(vi + 3);
-
-	_last_index[UP] = vi + 2;
-	_last_index[DOWN] = vi + 3;
-}
-
 void LineBuilder::strip_add_quad(Vector2 up, Vector2 down, Color color, float uvx) {
 	int vi = vertices.size();
 
@@ -587,7 +540,7 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 	float t = Vector2(1, 0).angle_to(vbegin);
 	float end_angle = t + angle_delta;
 	Vector2 rpos(0, 0);
-	float tt_begin = -Math_PI / 2.f;
+	float tt_begin = -Math_PI / 2.0f;
 	float tt = tt_begin;
 
 	// Center vertice

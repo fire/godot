@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -33,15 +33,6 @@
 #include "core/os/os.h"
 
 WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
-	_is_multiplayer = false;
-	_peer_id = 0;
-	_target_peer = 0;
-	_refusing = false;
-
-	_current_packet.source = 0;
-	_current_packet.destination = 0;
-	_current_packet.size = 0;
-	_current_packet.data = nullptr;
 }
 
 WebSocketMultiplayerPeer::~WebSocketMultiplayerPeer() {

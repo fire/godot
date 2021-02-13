@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,6 +31,7 @@
 #include "animated_sprite_2d.h"
 
 #include "core/os/os.h"
+#include "scene/main/viewport.h"
 #include "scene/scene_string_names.h"
 
 #ifdef TOOLS_ENABLED
@@ -408,7 +409,7 @@ void AnimatedSprite2D::_notification(int p_what) {
 					}
 
 					update();
-					_change_notify("frame");
+
 					emit_signal(SceneStringNames::get_singleton()->frame_changed);
 				}
 
@@ -443,7 +444,7 @@ void AnimatedSprite2D::_notification(int p_what) {
 				ofs -= s / 2;
 			}
 
-			if (Engine::get_singleton()->get_use_pixel_snap()) {
+			if (get_viewport() && get_viewport()->is_snap_2d_transforms_to_pixel_enabled()) {
 				ofs = ofs.floor();
 			}
 			Rect2 dst_rect(ofs, s);
@@ -476,7 +477,7 @@ void AnimatedSprite2D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 		set_frame(frame);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	_reset_timeout();
 	update();
 	update_configuration_warning();
@@ -509,7 +510,7 @@ void AnimatedSprite2D::set_frame(int p_frame) {
 	frame = p_frame;
 	_reset_timeout();
 	update();
-	_change_notify("frame");
+
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -545,7 +546,6 @@ void AnimatedSprite2D::set_offset(const Point2 &p_offset) {
 	offset = p_offset;
 	update();
 	item_rect_changed();
-	_change_notify("offset");
 }
 
 Point2 AnimatedSprite2D::get_offset() const {
@@ -572,8 +572,7 @@ bool AnimatedSprite2D::is_flipped_v() const {
 
 void AnimatedSprite2D::_res_changed() {
 	set_frame(frame);
-	_change_notify("frame");
-	_change_notify("animation");
+
 	update();
 }
 
@@ -641,7 +640,7 @@ void AnimatedSprite2D::set_animation(const StringName &p_animation) {
 	animation = p_animation;
 	_reset_timeout();
 	set_frame(0);
-	_change_notify();
+	notify_property_list_changed();
 	update();
 }
 
@@ -653,7 +652,7 @@ String AnimatedSprite2D::get_configuration_warning() const {
 	String warning = Node2D::get_configuration_warning();
 
 	if (frames.is_null()) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("A SpriteFrames resource must be created or set in the \"Frames\" property in order for AnimatedSprite to display frames.");
@@ -711,15 +710,4 @@ void AnimatedSprite2D::_bind_methods() {
 }
 
 AnimatedSprite2D::AnimatedSprite2D() {
-	centered = true;
-	hflip = false;
-	vflip = false;
-
-	frame = 0;
-	speed_scale = 1.0f;
-	playing = false;
-	backwards = false;
-	animation = "default";
-	timeout = 0;
-	is_over = false;
 }

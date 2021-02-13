@@ -1,6 +1,6 @@
 # Slovak translation of the Godot Engine editor
-# Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.
-# Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).
+# Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.
+# Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).
 # This file is distributed under the same license as the Godot source code.
 # J08nY <johnenter@gmail.com>, 2016.
 # MineGame 159 <minegame459@gmail.com>, 2018.
@@ -1027,14 +1027,19 @@ msgid "Owners Of:"
 msgstr "Majitelia:"
 
 #: editor/dependency_editor.cpp
-msgid "Remove selected files from the project? (Can't be restored)"
+#, fuzzy
+msgid ""
+"Remove selected files from the project? (no undo)\n"
+"You can find the removed files in the system trash to restore them."
 msgstr "Odstrániť vybraté súbory z projektu? (nedá sa vrátiť späť)"
 
 #: editor/dependency_editor.cpp
+#, fuzzy
 msgid ""
 "The files being removed are required by other resources in order for them to "
 "work.\n"
-"Remove them anyway? (no undo)"
+"Remove them anyway? (no undo)\n"
+"You can find the removed files in the system trash to restore them."
 msgstr ""
 "Súbory ktoré budú odstránené vyžadujú ďalšie zdroje, aby mohli pracovať.\n"
 "Odstrániť aj napriek tomu? (nedá sa vrátiť späť)"
@@ -1081,7 +1086,7 @@ msgstr "Orphan Resource Explorer"
 
 #: editor/dependency_editor.cpp editor/editor_audio_buses.cpp
 #: editor/editor_file_dialog.cpp editor/editor_node.cpp
-#: editor/filesystem_dock.cpp editor/plugins/item_list_editor_plugin.cpp
+#: editor/plugins/item_list_editor_plugin.cpp
 #: editor/plugins/sprite_frames_editor_plugin.cpp editor/project_export.cpp
 #: editor/project_settings_editor.cpp editor/scene_tree_dock.cpp
 msgid "Delete"
@@ -1938,10 +1943,6 @@ msgstr "Predzobraziť:"
 msgid "File:"
 msgstr "Súbor:"
 
-#: editor/editor_file_dialog.cpp scene/gui/file_dialog.cpp
-msgid "Must use a valid extension."
-msgstr "Musíte použiť platné rozšírenie."
-
 #: editor/editor_file_system.cpp
 msgid "ScanSources"
 msgstr "SkenZdrojov"
@@ -2298,19 +2299,25 @@ msgid "Error saving TileSet!"
 msgstr "Error pri ukladaní TileSet-u!"
 
 #: editor/editor_node.cpp
-msgid "Error trying to save layout!"
-msgstr "Error pri ukladaní layout-i!"
+msgid ""
+"An error occurred while trying to save the editor layout.\n"
+"Make sure the editor's user data path is writable."
+msgstr ""
 
 #: editor/editor_node.cpp
-msgid "Default editor layout overridden."
-msgstr "Predvolený editor layout je prepísaný."
+msgid ""
+"Default editor layout overridden.\n"
+"To restore the Default layout to its base settings, use the Delete Layout "
+"option and delete the Default layout."
+msgstr ""
 
 #: editor/editor_node.cpp
 msgid "Layout name not found!"
 msgstr "Meno Layout-u sa nenašlo!"
 
 #: editor/editor_node.cpp
-msgid "Restored default layout to base settings."
+#, fuzzy
+msgid "Restored the Default layout to its base settings."
 msgstr "Obnovené predvolené rozloženie na základné nastavenia."
 
 #: editor/editor_node.cpp
@@ -2367,6 +2374,10 @@ msgid "There is no defined scene to run."
 msgstr "Nieje definovaná žiadna scéna na spustenie."
 
 #: editor/editor_node.cpp
+msgid "Save scene before running..."
+msgstr ""
+
+#: editor/editor_node.cpp
 msgid "Could not start subprocess!"
 msgstr "Subprocess sa nedá spustiť!"
 
@@ -2409,20 +2420,6 @@ msgstr "Na uloženie scény je potrebný root node."
 #: editor/editor_node.cpp
 msgid "Save Scene As..."
 msgstr "Uložiť Scénu Ako..."
-
-#: editor/editor_node.cpp
-msgid "No"
-msgstr "Nie"
-
-#: editor/editor_node.cpp
-msgid "Yes"
-msgstr "ÁNO"
-
-#: editor/editor_node.cpp
-msgid "This scene has never been saved. Save before running?"
-msgstr ""
-"Táto scéna ešte nikdy nebola uložená. Chcete ju uložiť predtým ako ju "
-"zapnete?"
 
 #: editor/editor_node.cpp editor/scene_tree_dock.cpp
 msgid "This operation can't be done without a scene."
@@ -2471,6 +2468,10 @@ msgstr "Rýchle Spustenie Scény..."
 #: editor/editor_node.cpp
 msgid "Quit"
 msgstr "Odísť"
+
+#: editor/editor_node.cpp
+msgid "Yes"
+msgstr "ÁNO"
 
 #: editor/editor_node.cpp
 msgid "Exit the editor?"
@@ -3680,6 +3681,16 @@ msgid "Name contains invalid characters."
 msgstr "Meno obsahuje neplatné písmená."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"The following files or folders conflict with items in the target location "
+"'%s':\n"
+"\n"
+"%s\n"
+"\n"
+"Do you wish to overwrite them?"
+msgstr ""
+
+#: editor/filesystem_dock.cpp
 msgid "Renaming file:"
 msgstr "Zostávajúce súbory:"
 
@@ -3727,14 +3738,6 @@ msgstr "Editovať Závislosti..."
 msgid "View Owners..."
 msgstr "Zobraziť Majiteľov..."
 
-#: editor/filesystem_dock.cpp editor/plugins/animation_player_editor_plugin.cpp
-msgid "Rename..."
-msgstr "Premenovať..."
-
-#: editor/filesystem_dock.cpp
-msgid "Duplicate..."
-msgstr "Duplikovať..."
-
 #: editor/filesystem_dock.cpp
 msgid "Move To..."
 msgstr "Presunúť Do..."
@@ -3762,11 +3765,17 @@ msgid "Collapse All"
 msgstr "Collapse All"
 
 #: editor/filesystem_dock.cpp
-#: editor/plugins/animation_tree_player_editor_plugin.cpp
-#: editor/project_manager.cpp editor/rename_dialog.cpp
-#: editor/scene_tree_dock.cpp
-msgid "Rename"
-msgstr "Premenovať"
+msgid "Duplicate..."
+msgstr "Duplikovať..."
+
+#: editor/filesystem_dock.cpp
+#, fuzzy
+msgid "Move to Trash"
+msgstr "Presunúť AutoLoad-y"
+
+#: editor/filesystem_dock.cpp editor/plugins/animation_player_editor_plugin.cpp
+msgid "Rename..."
+msgstr "Premenovať..."
 
 #: editor/filesystem_dock.cpp
 msgid "Previous Folder/File"
@@ -3801,8 +3810,11 @@ msgid "Move"
 msgstr "Presunúť"
 
 #: editor/filesystem_dock.cpp
-msgid "There is already file or folder with the same name in this location."
-msgstr "Už tu je súbor alebo priečinok pomenovaný rovnako."
+#: editor/plugins/animation_tree_player_editor_plugin.cpp
+#: editor/project_manager.cpp editor/rename_dialog.cpp
+#: editor/scene_tree_dock.cpp
+msgid "Rename"
+msgstr "Premenovať"
 
 #: editor/filesystem_dock.cpp
 msgid "Overwrite"
@@ -3870,8 +3882,19 @@ msgid "Searching..."
 msgstr "Vyhľadávam..."
 
 #: editor/find_in_files.cpp
-msgid "Search complete"
-msgstr "Vyhľadávanie bolo dokončené"
+#, fuzzy
+msgid "%d match in %d file."
+msgstr "%d zhody."
+
+#: editor/find_in_files.cpp
+#, fuzzy
+msgid "%d matches in %d file."
+msgstr "%d zhody."
+
+#: editor/find_in_files.cpp
+#, fuzzy
+msgid "%d matches in %d files."
+msgstr "%d zhody."
 
 #: editor/groups_editor.cpp
 msgid "Add to Group"
@@ -5104,10 +5127,10 @@ msgid "Assets ZIP File"
 msgstr "Prostriedky Súboru ZIP"
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
 msgid ""
 "Can't determine a save path for lightmap images.\n"
-"Save your scene (for images to be saved in the same dir), or pick a save "
-"path from the BakedLightmap properties."
+"Save your scene and try again."
 msgstr ""
 "Nedá sa určiť cesta pre uloženie lightmap obrázkov.\n"
 "Uložte svoju scénu (Aby sa obrázky na to isté miesto), alebo vyberte cestu "
@@ -5128,8 +5151,28 @@ msgstr ""
 "zapisovateľná."
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
+msgid "Failed determining lightmap size. Maximum lightmap size too small?"
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+msgid ""
+"Some mesh is invalid. Make sure the UV2 channel values are contained within "
+"the [0.0,1.0] square region."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+msgid ""
+"Godot editor was built without ray tracing support, lightmaps can't be baked."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid "Bake Lightmaps"
 msgstr "Bake Lightmaps"
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid "Select lightmap bake file:"
+msgstr "Vybrať Súbor Šablóny"
 
 #: editor/plugins/camera_editor_plugin.cpp
 #: editor/plugins/spatial_editor_plugin.cpp
@@ -6219,6 +6262,11 @@ msgid "Can only set point into a ParticlesMaterial process material"
 msgstr ""
 
 #: editor/plugins/particles_2d_editor_plugin.cpp
+#, fuzzy
+msgid "Convert to CPUParticles2D"
+msgstr "Všetky vybrané"
+
+#: editor/plugins/particles_2d_editor_plugin.cpp
 #: editor/plugins/particles_editor_plugin.cpp
 msgid "Generation Time (sec):"
 msgstr ""
@@ -6277,10 +6325,6 @@ msgstr ""
 
 #: editor/plugins/particles_editor_plugin.cpp
 msgid "Generate Visibility AABB"
-msgstr ""
-
-#: editor/plugins/particles_editor_plugin.cpp
-msgid "Generate AABB"
 msgstr ""
 
 #: editor/plugins/path_2d_editor_plugin.cpp
@@ -7275,6 +7319,11 @@ msgstr ""
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "Yaw"
 msgstr ""
+
+#: editor/plugins/spatial_editor_plugin.cpp
+#, fuzzy
+msgid "Size"
+msgstr "Veľkosť: "
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "Objects Drawn"
@@ -8330,8 +8379,23 @@ msgstr "Vytvoriť adresár"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 #, fuzzy
+msgid "New Rectangle"
+msgstr "Nová Scéna"
+
+#: editor/plugins/tile_set_editor_plugin.cpp
+#, fuzzy
 msgid "Create a new polygon."
 msgstr "Vytvoriť adresár"
+
+#: editor/plugins/tile_set_editor_plugin.cpp
+#, fuzzy
+msgid "New Polygon"
+msgstr "Signály:"
+
+#: editor/plugins/tile_set_editor_plugin.cpp
+#, fuzzy
+msgid "Delete Selected Shape"
+msgstr "Zmazať označené kľúč(e)"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "Keep polygon inside region Rect."
@@ -8551,10 +8615,6 @@ msgid "Error"
 msgstr ""
 
 #: editor/plugins/version_control_editor_plugin.cpp
-msgid "No commit message was provided"
-msgstr ""
-
-#: editor/plugins/version_control_editor_plugin.cpp
 msgid "No files added to stage"
 msgstr ""
 
@@ -8615,10 +8675,6 @@ msgstr "Zmeniť veľkosť výberu"
 
 #: editor/plugins/version_control_editor_plugin.cpp
 msgid "Stage All"
-msgstr ""
-
-#: editor/plugins/version_control_editor_plugin.cpp
-msgid "Add a commit message"
 msgstr ""
 
 #: editor/plugins/version_control_editor_plugin.cpp
@@ -9767,6 +9823,10 @@ msgstr ""
 
 #: editor/project_manager.cpp
 msgid "OpenGL ES 3.0"
+msgstr ""
+
+#: editor/project_manager.cpp
+msgid "Not supported by your GPU drivers."
 msgstr ""
 
 #: editor/project_manager.cpp
@@ -11459,6 +11519,36 @@ msgstr "Filter:"
 msgid "Give a MeshLibrary resource to this GridMap to use its meshes."
 msgstr ""
 
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+msgid "Begin Bake"
+msgstr ""
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+msgid "Preparing data structures"
+msgstr ""
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+msgid "Generate buffers"
+msgstr ""
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+#, fuzzy
+msgid "Direct lighting"
+msgstr "Smery"
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+msgid "Indirect lighting"
+msgstr ""
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+msgid "Post processing"
+msgstr ""
+
+#: modules/lightmapper_cpu/lightmapper_cpu.cpp
+#, fuzzy
+msgid "Plotting lightmaps"
+msgstr "Generovanie Lightmaps"
+
 #: modules/mono/csharp_script.cpp
 msgid "Class name can't be a reserved keyword"
 msgstr ""
@@ -11978,11 +12068,13 @@ msgid "Select device from the list"
 msgstr ""
 
 #: platform/android/export/export.cpp
-msgid "ADB executable not configured in the Editor Settings."
+msgid "Unable to find the 'apksigner' tool."
 msgstr ""
 
 #: platform/android/export/export.cpp
-msgid "OpenJDK jarsigner not configured in the Editor Settings."
+msgid ""
+"Android build template not installed in the project. Install it from the "
+"Project menu."
 msgstr ""
 
 #: platform/android/export/export.cpp
@@ -11994,17 +12086,31 @@ msgid "Release keystore incorrectly configured in the export preset."
 msgstr ""
 
 #: platform/android/export/export.cpp
-msgid "Custom build requires a valid Android SDK path in Editor Settings."
+msgid "A valid Android SDK path is required in Editor Settings."
 msgstr ""
 
 #: platform/android/export/export.cpp
-msgid "Invalid Android SDK path for custom build in Editor Settings."
+msgid "Invalid Android SDK path in Editor Settings."
 msgstr ""
 
 #: platform/android/export/export.cpp
-msgid ""
-"Android build template not installed in the project. Install it from the "
-"Project menu."
+msgid "Missing 'platform-tools' directory!"
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid "Unable to find Android SDK platform-tools' adb command."
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid "Please check in the Android SDK directory specified in Editor Settings."
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid "Missing 'build-tools' directory!"
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid "Unable to find Android SDK build-tools' apksigner command."
 msgstr ""
 
 #: platform/android/export/export.cpp
@@ -12267,6 +12373,26 @@ msgid ""
 "\"Particles Animation\" enabled."
 msgstr ""
 
+#: scene/2d/joints_2d.cpp
+msgid "Node A and Node B must be PhysicsBody2Ds"
+msgstr ""
+
+#: scene/2d/joints_2d.cpp
+msgid "Node A must be a PhysicsBody2D"
+msgstr ""
+
+#: scene/2d/joints_2d.cpp
+msgid "Node B must be a PhysicsBody2D"
+msgstr ""
+
+#: scene/2d/joints_2d.cpp
+msgid "Joint is not connected to two PhysicsBody2Ds"
+msgstr ""
+
+#: scene/2d/joints_2d.cpp
+msgid "Node A and Node B must be different PhysicsBody2Ds"
+msgstr ""
+
 #: scene/2d/light_2d.cpp
 #, fuzzy
 msgid ""
@@ -12395,27 +12521,29 @@ msgid "ARVROrigin requires an ARVRCamera child node."
 msgstr ""
 
 #: scene/3d/baked_lightmap.cpp
-msgid "%d%%"
+msgid "Finding meshes and lights"
 msgstr ""
 
 #: scene/3d/baked_lightmap.cpp
-msgid "(Time Left: %d:%02d s)"
+msgid "Preparing geometry (%d/%d)"
 msgstr ""
 
 #: scene/3d/baked_lightmap.cpp
-msgid "Plotting Meshes: "
+msgid "Preparing environment"
 msgstr ""
 
 #: scene/3d/baked_lightmap.cpp
-msgid "Plotting Lights:"
-msgstr ""
-
-#: scene/3d/baked_lightmap.cpp scene/3d/gi_probe.cpp
-msgid "Finishing Plot"
-msgstr ""
+#, fuzzy
+msgid "Generating capture"
+msgstr "Generovanie Lightmaps"
 
 #: scene/3d/baked_lightmap.cpp
-msgid "Lighting Meshes: "
+#, fuzzy
+msgid "Saving lightmaps"
+msgstr "Generovanie Lightmaps"
+
+#: scene/3d/baked_lightmap.cpp
+msgid "Done"
 msgstr ""
 
 #: scene/3d/collision_object.cpp
@@ -12477,6 +12605,10 @@ msgid "Plotting Meshes"
 msgstr ""
 
 #: scene/3d/gi_probe.cpp
+msgid "Finishing Plot"
+msgstr ""
+
+#: scene/3d/gi_probe.cpp
 msgid ""
 "GIProbes are not supported by the GLES2 video driver.\n"
 "Use a BakedLightmap instead."
@@ -12534,6 +12666,26 @@ msgid ""
 "Size changes to RigidBody (in character or rigid modes) will be overridden "
 "by the physics engine when running.\n"
 "Change the size in children collision shapes instead."
+msgstr ""
+
+#: scene/3d/physics_joint.cpp
+msgid "Node A and Node B must be PhysicsBodies"
+msgstr ""
+
+#: scene/3d/physics_joint.cpp
+msgid "Node A must be a PhysicsBody"
+msgstr ""
+
+#: scene/3d/physics_joint.cpp
+msgid "Node B must be a PhysicsBody"
+msgstr ""
+
+#: scene/3d/physics_joint.cpp
+msgid "Joint is not connected to any PhysicsBodies"
+msgstr ""
+
+#: scene/3d/physics_joint.cpp
+msgid "Node A and Node B must be different PhysicsBodies"
 msgstr ""
 
 #: scene/3d/remote_transform.cpp
@@ -12671,6 +12823,15 @@ msgstr ""
 msgid "Please Confirm..."
 msgstr ""
 
+#: scene/gui/file_dialog.cpp
+msgid "Must use a valid extension."
+msgstr "Musíte použiť platné rozšírenie."
+
+#: scene/gui/graph_edit.cpp
+#, fuzzy
+msgid "Enable grid minimap."
+msgstr "Povoliť Prichytávanie"
+
 #: scene/gui/popup.cpp
 msgid ""
 "Popups will hide by default unless you call popup() or any of the popup*() "
@@ -12712,6 +12873,12 @@ msgid "Viewport size must be greater than 0 to render anything."
 msgstr ""
 
 #: scene/resources/visual_shader_nodes.cpp
+msgid ""
+"The sampler port is connected but not used. Consider changing the source to "
+"'SamplerPort'."
+msgstr ""
+
+#: scene/resources/visual_shader_nodes.cpp
 msgid "Invalid source for preview."
 msgstr "Neplatný zdroj pre predzobrazenie."
 
@@ -12740,6 +12907,26 @@ msgstr ""
 #: servers/visual/shader_language.cpp
 msgid "Constants cannot be modified."
 msgstr ""
+
+#~ msgid "No"
+#~ msgstr "Nie"
+
+#~ msgid "This scene has never been saved. Save before running?"
+#~ msgstr ""
+#~ "Táto scéna ešte nikdy nebola uložená. Chcete ju uložiť predtým ako ju "
+#~ "zapnete?"
+
+#~ msgid "Search complete"
+#~ msgstr "Vyhľadávanie bolo dokončené"
+
+#~ msgid "There is already file or folder with the same name in this location."
+#~ msgstr "Už tu je súbor alebo priečinok pomenovaný rovnako."
+
+#~ msgid "Error trying to save layout!"
+#~ msgstr "Error pri ukladaní layout-i!"
+
+#~ msgid "Default editor layout overridden."
+#~ msgstr "Predvolený editor layout je prepísaný."
 
 #~ msgid "Move pivot"
 #~ msgstr "Presunúť pivot"

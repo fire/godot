@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,11 +30,11 @@
 
 #include "editor_resource_preview.h"
 
+#include "core/config/project_settings.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "core/message_queue.h"
+#include "core/object/message_queue.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
 #include "editor_node.h"
 #include "editor_scale.h"
 #include "editor_settings.h"
@@ -424,26 +424,23 @@ void EditorResourcePreview::check_for_invalidation(const String &p_path) {
 }
 
 void EditorResourcePreview::start() {
-	ERR_FAIL_COND_MSG(thread, "Thread already started.");
-	thread = Thread::create(_thread_func, this);
+	ERR_FAIL_COND_MSG(thread.is_started(), "Thread already started.");
+	thread.start(_thread_func, this);
 }
 
 void EditorResourcePreview::stop() {
-	if (thread) {
+	if (thread.is_started()) {
 		exit = true;
 		preview_sem.post();
 		while (!exited) {
 			OS::get_singleton()->delay_usec(10000);
 			RenderingServer::get_singleton()->sync(); //sync pending stuff, as thread may be blocked on visual server
 		}
-		Thread::wait_to_finish(thread);
-		memdelete(thread);
-		thread = nullptr;
+		thread.wait_to_finish();
 	}
 }
 
 EditorResourcePreview::EditorResourcePreview() {
-	thread = nullptr;
 	singleton = this;
 	order = 0;
 	exit = false;

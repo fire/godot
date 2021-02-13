@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -51,7 +51,7 @@ union PointKey {
 		int64_t z : 21;
 	};
 
-	uint64_t key;
+	uint64_t key = 0;
 	bool operator<(const PointKey &p_key) const { return key < p_key.key; }
 };
 
@@ -86,8 +86,6 @@ struct Edge {
 
 	/// The other `Polygon` at this edge id has this `Polygon`.
 	int other_edge = -1;
-
-	Edge() {}
 };
 
 struct Polygon {
@@ -111,8 +109,6 @@ struct Connection {
 	int A_edge = -1;
 	Polygon *B = nullptr;
 	int B_edge = -1;
-
-	Connection() {}
 };
 
 struct NavigationPoly {
@@ -141,12 +137,12 @@ struct NavigationPoly {
 };
 
 struct FreeEdge {
-	bool is_free;
-	Polygon *poly;
-	uint32_t edge_id;
+	bool is_free = false;
+	Polygon *poly = nullptr;
+	uint32_t edge_id = 0;
 	Vector3 edge_center;
 	Vector3 edge_dir;
-	float edge_len_squared;
+	float edge_len_squared = 0.0;
 };
 } // namespace gd
 

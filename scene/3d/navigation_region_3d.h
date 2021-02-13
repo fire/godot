@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -46,12 +46,13 @@ class NavigationRegion3D : public Node3D {
 
 	Navigation3D *navigation = nullptr;
 	Node *debug_view = nullptr;
-	Thread *bake_thread = nullptr;
+	Thread bake_thread;
+
+	void _navigation_changed();
 
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
-	void _changed_callback(Object *p_changed, const char *p_prop) override;
 
 public:
 	void set_enabled(bool p_enabled);

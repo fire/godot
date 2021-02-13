@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,6 +30,7 @@
 
 #include "editor_export.h"
 
+#include "core/config/project_settings.h"
 #include "core/crypto/crypto_core.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access_encrypted.h"
@@ -37,10 +38,9 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/io/zip_io.h"
+#include "core/object/script_language.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
-#include "core/script_language.h"
 #include "core/version.h"
 #include "editor/editor_file_system.h"
 #include "editor/plugins/script_editor_plugin.h"
@@ -398,7 +398,11 @@ Error EditorExportPlatform::_save_zip_file(void *p_userdata, const String &p_pat
 Ref<ImageTexture> EditorExportPlatform::get_option_icon(int p_index) const {
 	Ref<Theme> theme = EditorNode::get_singleton()->get_editor_theme();
 	ERR_FAIL_COND_V(theme.is_null(), Ref<ImageTexture>());
-	return theme->get_icon("Play", "EditorIcons");
+	if (EditorNode::get_singleton()->get_main_control()->is_layout_rtl()) {
+		return theme->get_icon("PlayBackwards", "EditorIcons");
+	} else {
+		return theme->get_icon("Play", "EditorIcons");
+	}
 }
 
 String EditorExportPlatform::find_export_template(String template_file_name, String *err) const {
@@ -517,7 +521,7 @@ void EditorExportPlatform::_edit_filter_list(Set<String> &r_list, const String &
 	Vector<String> filters;
 	for (int i = 0; i < split.size(); i++) {
 		String f = split[i].strip_edges();
-		if (f.empty()) {
+		if (f.is_empty()) {
 			continue;
 		}
 		filters.push_back(f);
@@ -728,6 +732,26 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 
 			_export_find_dependencies(files[i], paths);
 		}
+
+		// Add autoload resources and their dependencies
+		List<PropertyInfo> props;
+		ProjectSettings::get_singleton()->get_property_list(&props);
+
+		for (List<PropertyInfo>::Element *E = props.front(); E; E = E->next()) {
+			const PropertyInfo &pi = E->get();
+
+			if (!pi.name.begins_with("autoload/")) {
+				continue;
+			}
+
+			String autoload_path = ProjectSettings::get_singleton()->get(pi.name);
+
+			if (autoload_path.begins_with("*")) {
+				autoload_path = autoload_path.substr(1);
+			}
+
+			_export_find_dependencies(autoload_path, paths);
+		}
 	}
 
 	//add native icons to non-resource include list
@@ -736,6 +760,9 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 
 	_edit_filter_list(paths, p_preset->get_include_filter(), false);
 	_edit_filter_list(paths, p_preset->get_exclude_filter(), true);
+
+	// Ignore import files, since these are automatically added to the jar later with the resources
+	_edit_filter_list(paths, String("*.import"), true);
 
 	// Get encryption filters.
 	bool enc_pck = p_preset->get_enc_pck();
@@ -747,7 +774,7 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 		Vector<String> enc_in_split = p_preset->get_enc_in_filter().split(",");
 		for (int i = 0; i < enc_in_split.size(); i++) {
 			String f = enc_in_split[i].strip_edges();
-			if (f.empty()) {
+			if (f.is_empty()) {
 				continue;
 			}
 			enc_in_filters.push_back(f);
@@ -756,7 +783,7 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 		Vector<String> enc_ex_split = p_preset->get_enc_ex_filter().split(",");
 		for (int i = 0; i < enc_ex_split.size(); i++) {
 			String f = enc_ex_split[i].strip_edges();
-			if (f.empty()) {
+			if (f.is_empty()) {
 				continue;
 			}
 			enc_ex_filters.push_back(f);
@@ -969,6 +996,15 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 		p_func(p_udata, splash, array, idx, total, enc_in_filters, enc_ex_filters, key);
 	}
 
+	// Store text server data if exists.
+	if (TS->has_feature(TextServer::FEATURE_USE_SUPPORT_DATA)) {
+		String ts_data = "res://" + TS->get_support_data_filename();
+		if (FileAccess::exists(ts_data)) {
+			Vector<uint8_t> array = FileAccess::get_file_as_array(ts_data);
+			p_func(p_udata, ts_data, array, idx, total, enc_in_filters, enc_ex_filters, key);
+		}
+	}
+
 	String config_file = "project.binary";
 	String engine_cfb = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmp" + config_file);
 	ProjectSettings::get_singleton()->save_custom(engine_cfb, custom_map, custom_list);
@@ -991,6 +1027,10 @@ Error EditorExportPlatform::_add_shared_object(void *p_userdata, const SharedObj
 
 Error EditorExportPlatform::save_pack(const Ref<EditorExportPreset> &p_preset, const String &p_path, Vector<SharedObject> *p_so_files, bool p_embed, int64_t *r_embedded_start, int64_t *r_embedded_size) {
 	EditorProgress ep("savepack", TTR("Packing"), 102, true);
+
+	// Create the temporary export directory if it doesn't exist.
+	DirAccessRef da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	da->make_dir_recursive(EditorSettings::get_singleton()->get_cache_dir());
 
 	String tmppath = EditorSettings::get_singleton()->get_cache_dir().plus_file("packtmp");
 	FileAccess *ftmp = FileAccess::open(tmppath, FileAccess::WRITE);
@@ -1629,15 +1669,17 @@ void EditorExportPlatformPC::get_preset_features(const Ref<EditorExportPreset> &
 }
 
 void EditorExportPlatformPC::get_export_options(List<ExportOption> *r_options) {
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE), ""));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE), ""));
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/64_bits"), true));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/embed_pck"), false));
+
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/bptc"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/s3tc"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/etc"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/etc2"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/no_bptc_fallbacks"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/64_bits"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/embed_pck"), false));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE), ""));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE), ""));
 }
 
 String EditorExportPlatformPC::get_name() const {
@@ -1678,7 +1720,7 @@ bool EditorExportPlatformPC::can_export(const Ref<EditorExportPreset> &p_preset,
 	valid = dvalid || rvalid;
 	r_missing_templates = !valid;
 
-	if (!err.empty()) {
+	if (!err.is_empty()) {
 		r_error = err;
 	}
 	return valid;
@@ -1765,7 +1807,7 @@ Error EditorExportPlatformPC::export_project(const Ref<EditorExportPreset> &p_pr
 			}
 		}
 
-		if (err == OK && !so_files.empty()) {
+		if (err == OK && !so_files.is_empty()) {
 			//if shared object files, copy them
 			da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 			for (int i = 0; i < so_files.size() && err == OK; i++) {
@@ -1817,17 +1859,10 @@ void EditorExportPlatformPC::set_debug_32(const String &p_file) {
 	debug_file_32 = p_file;
 }
 
-void EditorExportPlatformPC::add_platform_feature(const String &p_feature) {
-	extra_features.insert(p_feature);
-}
-
 void EditorExportPlatformPC::get_platform_features(List<String> *r_features) {
 	r_features->push_back("pc"); //all pcs support "pc"
 	r_features->push_back("s3tc"); //all pcs support "s3tc" compression
 	r_features->push_back(get_os_name()); //OS name is a feature
-	for (Set<String>::Element *E = extra_features.front(); E; E = E->next()) {
-		r_features->push_back(E->get());
-	}
 }
 
 void EditorExportPlatformPC::resolve_platform_feature_priorities(const Ref<EditorExportPreset> &p_preset, Set<String> &p_features) {

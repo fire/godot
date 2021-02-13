@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,7 +30,7 @@
 
 #include "audio_stream_player_2d.h"
 
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "scene/2d/area_2d.h"
 #include "scene/main/window.h"
 
@@ -249,15 +249,11 @@ void AudioStreamPlayer2D::_notification(int p_what) {
 			setseek = setplay;
 			active = true;
 			setplay = -1;
-			//do not update, this makes it easier to animate (will shut off otherwise)
-			//_change_notify("playing"); //update property in editor
 		}
 
 		//stop playing if no longer active
 		if (!active) {
 			set_physics_process_internal(false);
-			//do not update, this makes it easier to animate (will shut off otherwise)
-			//_change_notify("playing"); //update property in editor
 			emit_signal("finished");
 		}
 	}
@@ -404,7 +400,7 @@ void AudioStreamPlayer2D::_validate_property(PropertyInfo &property) const {
 }
 
 void AudioStreamPlayer2D::_bus_layout_changed() {
-	_change_notify();
+	notify_property_list_changed();
 }
 
 void AudioStreamPlayer2D::set_max_distance(float p_pixels) {
@@ -503,21 +499,6 @@ void AudioStreamPlayer2D::_bind_methods() {
 }
 
 AudioStreamPlayer2D::AudioStreamPlayer2D() {
-	volume_db = 0;
-	pitch_scale = 1.0;
-	autoplay = false;
-	setseek = -1;
-	active = false;
-	output_count = 0;
-	prev_output_count = 0;
-	max_distance = 2000;
-	attenuation = 1;
-	setplay = -1;
-	output_ready = false;
-	area_mask = 1;
-	stream_paused = false;
-	stream_paused_fade_in = false;
-	stream_paused_fade_out = false;
 	AudioServer::get_singleton()->connect("bus_layout_changed", callable_mp(this, &AudioStreamPlayer2D::_bus_layout_changed));
 }
 

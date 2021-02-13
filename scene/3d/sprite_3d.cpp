@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -204,7 +204,6 @@ Ref<TriangleMesh> SpriteBase3D::generate_triangle_mesh() const {
 	float pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
-
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
 		(final_rect.position + final_rect.size) * pixel_size,
 		(final_rect.position + Vector2(final_rect.size.x, 0)) * pixel_size,
@@ -340,24 +339,10 @@ void SpriteBase3D::_bind_methods() {
 }
 
 SpriteBase3D::SpriteBase3D() {
-	color_dirty = true;
-	centered = true;
-	hflip = false;
-	vflip = false;
-	parent_sprite = nullptr;
-	pI = nullptr;
-
 	for (int i = 0; i < FLAG_MAX; i++) {
 		flags[i] = i == FLAG_TRANSPARENT || i == FLAG_DOUBLE_SIDED;
 	}
 
-	alpha_cut = ALPHA_CUT_DISABLED;
-	billboard_mode = StandardMaterial3D::BILLBOARD_DISABLED;
-	axis = Vector3::AXIS_Z;
-	pixel_size = 0.01;
-	modulate = Color(1, 1, 1, 1);
-	pending_update = false;
-	opacity = 1.0;
 	immediate = RenderingServer::get_singleton()->immediate_create();
 	set_base(immediate);
 }
@@ -414,7 +399,6 @@ void Sprite3D::_draw() {
 	float pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
-
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
 		(final_rect.position + final_rect.size) * pixel_size,
 		(final_rect.position + Vector2(final_rect.size.x, 0)) * pixel_size,
@@ -488,7 +472,7 @@ void Sprite3D::_draw() {
 		RS::get_singleton()->immediate_normal(immediate, normal);
 		RS::get_singleton()->immediate_tangent(immediate, tangent);
 		RS::get_singleton()->immediate_color(immediate, color);
-		RS::get_singleton()->immediate_uv(immediate, uvs[i]);
+		RS::get_singleton()->immediate_uv(immediate, uvs[index[i]]);
 
 		Vector3 vtx;
 		vtx[x_axis] = vertices[index[i]][0];
@@ -559,8 +543,6 @@ void Sprite3D::set_frame(int p_frame) {
 
 	_queue_update();
 
-	_change_notify("frame");
-	_change_notify("frame_coords");
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -583,7 +565,7 @@ void Sprite3D::set_vframes(int p_amount) {
 	ERR_FAIL_COND(p_amount < 1);
 	vframes = p_amount;
 	_queue_update();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite3D::get_vframes() const {
@@ -594,7 +576,7 @@ void Sprite3D::set_hframes(int p_amount) {
 	ERR_FAIL_COND(p_amount < 1);
 	hframes = p_amount;
 	_queue_update();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite3D::get_hframes() const {
@@ -740,7 +722,6 @@ void AnimatedSprite3D::_draw() {
 	float pixel_size = get_pixel_size();
 
 	Vector2 vertices[4] = {
-
 		(final_rect.position + Vector2(0, final_rect.size.y)) * pixel_size,
 		(final_rect.position + final_rect.size) * pixel_size,
 		(final_rect.position + Vector2(final_rect.size.x, 0)) * pixel_size,
@@ -818,7 +799,7 @@ void AnimatedSprite3D::_draw() {
 		RS::get_singleton()->immediate_normal(immediate, normal);
 		RS::get_singleton()->immediate_tangent(immediate, tangent);
 		RS::get_singleton()->immediate_color(immediate, color);
-		RS::get_singleton()->immediate_uv(immediate, uvs[i]);
+		RS::get_singleton()->immediate_uv(immediate, uvs[indices[i]]);
 
 		Vector3 vtx;
 		vtx[x_axis] = vertices[indices[i]][0];
@@ -912,7 +893,6 @@ void AnimatedSprite3D::_notification(int p_what) {
 					}
 
 					_queue_update();
-					_change_notify("frame");
 				}
 
 				float to_process = MIN(timeout, remaining);
@@ -938,7 +918,7 @@ void AnimatedSprite3D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 		set_frame(frame);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	_reset_timeout();
 	_queue_update();
 	update_configuration_warning();
@@ -971,7 +951,7 @@ void AnimatedSprite3D::set_frame(int p_frame) {
 	frame = p_frame;
 	_reset_timeout();
 	_queue_update();
-	_change_notify("frame");
+
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -1007,8 +987,6 @@ Rect2 AnimatedSprite3D::get_item_rect() const {
 
 void AnimatedSprite3D::_res_changed() {
 	set_frame(frame);
-	_change_notify("frame");
-	_change_notify("animation");
 	_queue_update();
 }
 
@@ -1065,7 +1043,7 @@ void AnimatedSprite3D::set_animation(const StringName &p_animation) {
 	animation = p_animation;
 	_reset_timeout();
 	set_frame(0);
-	_change_notify();
+	notify_property_list_changed();
 	_queue_update();
 }
 
@@ -1077,7 +1055,7 @@ String AnimatedSprite3D::get_configuration_warning() const {
 	String warning = SpriteBase3D::get_configuration_warning();
 
 	if (frames.is_null()) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("A SpriteFrames resource must be created or set in the \"Frames\" property in order for AnimatedSprite3D to display frames.");
@@ -1112,8 +1090,4 @@ void AnimatedSprite3D::_bind_methods() {
 }
 
 AnimatedSprite3D::AnimatedSprite3D() {
-	frame = 0;
-	playing = false;
-	animation = "default";
-	timeout = 0;
 }

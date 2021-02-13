@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,13 +31,18 @@
 #if defined(TOOLS_ENABLED) && defined(JAVASCRIPT_ENABLED)
 #include "javascript_tools_editor_plugin.h"
 
-#include "core/engine.h"
+#include "core/config/engine.h"
+#include "core/config/project_settings.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
 #include "editor/editor_node.h"
 
 #include <emscripten/emscripten.h>
+
+// JavaScript functions defined in library_godot_editor_tools.js
+extern "C" {
+extern void godot_js_editor_download_file(const char *p_path, const char *p_name, const char *p_mime);
+}
 
 static void _javascript_editor_init_callback() {
 	EditorNode::get_singleton()->add_editor_plugin(memnew(JavaScriptToolsEditorPlugin(EditorNode::get_singleton())));
@@ -48,8 +53,7 @@ void JavaScriptToolsEditorPlugin::initialize() {
 }
 
 JavaScriptToolsEditorPlugin::JavaScriptToolsEditorPlugin(EditorNode *p_editor) {
-	Variant v;
-	add_tool_menu_item("Download Project Source", this, "_download_zip", v);
+	add_tool_menu_item("Download Project Source", callable_mp(this, &JavaScriptToolsEditorPlugin::_download_zip));
 }
 
 void JavaScriptToolsEditorPlugin::_download_zip(Variant p_v) {
@@ -65,29 +69,7 @@ void JavaScriptToolsEditorPlugin::_download_zip(Variant p_v) {
 	String base_path = resource_path.substr(0, resource_path.rfind("/")) + "/";
 	_zip_recursive(resource_path, base_path, zip);
 	zipClose(zip, NULL);
-	EM_ASM({
-		const path = "/tmp/project.zip";
-		const size = FS.stat(path)["size"];
-		const buf = new Uint8Array(size);
-		const fd = FS.open(path, "r");
-		FS.read(fd, buf, 0, size);
-		FS.close(fd);
-		FS.unlink(path);
-		const blob = new Blob([buf], { type: "application/zip" });
-		const url = window.URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = "project.zip";
-		a.style.display = "none";
-		document.body.appendChild(a);
-		a.click();
-		a.remove();
-		window.URL.revokeObjectURL(url);
-	});
-}
-
-void JavaScriptToolsEditorPlugin::_bind_methods() {
-	ClassDB::bind_method("_download_zip", &JavaScriptToolsEditorPlugin::_download_zip);
+	godot_js_editor_download_file("/tmp/project.zip", "project.zip", "application/zip");
 }
 
 void JavaScriptToolsEditorPlugin::_zip_file(String p_path, String p_base_path, zipFile p_zip) {
@@ -126,7 +108,7 @@ void JavaScriptToolsEditorPlugin::_zip_recursive(String p_path, String p_base_pa
 	}
 	dir->list_dir_begin();
 	String cur = dir->get_next();
-	while (!cur.empty()) {
+	while (!cur.is_empty()) {
 		String cs = p_path.plus_file(cur);
 		if (cur == "." || cur == ".." || cur == ".import") {
 			// Skip

@@ -4,17 +4,40 @@
 	<meta charset='utf-8' />
 	<meta name='viewport' content='width=device-width, user-scalable=no' />
 	<link id='-gd-engine-icon' rel='icon' type='image/png' href='favicon.png' />
-	<title></title>
+	<title>Godot Engine Web Editor ($GODOT_VERSION)</title>
 	<style type='text/css'>
+
+		*:focus {
+			/* More visible outline for better keyboard navigation. */
+			outline: 0.125rem solid hsl(220, 100%, 62.5%);
+			/* Make the outline always appear above other elements. */
+			/* Otherwise, one of its sides can be hidden by tabs in the Download and More layouts. */
+			position: relative;
+		}
 
 		body {
 			touch-action: none;
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 			margin: 0;
 			border: 0 none;
 			padding: 0;
 			text-align: center;
-			background-color: black;
+			background-color: #333b4f;
 			overflow: hidden;
+		}
+
+		a {
+			color: hsl(205, 100%, 75%);
+			text-decoration-color: hsla(205, 100%, 75%, 0.3);
+			text-decoration-thickness: 0.125rem;
+		}
+
+		a:hover {
+			filter: brightness(117.5%);
+		}
+
+		a:active {
+			filter: brightness(82.5%);
 		}
 
 		#canvas, #gameCanvas {
@@ -28,12 +51,45 @@
 		}
 
 		.godot {
-			font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
 			color: #e0e0e0;
 			background-color: #3b3943;
 			background-image: linear-gradient(to bottom, #403e48, #35333c);
 			border: 1px solid #45434e;
 			box-shadow: 0 0 1px 1px #2f2d35;
+		}
+
+		.btn {
+			appearance: none;
+			color: #e0e0e0;
+			background-color: #262c3b;
+			border: 1px solid #202531;
+			padding: 0.5rem 1rem;
+			margin: 0 0.5rem;
+		}
+
+		.btn:not(:disabled):hover {
+			color: #e0e1e5;
+			border-color: #666c7b;
+		}
+
+		.btn:active {
+			border-color: #699ce8;
+			color: #699ce8;
+		}
+
+		.btn:disabled {
+			color: #aaa;
+			border-color: #242937;
+		}
+
+		.btn.tab-btn {
+			padding: 0.3rem 1rem;
+		}
+
+		.btn.close-btn {
+			padding: 0.3rem 1rem;
+			margin-left: -0.75rem;
+			font-weight: 700;
 		}
 
 
@@ -116,27 +172,37 @@
 </head>
 <body>
 	<div id="tabs-buttons">
-		<button id="btn-tab-loader" class="tab-btn" onclick="showTab('loader')">Loader</button>
-		<button id="btn-tab-editor" class="tab-btn" disabled="disabled" onclick="showTab('editor')">Editor</button>
-		<button id="btn-close-editor" class="close-btn" disabled="disabled" onclick="closeEditor()">X</button>
-		<button id="btn-tab-game" class="tab-btn" disabled="disabled" onclick="showTab('game')">Game</button>
-		<button id="btn-close-game" class="close-btn"  disabled="disabled" onclick="closeGame()">X</button>
+		<button id="btn-tab-loader" class="btn tab-btn" onclick="showTab('loader')">Loader</button>
+		<button id="btn-tab-editor" class="btn tab-btn" disabled="disabled" onclick="showTab('editor')">Editor</button>
+		<button id="btn-close-editor" class="btn close-btn" disabled="disabled" onclick="closeEditor()">×</button>
+		<button id="btn-tab-game" class="btn tab-btn" disabled="disabled" onclick="showTab('game')">Game</button>
+		<button id="btn-close-game" class="btn close-btn"  disabled="disabled" onclick="closeGame()">×</button>
 	</div>
 	<div id='tabs'>
 		<div id='tab-loader'>
-			<div style="color: white;" id="persistence">
+			<div style="color: #e0e0e0;" id="persistence">
 				<label for="videoMode" style="display: none;">Select video driver:</label><br />
 				<select id="videoMode" style="display: none;">
 					<option value="GLES2" selected="selected">WebGL</option>
 					<option value="GLES3">WebGL 2</option>
 				</select>
 				<br />
-				<label for="zip-file">Preload project zip: </label><input id="zip-file" type="file" id="files" name="files"/>
+				<img src="logo.svg" width="1024" height="414" style="width: auto; height: auto; max-width: 85%; max-height: 250px" />
 				<br />
-				<button id="startButton">Start Godot Editor</button>
+				$GODOT_VERSION
+				<br />
+				<a href="releases/">Need an old version?</a>
 				<br />
 				<br />
-				<button onclick="clearPersistence()">Clear persistent data</button>
+				<br />
+				<label for="zip-file" style="margin-right: 1rem">Preload project ZIP:</label> <input id="zip-file" type="file" id="files" name="files" style="margin-bottom: 1rem"/>
+				<br />
+<a href="demo.zip">(Try this for example)</a>
+				<br />
+				<br />
+				<button id="startButton" class="btn" style="margin-bottom: 4rem">Start Godot editor</button>
+				<br />
+				<button class="btn" onclick="clearPersistence()">Clear persistent data</button>
 			</div>
 		</div>
 		<div id='tab-editor' style="display: none;">
@@ -196,8 +262,7 @@
 				return;
 			}
 			Promise.all([
-				deleteDB("/home/web_user/projects"),
-				deleteDB("/home/web_user/.config")
+				deleteDB("/home/web_user"),
 			]).then(function(results) {
 				alert("Done.");
 			}).catch(function (err) {
@@ -219,6 +284,10 @@
 			tabs.forEach(function (elem) {
 				if (elem.id == 'tab-' + name) {
 					elem.style.display = 'block';
+					if (name == 'editor' || name == 'game') {
+						const canvas = document.getElementById(name + '-canvas');
+						canvas.focus();
+					}
 				} else {
 					elem.style.display = 'none';
 				}
@@ -258,9 +327,8 @@
 		}
 
 		function startEditor(zip) {
-
 			const INDETERMINATE_STATUS_STEP_MS = 100;
-			const persistentPaths = ['/home/web_user/.config', '/home/web_user/projects'];
+			const persistentPaths = ['/home/web_user'];
 
 			var editorCanvas = document.getElementById('editor-canvas');
 			var gameCanvas = document.getElementById('game-canvas');
@@ -296,7 +364,6 @@
 			adjustCanvasDimensions();
 
 			setStatusMode = function setStatusMode(mode) {
-
 				if (statusMode === mode || !initializing)
 					return;
 				[statusProgress, statusIndeterminate, statusNotice].forEach(elem => {
@@ -322,10 +389,9 @@
 						throw new Error('Invalid status mode');
 				}
 				statusMode = mode;
-			}
+			};
 
 			function animateStatusIndeterminate(ms) {
-
 				var i = Math.floor(ms / INDETERMINATE_STATUS_STEP_MS % 8);
 				if (statusIndeterminate.children[i].style.borderTopColor == '') {
 					Array.prototype.slice.call(statusIndeterminate.children).forEach(child => {
@@ -336,7 +402,6 @@
 			}
 
 			setStatusNotice = function setStatusNotice(text) {
-
 				while (statusNotice.lastChild) {
 					statusNotice.removeChild(statusNotice.lastChild);
 				}
@@ -348,7 +413,6 @@
 			};
 
 			engine.setProgressFunc((current, total) => {
-
 				if (total > 0) {
 					statusProgressInner.style.width = current/total * 100 + '%';
 					setStatusMode('progress');
@@ -431,11 +495,11 @@
 				engine.setUnloadAfterInit(false); // Don't want to reload when starting game.
 				engine.init('godot.tools').then(function() {
 					if (zip) {
-						engine.copyToFS("/home/web_user/preload.zip", zip);
+						engine.copyToFS("/tmp/preload.zip", zip);
 					}
 					try {
 						// Avoid user creating project in the persistent root folder.
-						engine.copyToFS("/home/web_user/projects/keep", new Uint8Array());
+						engine.copyToFS("/home/web_user/keep", new Uint8Array());
 					} catch(e) {
 						// File exists
 					}

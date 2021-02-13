@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -325,10 +325,7 @@ uint32_t CollisionObject3D::shape_find_owner(int p_shape_index) const {
 CollisionObject3D::CollisionObject3D(RID p_rid, bool p_area) {
 	rid = p_rid;
 	area = p_area;
-	capture_input_on_drag = false;
-	ray_pickable = true;
 	set_notify_transform(true);
-	total_subshapes = 0;
 
 	if (p_area) {
 		PhysicsServer3D::get_singleton()->area_attach_object_instance_id(rid, get_instance_id());
@@ -349,8 +346,8 @@ bool CollisionObject3D::get_capture_input_on_drag() const {
 String CollisionObject3D::get_configuration_warning() const {
 	String warning = Node3D::get_configuration_warning();
 
-	if (shapes.empty()) {
-		if (!warning.empty()) {
+	if (shapes.is_empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("This node has no shape, so it can't collide or interact with other objects.\nConsider adding a CollisionShape3D or CollisionPolygon3D as a child to define its shape.");
@@ -360,8 +357,6 @@ String CollisionObject3D::get_configuration_warning() const {
 }
 
 CollisionObject3D::CollisionObject3D() {
-	capture_input_on_drag = false;
-	ray_pickable = true;
 	set_notify_transform(true);
 	//owner=
 

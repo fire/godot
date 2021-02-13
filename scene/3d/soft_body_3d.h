@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -39,13 +39,13 @@ class SoftBodyRenderingServerHandler {
 	friend class SoftBody3D;
 
 	RID mesh;
-	int surface;
+	int surface = 0;
 	Vector<uint8_t> buffer;
-	uint32_t stride;
-	uint32_t offset_vertices;
-	uint32_t offset_normal;
+	uint32_t stride = 0;
+	uint32_t offset_vertices = 0;
+	uint32_t offset_normal = 0;
 
-	uint8_t *write_buffer;
+	uint8_t *write_buffer = nullptr;
 
 private:
 	SoftBodyRenderingServerHandler();
@@ -91,12 +91,14 @@ private:
 	bool pinned_points_cache_dirty = true;
 
 	Ref<ArrayMesh> debug_mesh_cache;
-	class MeshInstance3D *debug_mesh;
+	class MeshInstance3D *debug_mesh = nullptr;
 
-	bool capture_input_on_drag;
+	bool capture_input_on_drag = false;
 	bool ray_pickable = true;
 
 	void _update_pickable();
+
+	void _softbody_changed();
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -106,8 +108,6 @@ protected:
 	bool _set_property_pinned_points_indices(const Array &p_indices);
 	bool _set_property_pinned_points_attachment(int p_item, const String &p_what, const Variant &p_value);
 	bool _get_property_pinned_points(int p_item, const String &p_what, Variant &r_ret) const;
-
-	virtual void _changed_callback(Object *p_changed, const char *p_prop) override;
 
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -149,8 +149,8 @@ public:
 	void set_linear_stiffness(real_t p_linear_stiffness);
 	real_t get_linear_stiffness();
 
-	void set_areaAngular_stiffness(real_t p_areaAngular_stiffness);
-	real_t get_areaAngular_stiffness();
+	void set_angular_stiffness(real_t p_angular_stiffness);
+	real_t get_angular_stiffness();
 
 	void set_volume_stiffness(real_t p_volume_stiffness);
 	real_t get_volume_stiffness();

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,10 +30,10 @@
 
 #include "soft_body_3d.h"
 
-#include "core/class_db.h"
-#include "core/list.h"
+#include "core/object/class_db.h"
 #include "core/os/os.h"
-#include "core/rid.h"
+#include "core/templates/list.h"
+#include "core/templates/rid.h"
 #include "scene/3d/collision_object_3d.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/3d/skeleton_3d.h"
@@ -245,13 +245,11 @@ bool SoftBody3D::_get_property_pinned_points(int p_item, const String &p_what, V
 	return true;
 }
 
-void SoftBody3D::_changed_callback(Object *p_changed, const char *p_prop) {
+void SoftBody3D::_softbody_changed() {
 	prepare_physics_server();
 	_reset_points_offsets();
 #ifdef TOOLS_ENABLED
-	if (p_changed == this) {
-		update_configuration_warning();
-	}
+	update_configuration_warning();
 #endif
 }
 
@@ -259,7 +257,9 @@ void SoftBody3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_WORLD: {
 			if (Engine::get_singleton()->is_editor_hint()) {
-				add_change_receptor(this);
+				// I have no idea what this is supposed to do, it's really weird
+				// leaving for upcoming PK work on physics
+				//add_change_receptor(this);
 			}
 
 			RID space = get_world_3d()->get_space();
@@ -337,8 +337,8 @@ void SoftBody3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_linear_stiffness", "linear_stiffness"), &SoftBody3D::set_linear_stiffness);
 	ClassDB::bind_method(D_METHOD("get_linear_stiffness"), &SoftBody3D::get_linear_stiffness);
 
-	ClassDB::bind_method(D_METHOD("set_areaAngular_stiffness", "areaAngular_stiffness"), &SoftBody3D::set_areaAngular_stiffness);
-	ClassDB::bind_method(D_METHOD("get_areaAngular_stiffness"), &SoftBody3D::get_areaAngular_stiffness);
+	ClassDB::bind_method(D_METHOD("set_angular_stiffness", "angular_stiffness"), &SoftBody3D::set_angular_stiffness);
+	ClassDB::bind_method(D_METHOD("get_angular_stiffness"), &SoftBody3D::get_angular_stiffness);
 
 	ClassDB::bind_method(D_METHOD("set_volume_stiffness", "volume_stiffness"), &SoftBody3D::set_volume_stiffness);
 	ClassDB::bind_method(D_METHOD("get_volume_stiffness"), &SoftBody3D::get_volume_stiffness);
@@ -366,7 +366,7 @@ void SoftBody3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "simulation_precision", PROPERTY_HINT_RANGE, "1,100,1"), "set_simulation_precision", "get_simulation_precision");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "total_mass", PROPERTY_HINT_RANGE, "0.01,10000,1"), "set_total_mass", "get_total_mass");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "linear_stiffness", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_linear_stiffness", "get_linear_stiffness");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "areaAngular_stiffness", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_areaAngular_stiffness", "get_areaAngular_stiffness");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angular_stiffness", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_angular_stiffness", "get_angular_stiffness");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_stiffness", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_volume_stiffness", "get_volume_stiffness");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pressure_coefficient"), "set_pressure_coefficient", "get_pressure_coefficient");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "damping_coefficient", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_damping_coefficient", "get_damping_coefficient");
@@ -380,7 +380,7 @@ String SoftBody3D::get_configuration_warning() const {
 	String warning = MeshInstance3D::get_configuration_warning();
 
 	if (get_mesh().is_null()) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 
@@ -389,7 +389,7 @@ String SoftBody3D::get_configuration_warning() const {
 
 	Transform t = get_transform();
 	if ((ABS(t.basis.get_axis(0).length() - 1.0) > 0.05 || ABS(t.basis.get_axis(1).length() - 1.0) > 0.05 || ABS(t.basis.get_axis(2).length() - 1.0) > 0.05)) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 
@@ -480,7 +480,6 @@ void SoftBody3D::become_mesh_owner() {
 		Dictionary surface_lods = mesh->surface_get_lods(0);
 		uint32_t surface_format = mesh->surface_get_format(0);
 
-		surface_format &= ~(Mesh::ARRAY_COMPRESS_NORMAL);
 		surface_format |= Mesh::ARRAY_FLAG_USE_DYNAMIC_UPDATE;
 
 		Ref<ArrayMesh> soft_mesh;
@@ -613,12 +612,12 @@ real_t SoftBody3D::get_linear_stiffness() {
 	return PhysicsServer3D::get_singleton()->soft_body_get_linear_stiffness(physics_rid);
 }
 
-void SoftBody3D::set_areaAngular_stiffness(real_t p_areaAngular_stiffness) {
-	PhysicsServer3D::get_singleton()->soft_body_set_areaAngular_stiffness(physics_rid, p_areaAngular_stiffness);
+void SoftBody3D::set_angular_stiffness(real_t p_angular_stiffness) {
+	PhysicsServer3D::get_singleton()->soft_body_set_angular_stiffness(physics_rid, p_angular_stiffness);
 }
 
-real_t SoftBody3D::get_areaAngular_stiffness() {
-	return PhysicsServer3D::get_singleton()->soft_body_get_areaAngular_stiffness(physics_rid);
+real_t SoftBody3D::get_angular_stiffness() {
+	return PhysicsServer3D::get_singleton()->soft_body_get_angular_stiffness(physics_rid);
 }
 
 void SoftBody3D::set_volume_stiffness(real_t p_volume_stiffness) {
@@ -725,7 +724,7 @@ void SoftBody3D::_update_cache_pin_points_datas() {
 			w[i].spatial_attachment = Object::cast_to<Node3D>(get_node(w[i].spatial_attachment_path));
 		}
 		if (!w[i].spatial_attachment) {
-			ERR_PRINT("Node3D node not defined in the pinned point, Softbody undefined behaviour!");
+			ERR_PRINT("Node3D node not defined in the pinned point, this is undefined behavior for SoftBody3D!");
 		}
 	}
 }

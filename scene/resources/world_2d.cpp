@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,7 +30,7 @@
 
 #include "world_2d.h"
 
-#include "core/project_settings.h"
+#include "core/config/project_settings.h"
 #include "scene/2d/camera_2d.h"
 #include "scene/2d/visibility_notifier_2d.h"
 #include "scene/main/window.h"
@@ -39,7 +39,7 @@
 
 struct SpatialIndexer2D {
 	struct CellRef {
-		int ref;
+		int ref = 0;
 
 		_FORCE_INLINE_ int inc() {
 			ref++;
@@ -49,10 +49,6 @@ struct SpatialIndexer2D {
 			ref--;
 			return ref;
 		}
-
-		_FORCE_INLINE_ CellRef() {
-			ref = 0;
-		}
 	};
 
 	struct CellKey {
@@ -61,7 +57,7 @@ struct SpatialIndexer2D {
 				int32_t x;
 				int32_t y;
 			};
-			uint64_t key;
+			uint64_t key = 0;
 		};
 
 		bool operator==(const CellKey &p_key) const { return key == p_key.key; }
@@ -86,9 +82,9 @@ struct SpatialIndexer2D {
 
 	Map<Viewport *, ViewportData> viewports;
 
-	bool changed;
+	bool changed = false;
 
-	uint64_t pass;
+	uint64_t pass = 0;
 
 	void _notifier_update_cells(VisibilityNotifier2D *p_notifier, const Rect2 &p_rect, bool p_add) {
 		Point2i begin = p_rect.position;
@@ -111,7 +107,7 @@ struct SpatialIndexer2D {
 					ERR_CONTINUE(!E);
 					if (E->get().notifiers[p_notifier].dec() == 0) {
 						E->get().notifiers.erase(p_notifier);
-						if (E->get().notifiers.empty()) {
+						if (E->get().notifiers.is_empty()) {
 							cells.erase(E);
 						}
 					}
@@ -156,7 +152,7 @@ struct SpatialIndexer2D {
 			}
 		}
 
-		while (!removed.empty()) {
+		while (!removed.is_empty()) {
 			p_notifier->_exit_viewport(removed.front()->get());
 			removed.pop_front();
 		}
@@ -189,7 +185,7 @@ struct SpatialIndexer2D {
 			removed.push_back(E->key());
 		}
 
-		while (!removed.empty()) {
+		while (!removed.is_empty()) {
 			removed.front()->get()->_exit_viewport(p_viewport);
 			removed.pop_front();
 		}
@@ -271,12 +267,12 @@ struct SpatialIndexer2D {
 				}
 			}
 
-			while (!added.empty()) {
+			while (!added.is_empty()) {
 				added.front()->get()->_enter_viewport(E->key());
 				added.pop_front();
 			}
 
-			while (!removed.empty()) {
+			while (!removed.is_empty()) {
 				E->get().notifiers.erase(removed.front()->get());
 				removed.front()->get()->_exit_viewport(E->key());
 				removed.pop_front();
@@ -287,8 +283,6 @@ struct SpatialIndexer2D {
 	}
 
 	SpatialIndexer2D() {
-		pass = 0;
-		changed = false;
 		cell_size = GLOBAL_DEF("world/2d/cell_size", 100);
 	}
 };
@@ -341,8 +335,8 @@ void World2D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_direct_space_state"), &World2D::get_direct_space_state);
 
-	ADD_PROPERTY(PropertyInfo(Variant::_RID, "canvas", PROPERTY_HINT_NONE, "", 0), "", "get_canvas");
-	ADD_PROPERTY(PropertyInfo(Variant::_RID, "space", PROPERTY_HINT_NONE, "", 0), "", "get_space");
+	ADD_PROPERTY(PropertyInfo(Variant::RID, "canvas", PROPERTY_HINT_NONE, "", 0), "", "get_canvas");
+	ADD_PROPERTY(PropertyInfo(Variant::RID, "space", PROPERTY_HINT_NONE, "", 0), "", "get_space");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "direct_space_state", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsDirectSpaceState2D", 0), "", "get_direct_space_state");
 }
 

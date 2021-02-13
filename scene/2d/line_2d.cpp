@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -40,15 +40,6 @@ VARIANT_ENUM_CAST(Line2D::LineCapMode)
 VARIANT_ENUM_CAST(Line2D::LineTextureMode)
 
 Line2D::Line2D() {
-	_joint_mode = LINE_JOINT_SHARP;
-	_begin_cap_mode = LINE_CAP_NONE;
-	_end_cap_mode = LINE_CAP_NONE;
-	_width = 10;
-	_default_color = Color(1, 1, 1);
-	_texture_mode = LINE_TEXTURE_NONE;
-	_sharp_limit = 2.f;
-	_round_precision = 8;
-	_antialiased = false;
 }
 
 #ifdef TOOLS_ENABLED
