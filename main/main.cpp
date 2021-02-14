@@ -88,7 +88,7 @@
 #include "editor/project_manager.h"
 
 #endif
-
+#include "thirdparty/tracy/Tracy.hpp"
 /* Static members */
 
 // Singletons
@@ -504,6 +504,7 @@ int Main::test_entrypoint(int argc, char *argv[], bool &tests_need_run) {
  */
 
 Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_phase) {
+	ZoneScoped;
 	OS::get_singleton()->initialize();
 
 	engine = memnew(Engine);
@@ -2401,6 +2402,7 @@ static uint64_t physics_process_max = 0;
 static uint64_t process_max = 0;
 
 bool Main::iteration() {
+	ZoneScoped;
 	//for now do not error on this
 	//ERR_FAIL_COND_V(iterating, false);
 

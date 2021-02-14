@@ -39,8 +39,10 @@
 #include "servers/audio_server.h"
 
 #include <stdarg.h>
+#include "thirdparty/tracy/Tracy.hpp"
 
 OS *OS::singleton = nullptr;
+
 uint64_t OS::target_ticks = 0;
 
 OS *OS::get_singleton() {
@@ -502,6 +504,7 @@ void OS::add_frame_delay(bool p_can_draw) {
 		current_ticks = get_ticks_usec();
 		target_ticks = MIN(MAX(target_ticks, current_ticks - dynamic_delay), current_ticks + dynamic_delay);
 	}
+	FrameMark;
 }
 
 OS::OS() {

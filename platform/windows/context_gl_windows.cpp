@@ -34,7 +34,7 @@
 
 #include "context_gl_windows.h"
 
-#include <dwmapi.h>
+#include "thirdparty/tracy/Tracy.hpp"
 
 #define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
@@ -99,6 +99,7 @@ void ContextGL_Windows::swap_buffers() {
 			set_use_vsync(true);
 		}
 	}
+	FrameMark;
 }
 
 void ContextGL_Windows::set_use_vsync(bool p_use) {

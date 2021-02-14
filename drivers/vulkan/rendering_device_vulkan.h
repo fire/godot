@@ -46,6 +46,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 class VulkanContext;
 
 class RenderingDeviceVulkan : public RenderingDevice {

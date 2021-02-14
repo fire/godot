@@ -44,6 +44,8 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define APP_SHORT_NAME "GodotEngine"
 
+#include "thirdparty/tracy/Tracy.hpp"
+
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::_debug_messenger_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -1504,6 +1506,7 @@ Error VulkanContext::swap_buffers() {
 	}
 
 	buffers_prepared = false;
+	FrameMark;
 	return OK;
 }
 
