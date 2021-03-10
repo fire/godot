@@ -2534,6 +2534,11 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 		const Dictionary &extras = d.has("extras") ? (Dictionary)d["extras"] : Dictionary();
 		Ref<ArrayMesh> import_mesh;
 		import_mesh.instance();
+		if (d.has("name")) {
+			import_mesh->set_name(d["name"]);
+		} else {
+			import_mesh->set_name(vformat("mesh_%s", itos(i)));
+		}
 		for (int j = 0; j < primitives.size(); j++) {
 			Dictionary p = primitives[j];
 
@@ -3374,7 +3379,10 @@ Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
 		material.instance();
 		if (d.has("name")) {
 			material->set_name(d["name"]);
+		} else {
+			material->set_name(vformat("material_%s", itos(i)));
 		}
+
 		material->set_flag(SpatialMaterial::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
 		Dictionary pbr_spec_gloss_extensions;
 		if (d.has("extensions")) {
@@ -3915,6 +3923,8 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> state) {
 
 		if (d.has("name")) {
 			skin->set_name(d["name"]);
+		} else {
+			skin->set_name(vformat("skin_%s", itos(i)));
 		}
 
 		if (d.has("skeleton")) {
