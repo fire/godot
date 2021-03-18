@@ -543,6 +543,7 @@ public:
 	FUNC2(viewport_set_disable_2d, RID, bool)
 	FUNC2(viewport_set_disable_environment, RID, bool)
 	FUNC2(viewport_set_disable_3d, RID, bool)
+	FUNC1(viewport_set_color_management, RID);
 
 	FUNC2(viewport_attach_camera, RID, RID)
 	FUNC2(viewport_set_scenario, RID, RID)

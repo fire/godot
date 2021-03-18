@@ -31,6 +31,11 @@
 #include "renderer_viewport.h"
 
 #include "core/config/project_settings.h"
+#include "core/error/error_macros.h"
+#include "editor/editor_settings.h"
+#include "servers/rendering_server.h"
+#define CMS_NO_REGISTER_KEYWORD 1
+#include "modules/cm/color_transform.h"
 #include "renderer_canvas_cull.h"
 #include "renderer_scene_cull.h"
 #include "rendering_server_globals.h"
@@ -462,6 +467,50 @@ void RendererViewport::_draw_viewport(Viewport *p_viewport, uint32_t p_view_coun
 		RSG::storage->capture_timestamp(rt_id);
 		timestamp_vp_map[rt_id] = p_viewport->self;
 	}
+}
+
+void RendererViewport::viewport_set_color_management(RID p_viewport) {
+	Viewport *viewport = viewport_owner.getornull(p_viewport);
+	ERR_FAIL_COND(!viewport);
+	ERR_FAIL_COND(viewport->scenario.is_null());
+	RID env = RSG::scene->scenario_get_environment(viewport->scenario);
+	ERR_FAIL_COND(env.is_null());
+	String profile = EDITOR_GET("interface/color_management/screen_profile");
+	if (profile.is_empty()) {
+		return;
+	}
+
+	Ref<ColorProfile> screen_profile = memnew(ColorProfile(profile));
+	if (screen_profile.is_null() || !screen_profile->is_valid()) {
+		ERR_PRINT("Failed to load profile from: " + profile + ".");
+		return;
+	}
+
+	Ref<ColorTransform> transform = memnew(ColorTransform());
+	if (transform.is_null()) {
+		return;
+	}
+
+	transform->set_src_profile(memnew(ColorProfile(ColorProfile::PREDEF_LINEAR)));
+	transform->set_dst_profile(screen_profile);
+
+	String intent = EDITOR_GET("interface/color_management/intent");
+	if (intent == "Perceptual") {
+		transform->set_intent(ColorTransform::CM_INTENT_PERCEPTUAL);
+	} else if (intent == "Relative Colorimetric") {
+		transform->set_intent(ColorTransform::CM_INTENT_RELATIVE);
+	} else if (intent == "Saturation") {
+		transform->set_intent(ColorTransform::CM_INTENT_SATURATION);
+	} else if (intent == "Absolute Colorimetric") {
+		transform->set_intent(ColorTransform::CM_INTENT_ABSOLUTE);
+	} else {
+		WARN_PRINT("Unexpected color management intent: " + intent + ". Falling back to Perceptual.");
+		transform->set_intent(ColorTransform::CM_INTENT_PERCEPTUAL);
+	}
+
+	transform->set_black_point_compensation(EDITOR_GET("interface/color_management/black_point_compensation"));
+	RID tex = transform->get_color_correction();
+	RSG::scene->environment_set_adjustment(env, true, 1.0f, 1.0f, 1.0f, false, tex);
 }
 
 void RendererViewport::draw_viewports() {
