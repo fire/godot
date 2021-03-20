@@ -541,7 +541,7 @@ Error GLTFDocument::_parse_scenes(Ref<GLTFState> state) {
 			state->root_nodes.push_back(nodes[j]);
 		}
 
-		if (s.has("name") && s["name"] != "" && !((String)s["name"]).begins_with("Scene")) {
+		if (s.has("name") && !String(s["name"]).empty() && !((String)s["name"]).begins_with("Scene")) {
 			state->scene_name = _gen_unique_name(state, s["name"]);
 		} else {
 			state->scene_name = _gen_unique_name(state, state->filename);
@@ -2535,7 +2535,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 		Ref<ArrayMesh> import_mesh;
 		import_mesh.instance();
 		String mesh_name = "mesh";
-		if (d.has("name" && d["name"] != "")) {
+		if (d.has("name") && !String(d["name"]).empty()) {
 			mesh_name = d["name"];
 		}
 		import_mesh->set_name(_gen_unique_name(state, vformat("%s_%s", state->scene_name, mesh_name)));
@@ -3378,7 +3378,7 @@ Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
 
 		Ref<SpatialMaterial> material;
 		material.instance();
-		if (d.has("name")) {
+		if (d.has("name") && !String(d["name"]).empty()) {
 			material->set_name(d["name"]);
 		} else {
 			material->set_name(vformat("material_%s", itos(i)));
@@ -3922,7 +3922,7 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> state) {
 			state->nodes.write[node]->joint = true;
 		}
 
-		if (d.has("name")) {
+		if (d.has("name") && !String(d["name"]).empty()) {
 			skin->set_name(d["name"]);
 		} else {
 			skin->set_name(vformat("skin_%s", itos(i)));
@@ -5682,8 +5682,8 @@ void GLTFDocument::_import_animation(Ref<GLTFState> state, AnimationPlayer *ap, 
 			animation->track_set_path(track_idx, node_path);
 			//first determine animation length
 
-			const float increment = 1.0 / float(bake_fps);
-			float time = 0.0;
+			const double increment = 1.0 / bake_fps;
+			double time = 0.0;
 
 			Vector3 base_pos;
 			Quat base_rot;
@@ -5772,8 +5772,8 @@ void GLTFDocument::_import_animation(Ref<GLTFState> state, AnimationPlayer *ap, 
 				}
 			} else {
 				// CATMULLROMSPLINE or CUBIC_SPLINE have to be baked, apologies.
-				const float increment = 1.0 / float(bake_fps);
-				float time = 0.0;
+				const double increment = 1.0 / bake_fps;
+				double time = 0.0;
 				bool last = false;
 				while (true) {
 					_interpolate_track<float>(track.weight_tracks[i].times, track.weight_tracks[i].values, time, gltf_interp);

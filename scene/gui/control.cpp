@@ -70,7 +70,9 @@ Dictionary Control::_edit_get_state() const {
 }
 
 void Control::_edit_set_state(const Dictionary &p_state) {
-
+	ERR_FAIL_COND((p_state.size() <= 0) ||
+				  !p_state.has("rotation") || !p_state.has("scale") ||
+				  !p_state.has("pivot") || !p_state.has("anchors") || !p_state.has("margins"));
 	Dictionary state = p_state;
 
 	set_rotation(state["rotation"]);
@@ -91,6 +93,7 @@ void Control::_edit_set_state(const Dictionary &p_state) {
 
 void Control::_edit_set_position(const Point2 &p_position) {
 #ifdef TOOLS_ENABLED
+	ERR_FAIL_COND_MSG(!Engine::get_singleton()->is_editor_hint(), "This function can only be used from editor plugins.");
 	set_position(p_position, CanvasItemEditor::get_singleton()->is_anchors_mode_enabled());
 #else
 	// Unlikely to happen. TODO: enclose all _edit_ functions into TOOLS_ENABLED
@@ -112,6 +115,7 @@ Size2 Control::_edit_get_scale() const {
 
 void Control::_edit_set_rect(const Rect2 &p_edit_rect) {
 #ifdef TOOLS_ENABLED
+	ERR_FAIL_COND_MSG(!Engine::get_singleton()->is_editor_hint(), "This function can only be used from editor plugins.");
 	set_position((get_position() + get_transform().basis_xform(p_edit_rect.position)).snapped(Vector2(1, 1)), CanvasItemEditor::get_singleton()->is_anchors_mode_enabled());
 	set_size(p_edit_rect.size.snapped(Vector2(1, 1)), CanvasItemEditor::get_singleton()->is_anchors_mode_enabled());
 #else
@@ -461,6 +465,11 @@ void Control::_update_canvas_item_transform() {
 
 	Transform2D xform = _get_internal_transform();
 	xform[2] += get_position();
+
+	// We use a little workaround to avoid flickering when moving the pivot with _edit_set_pivot()
+	if (is_inside_tree() && Math::abs(Math::sin(data.rotation * 4.0f)) < 0.00001f && get_viewport()->is_snap_controls_to_pixels_enabled()) {
+		xform[2] = xform[2].round();
+	}
 
 	VisualServer::get_singleton()->canvas_item_set_transform(get_canvas_item(), xform);
 }

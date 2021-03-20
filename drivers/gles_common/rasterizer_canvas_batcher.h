@@ -227,7 +227,7 @@ public:
 
 		// we are always splitting items with lots of commands,
 		// and items with unhandled primitives (default)
-		bool use_hardware_transform() const { return num_item_refs == 1; }
+		bool use_hardware_transform() const { return (num_item_refs == 1) && !(flags & RasterizerStorageCommon::USE_LARGE_FVF); }
 	};
 
 	struct BItemRef {
@@ -1162,10 +1162,17 @@ PREAMBLE(bool)::_light_scissor_begin(const Rect2 &p_item_rect, const Transform2D
 
 	int rh = get_storage()->frame.current_rt->height;
 
+	// using the exact size was leading to off by one errors,
+	// possibly due to pixel snap. For this reason we will boost
+	// the scissor area by 1 pixel, this will take care of any rounding
+	// issues, and shouldn't significantly negatively impact performance.
 	int y = rh - (cliprect.position.y + cliprect.size.y);
+	y += 1; // off by 1 boost before flipping
+
 	if (get_storage()->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_VFLIP])
 		y = cliprect.position.y;
-	get_this()->gl_enable_scissor(cliprect.position.x, y, cliprect.size.width, cliprect.size.height);
+
+	get_this()->gl_enable_scissor(cliprect.position.x - 1, y, cliprect.size.width + 2, cliprect.size.height + 2);
 
 	return true;
 }
@@ -1303,7 +1310,9 @@ PREAMBLE(bool)::_prefill_line(RasterizerCanvas::Item::CommandLine *p_line, FillS
 	Vector2 from = p_line->from;
 	Vector2 to = p_line->to;
 
-	if (r_fill_state.transform_mode != TM_NONE) {
+	const bool use_large_verts = bdata.use_large_verts;
+
+	if ((r_fill_state.transform_mode != TM_NONE) && (!use_large_verts)) {
 		_software_transform_vertex(from, r_fill_state.transform_combined);
 		_software_transform_vertex(to, r_fill_state.transform_combined);
 	}
@@ -1651,13 +1660,15 @@ bool C_PREAMBLE::_prefill_polygon(RasterizerCanvas::Item::CommandPolygon *p_poly
 
 	if (!_software_skin_poly(p_poly, p_item, bvs, vertex_colors, r_fill_state, precalced_colors)) {
 
+		bool software_transform = (r_fill_state.transform_mode != TM_NONE) && (!use_large_verts);
+
 		for (int n = 0; n < num_inds; n++) {
 			int ind = p_poly->indices[n];
 
 			RAST_DEV_DEBUG_ASSERT(ind < p_poly->points.size());
 
 			// this could be moved outside the loop
-			if (r_fill_state.transform_mode != TM_NONE) {
+			if (software_transform) {
 				Vector2 pos = p_poly->points[ind];
 				_software_transform_vertex(pos, r_fill_state.transform_combined);
 				bvs[n].pos.set(pos.x, pos.y);
@@ -2061,9 +2072,9 @@ bool C_PREAMBLE::_prefill_rect(RasterizerCanvas::Item::CommandRect *rect, FillSt
 		const Transform2D &tr = r_fill_state.transform_combined;
 
 		pBT[0].translate.set(tr.elements[2]);
-		// could do swizzling in shader?
-		pBT[0].basis[0].set(tr.elements[0][0], tr.elements[1][0]);
-		pBT[0].basis[1].set(tr.elements[0][1], tr.elements[1][1]);
+
+		pBT[0].basis[0].set(tr.elements[0][0], tr.elements[0][1]);
+		pBT[0].basis[1].set(tr.elements[1][0], tr.elements[1][1]);
 
 		pBT[1] = pBT[0];
 		pBT[2] = pBT[0];

@@ -1126,7 +1126,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		OS::get_singleton()->_allow_layered = false;
 	}
 
-	Engine::get_singleton()->_gpu_pixel_snap = GLOBAL_DEF("rendering/2d/snapping/use_gpu_pixel_snap", false);
+	Engine::get_singleton()->_gpu_pixel_snap = GLOBAL_DEF_ALIAS("rendering/2d/snapping/use_gpu_pixel_snap", "rendering/quality/2d/use_pixel_snap", false);
 
 	OS::get_singleton()->_keep_screen_on = GLOBAL_DEF("display/window/energy_saving/keep_screen_on", true);
 	if (rtm == -1) {
@@ -1354,7 +1354,13 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 				ERR_PRINTS("Non-existing or invalid boot splash at '" + boot_logo_path + "'. Loading default splash.");
 		}
 
-		Color boot_bg_color = GLOBAL_DEF("application/boot_splash/bg_color", boot_splash_bg_color);
+#if defined(TOOLS_ENABLED) && !defined(NO_EDITOR_SPLASH)
+		const Color boot_bg_color =
+				GLOBAL_DEF("application/boot_splash/bg_color",
+						(editor || project_manager) ? boot_splash_editor_bg_color : boot_splash_bg_color);
+#else
+		const Color boot_bg_color = GLOBAL_DEF("application/boot_splash/bg_color", boot_splash_bg_color);
+#endif
 		if (boot_logo.is_valid()) {
 			OS::get_singleton()->_msec_splash = OS::get_singleton()->get_ticks_msec();
 			VisualServer::get_singleton()->set_boot_image(boot_logo, boot_bg_color, boot_logo_scale, boot_logo_filter);
