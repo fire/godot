@@ -2534,11 +2534,12 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 		const Dictionary &extras = d.has("extras") ? (Dictionary)d["extras"] : Dictionary();
 		Ref<ArrayMesh> import_mesh;
 		import_mesh.instance();
-		String mesh_name = "mesh";
-		if (d.has("name") && !String(d["name"]).empty()) {
-			mesh_name = d["name"];
+		if (meshes.size() == 1) {
+			import_mesh->set_name(state->scene_name);
+		} else {
+			String mesh_name = (d.has("name") && !String(d["name"]).empty()) ? d["name"] : "mesh";
+			import_mesh->set_name(_gen_unique_name(state, vformat("%s_%s", state->scene_name, mesh_name)));
 		}
-		import_mesh->set_name(_gen_unique_name(state, vformat("%s_%s", state->scene_name, mesh_name)));
 
 		for (int j = 0; j < primitives.size(); j++) {
 			Dictionary p = primitives[j];
