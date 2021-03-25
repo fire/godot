@@ -22,6 +22,11 @@
 #include "thirdparty/etcpak/ProcessDxtc.hpp"
 #include "thirdparty/etcpak/ProcessRGB.hpp"
 
+// thresholds for the early compression-mode decision scheme in QuickETC2
+// which can be changed by the option -e
+float ecmd_threshold[3] = { 0.03f, 0.09f, 0.38f };
+
+
 void _register_etc_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
 	Image::_image_compress_etc2_func = _compress_etc2;
