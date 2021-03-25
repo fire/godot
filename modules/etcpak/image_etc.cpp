@@ -90,18 +90,8 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
 	const bool dither = false;
-	Vector<uint32_t> tex;
-	tex.resize(imgh * imgw);
-	size_t count = 0;
-	for (size_t y = 0; y < imgh; y++) {
-		for (size_t x = 0; x < imgw; x++) {
-			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_rgba32();
-			count++;
-		}
-	}
 	bool etc2 = etc_format == Image::FORMAT_ETC2_RGBA8 ? true : false;
-	etcpak_wrap_etc2(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_etc2(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
@@ -153,17 +143,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
-	Vector<uint32_t> tex;
-	tex.resize(imgh * imgw);
-	size_t count = 0;
-	for (size_t y = 0; y < imgh; y++) {
-		for (size_t x = 0; x < imgw; x++) {
-			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_rgba32();
-			count++;
-		}
-	}
-	etcpak_wrap_bc(imgw, imgh, imgw, imgh, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, imgw, imgh, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
