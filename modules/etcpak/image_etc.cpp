@@ -5,6 +5,7 @@
 #include "core/string/print_string.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <future>
@@ -91,7 +92,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	dst_data.resize(target_size);
 	const bool dither = false;
 	bool etc2 = etc_format == Image::FORMAT_ETC2_RGBA8 ? true : false;
-	etcpak_wrap_etc2(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_etc2(imgw, imgh, dither, etc2, mipmap, (uint32_t *)img->get_data().ptr(), target_size, (uint64_t *)dst_data.ptrw());
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
@@ -143,7 +144,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
-	etcpak_wrap_bc(imgw, imgh, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, mipmap, (uint32_t *)img->get_data().ptr(), target_size, (uint64_t *)dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
