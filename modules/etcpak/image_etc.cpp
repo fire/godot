@@ -96,7 +96,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_rgba32();
+			tex.ptrw()[count] = c.to_abgr32();
 			count++;
 		}
 	}
@@ -155,8 +155,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_rgba32();
-			count++;
+			tex.ptrw()[count] = c.to_abgr32();
 		}
 	}
 	etcpak_wrap_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
