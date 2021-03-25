@@ -118,6 +118,10 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 		return;
 	}
 
+	if (p_img->get_format() != Image::FORMAT_RGBA8) {
+		p_img->convert(Image::FORMAT_RGBA8);
+	}
+
 	uint32_t imgw = p_img->get_width(), imgh = p_img->get_height();
 
 	Image::Format format = Image::FORMAT_DXT5;
@@ -146,7 +150,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 
 	print_verbose("Encoding format: " + Image::get_format_name(format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
-		unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
+	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
 	Vector<uint32_t> tex;
@@ -159,7 +163,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 			count++;
 		}
 	}
-	etcpak_wrap_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, imgw, imgh, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
