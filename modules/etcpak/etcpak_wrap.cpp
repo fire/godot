@@ -16,7 +16,7 @@ float ecmd_threshold[3] = {0.03f, 0.09f, 0.38f};
 #include <limits>
 #include <memory>
 
-void do_stuff(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, float p_x, float p_y, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
+void etcpak_wrap_etc2(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, float p_x, float p_y, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
 	BlockDataPtr bd = std::make_shared<BlockData>(v2i(p_x, p_y), p_mipmap, p_etc2 == true ? BlockData::Etc2_RGBA : BlockData::Etc1);
 	const int stride = 4;
 	const int block = stride * stride;
@@ -30,7 +30,7 @@ void do_stuff(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, float p_x,
 	bd.reset();
 }
 
-void do_stuff_bc(float p_imgw, float p_imgh, float p_x, float p_y, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
+void etcpak_wrap_bc(float p_imgw, float p_imgh, float p_x, float p_y, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
 	BlockDataPtr bd = std::make_shared<BlockData>(v2i(p_x, p_y), p_mipmap, BlockData::Dxt5);
 	const int stride = 4;
 	const int block = stride * stride;

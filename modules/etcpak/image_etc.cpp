@@ -101,7 +101,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		}
 	}
 	bool etc2 = etc_format == Image::FORMAT_ETC2_RGBA8 ? true : false;
-	do_stuff(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_etc2(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
 	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 }
@@ -159,7 +159,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 			count++;
 		}
 	}
-	do_stuff_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 }
