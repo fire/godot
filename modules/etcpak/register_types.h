@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  image_compress_etc.h                                                 */
+/*  register_types.h                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,9 +28,5 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef IMAGE_COMPRESS_ETC_H
-#define IMAGE_COMPRESS_ETC_H
-
-void _register_etc_compress_func();
-
-#endif // IMAGE_COMPRESS_ETC_H
+void register_etcpak_types();
+void unregister_etcpak_types();

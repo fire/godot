@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  texture_loader_pkm.h                                                 */
+/*  image_etc.h                                                          */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,20 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef TEXTURE_LOADER_PKM_H
-#define TEXTURE_LOADER_PKM_H
+#pragma once
 
-#include "core/io/resource_loader.h"
-#include "scene/resources/texture.h"
+#include "core/io/image.h"
+#include "core/os/copymem.h"
+#include "core/os/os.h"
+#include "core/string/print_string.h"
+#include "image_etc.h"
 
-class ResourceFormatPKM : public ResourceFormatLoader {
-public:
-	virtual RES load(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual bool handles_type(const String &p_type) const;
-	virtual String get_resource_type(const String &p_path) const;
-
-	virtual ~ResourceFormatPKM() {}
+enum class EtcpakType {
+	ETCPAK_TYPE_ETC1,
+	ETCPAK_TYPE_ETC2,
+	ETCPAK_TYPE_ETC2_ALPHA,
+	ETCPAK_TYPE_ETC2_RA_AS_RG,
+	ETCPAK_TYPE_DXT1,
+	ETCPAK_TYPE_DXT5,
+	ETCPAK_TYPE_DXT5_RA_AS_RG,
 };
 
-#endif // TEXTURE_LOADER_PKM_H
+void _compress_etcpak(EtcpakType p_compresstype, Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
+void _compress_etc1(Image *p_img, float p_lossy_quality);
+void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
+void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
+void _register_etc_compress_func();

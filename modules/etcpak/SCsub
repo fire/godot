@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_etcpak = env_modules.Clone()
+
+# Thirdparty source files
+thirdparty_dir = "#thirdparty/etcpak/"
+thirdparty_sources = [
+    "Bitmap.cpp",
+    "BitmapDownsampled.cpp",
+    "BlockData.cpp",
+    "ColorSpace.cpp",
+    "DataProvider.cpp",
+    "Debug.cpp",
+    "Dither.cpp",
+    "Error.cpp",
+    "mmap.cpp",
+    "ProcessDxtc.cpp",
+    "ProcessRGB.cpp",
+    "System.cpp",
+    "Tables.cpp",
+    "TaskDispatch.cpp",
+    "Timing.cpp",
+    "lz4/lz4.c",
+]
+thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+env_etcpak.Append(CPPPATH=[thirdparty_dir, "#thirdparty/"])
+env_etcpak.Append(CPPDEFINES=["NO_GZIP"])
+env_etcpak.Append(CPPDEFINES=["PNG_INTEL_SSE"])
+env_etcpak.Append(CPPDEFINES=["__SSE4_1__"])
+env_etcpak.Append(CPPDEFINES=["__AVX2__"])
+env_etcpak.Append(CPPDEFINES=["QUICK_ETC2"])
+env_thirdparty = env_etcpak.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
+
+# Godot source files
+env_etcpak.add_source_files(env.modules_sources, "*.cpp")
