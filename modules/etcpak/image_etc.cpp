@@ -19,7 +19,8 @@
 #include <unistd.h>
 #endif
 
-#include "etcpak_wrap.h"
+#include "thirdparty/etcpak/ProcessDxtc.hpp"
+#include "thirdparty/etcpak/ProcessRGB.hpp"
 
 void _register_etc_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
@@ -74,7 +75,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		image->resize(mip_w, mip_h);
 		Vector<uint8_t> dst_data;
 		dst_data.resize(size);
-		etcpak_wrap_etc2(mip_w, mip_h, dither, etc2, (uint32_t *)image->get_data().ptr(), size, (uint64_t *)dst_data.ptrw());
+		CompressEtc2Rgba((uint32_t *)image->get_data().ptr(), (uint64_t *)dst_data.ptrw(), mip_w * mip_h / 16, mip_w);
 		int target_size = dst_data.size();
 		ERR_FAIL_COND(target_size != size);
 		copymem(&wr[ofs], dst_data.ptr(), size);
@@ -126,8 +127,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 		image->resize(mip_w, mip_h);
 		Vector<uint8_t> dst_data;
 		dst_data.resize(size);
-		etcpak_wrap_bc(mip_w, mip_h, (uint32_t *)img->get_data().ptr(), size, (uint64_t *)dst_data.ptrw());
-
+		CompressDxt5((uint32_t *)img->get_data().ptr(), (uint64_t *)dst_data.ptrw(), mip_w * mip_h / 16, mip_w);
 		int target_size = dst_data.size();
 		ERR_FAIL_COND(target_size != size);
 		copymem(&wr[ofs], dst_data.ptr(), size);
