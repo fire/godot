@@ -54,18 +54,18 @@ static void _compress_etcpak(EtcpakType p_compresstype, Image *p_img, float p_lo
 
 	uint32_t imgw = p_img->get_width(), imgh = p_img->get_height();
 
-	Image::Format etc_format = Image::FORMAT_ETC2_RGBA8;
+	Image::Format format = Image::FORMAT_ETC2_RGBA8;
 
 	if (p_compresstype == EtcpakType::ETCPAK_TYPE_ETC1) {
-		etc_format = Image::FORMAT_ETC2_RGBA8;
+		format = Image::FORMAT_ETC2_RGBA8;
 	} else if (p_compresstype == EtcpakType::ETCPAK_TYPE_DXT1) {
-		etc_format = Image::FORMAT_DXT1;
+		format = Image::FORMAT_DXT1;
 	} else if (p_compresstype == EtcpakType::ETCPAK_TYPE_DXT5) {
-		etc_format = Image::FORMAT_DXT5;
+		format = Image::FORMAT_DXT5;
 	}
 
 	const bool mipmap = p_img->has_mipmaps();
-	print_verbose("Encoding format: " + Image::get_format_name(etc_format));
+	print_verbose("Encoding format: " + Image::get_format_name(format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
 
 	if (p_img->get_format() != Image::FORMAT_RGBA8) {
@@ -74,12 +74,12 @@ static void _compress_etcpak(EtcpakType p_compresstype, Image *p_img, float p_lo
 
 	Ref<Image> new_img;
 	new_img.instance();
-	new_img->create(p_img->get_width(), p_img->get_height(), mipmap, etc_format);
+	new_img->create(p_img->get_width(), p_img->get_height(), mipmap, format);
 	Vector<uint8_t> data = new_img->get_data();
 	uint8_t *wr = data.ptrw();
 
 	Ref<Image> image = p_img->duplicate();
-	int mmc = 1 + (mipmap ? Image::get_image_required_mipmaps(new_img->get_width(), new_img->get_height(), etc_format) : 0);
+	int mmc = 1 + (mipmap ? Image::get_image_required_mipmaps(new_img->get_width(), new_img->get_height(), format) : 0);
 	for (int i = 0; i < mmc; i++) {
 		int ofs, size, mip_w, mip_h;
 		new_img->get_mipmap_offset_size_and_dimensions(i, ofs, size, mip_w, mip_h);
@@ -99,12 +99,9 @@ static void _compress_etcpak(EtcpakType p_compresstype, Image *p_img, float p_lo
 		} else {
 			ERR_FAIL();
 		}
-
-		int target_size = dst_data.size();
-		ERR_FAIL_COND(target_size != size);
 		copymem(&wr[ofs], dst_data.ptr(), size);
 	}
-	p_img->create(new_img->get_width(), new_img->get_height(), mipmap, etc_format, data);
+	p_img->create(new_img->get_width(), new_img->get_height(), mipmap, format, data);
 
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
