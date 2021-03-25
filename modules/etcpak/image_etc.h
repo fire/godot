@@ -27,9 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-
-#ifndef IMAGE_ETC1_H
-#define IMAGE_ETC1_H
+#pragma once
 /*************************************************************************/
 /*  image_etc.cpp                                                        */
 /*************************************************************************/
@@ -71,5 +69,3 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 static void _compress_etc1(Image *p_img, float p_lossy_quality);
 static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
 void _register_etc_compress_func();
-
-#endif // IMAGE_ETC_H

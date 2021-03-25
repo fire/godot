@@ -18,8 +18,7 @@
 #include <unistd.h>
 #endif
 
-#include "thirdparty/etcpak/BlockData.hpp"
-#include "thirdparty/etcpak/Math.hpp"
+#include "etcpak_wrap.h"
 
 void _register_etc_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
@@ -70,25 +69,19 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 
 	print_verbose("Encoding format: " + Image::get_format_name(etc_format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
-	BlockData::Type type = BlockData::Etc1;
 	if (etc_format == Image::FORMAT_ETC || force_etc1_format) {
 		etc_format = Image::FORMAT_ETC;
 	} else if (etc_format == Image::FORMAT_ETC2_RGB8) {
-		type = BlockData::Etc2_RGB;
 		etc_format = Image::FORMAT_ETC2_RGB8;
 	} else if (etc_format == Image::FORMAT_ETC2_RGBA8) {
-		type = BlockData::Etc2_RGBA;
 		etc_format = Image::FORMAT_ETC2_RGBA8;
 	} else if (etc_format == Image::FORMAT_ETC2_R11) {
-		type = BlockData::Etc2_RGB;
 		etc_format = Image::FORMAT_ETC2_RGB8;
 		img->convert(Image::FORMAT_RGB8);
 	} else if (etc_format == Image::FORMAT_ETC2_RG11) {
-		type = BlockData::Etc2_RGB;
 		etc_format = Image::FORMAT_ETC2_RGB8;
 		img->convert(Image::FORMAT_RGB8);
 	} else {
-		type = BlockData::Etc2_RGBA;
 		etc_format = Image::FORMAT_ETC2_RGBA8;
 	}
 	unsigned int target_size = Image::get_image_data_size(imgw, imgh, etc_format, p_img->has_mipmaps());
@@ -96,9 +89,6 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	dst_data.resize(target_size);
 	const bool dither = false;
 	const bool mipmap = true;
-	
-	BlockDataPtr bd = std::make_shared<BlockData>(v2i(img->get_size().x, img->get_size().y), mipmap, type);
-
 	Vector<uint32_t> tex;
 	tex.resize(imgh * imgw);
 	size_t count = 0;
@@ -109,18 +99,10 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 			count++;
 		}
 	}
-	const int stride = 4;
-	const int block = stride * stride;
-	if (etc_format == Image::FORMAT_ETC2_RGBA8) {		
-		bd->ProcessRGBA(tex.ptr(), imgw / block * imgh, 0, imgw);
-	} else {
-		bd->Process(tex.ptr(), imgw / block * imgh, 0, imgw, Channels::RGB, dither);
-	}
-	int wofs = 0;
-	memcpy(&dst_data.ptrw()[wofs], bd->Decode()->Data(), target_size);
-	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
+	bool etc2 = etc_format == Image::FORMAT_ETC2_RGBA8 ? true : false;
+	do_stuff(imgw, imgh, dither, etc2, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
-	bd.reset();
+	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 }
 static Image::Format _get_etc2_mode(Image::UsedChannels format) {
 	switch (format) {
