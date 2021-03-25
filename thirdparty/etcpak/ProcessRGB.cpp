@@ -29,7 +29,10 @@
 #    include <x86intrin.h>
 #  endif
 #else
-#  ifndef _MSC_VER
+#  ifdef __MINGW32__
+#    define _bswap(x) __builtin_bswap32(x)
+#    define _bswap64(x) __builtin_bswap64(x)
+#  else
 #    include <byteswap.h>
 #    define _bswap(x) bswap_32(x)
 #    define _bswap64(x) bswap_64(x)

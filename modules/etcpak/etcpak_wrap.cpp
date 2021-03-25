@@ -1,10 +1,8 @@
 #include "etcpak_wrap.h"
 
-#ifdef QUICK_ETC2
-// thresholds for the early compression-mode decision scheme
+// thresholds for the early compression-mode decision scheme in QuickETC2
 // which can be changed by the option -e
 float ecmd_threshold[3] = {0.03f, 0.09f, 0.38f};
-#endif //QUICK_ETC2
 
 #include "thirdparty/etcpak/BlockData.hpp"
 #include "thirdparty/etcpak/Math.hpp"
