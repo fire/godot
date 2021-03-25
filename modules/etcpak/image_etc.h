@@ -68,4 +68,5 @@ static Image::Format _get_etc2_mode(Image::UsedChannels format);
 static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
 static void _compress_etc1(Image *p_img, float p_lossy_quality);
 static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
+static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
 void _register_etc_compress_func();

@@ -23,6 +23,7 @@
 void _register_etc_compress_func() {
 	Image::_image_compress_etc1_func = _compress_etc1;
 	Image::_image_compress_etc2_func = _compress_etc2;
+	Image::_image_compress_bc_func = _compress_bc;
 }
 static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source) {
 	_compress_etc(p_img, p_lossy_quality, false, p_source);
@@ -95,7 +96,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_argb32();
+			tex.ptrw()[count] = c.to_rgba32();
 			count++;
 		}
 	}
@@ -104,6 +105,65 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
 	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 }
+
+static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_channels) {
+	Image::Format img_format = p_img->get_format();
+
+	if (img_format >= Image::FORMAT_DXT1) {
+		return; //do not compress, already compressed
+	}
+
+	if (img_format > Image::FORMAT_RGBA8) {
+		// TODO: we should be able to handle FORMAT_RGBA4444 and FORMAT_RGBA5551 eventually
+		return;
+	}
+
+	uint32_t imgw = p_img->get_width(), imgh = p_img->get_height();
+
+	Image::Format format = Image::FORMAT_DXT5;
+
+	Ref<Image> img = p_img->duplicate();
+
+	if (img->has_mipmaps()) {
+		if (next_power_of_2(imgw) != imgw || next_power_of_2(imgh) != imgh) {
+			img->resize_to_po2();
+			imgw = img->get_width();
+			imgh = img->get_height();
+		}
+	} else {
+		if (imgw % 4 != 0 || imgh % 4 != 0) {
+			if (imgw % 4) {
+				imgw += 4 - imgw % 4;
+			}
+			if (imgh % 4) {
+				imgh += 4 - imgh % 4;
+			}
+
+			img->resize(imgw, imgh);
+		}
+	}
+
+	print_verbose("Encoding format: " + Image::get_format_name(format));
+	const bool mipmap = true;
+	uint64_t t = OS::get_singleton()->get_ticks_msec();
+		unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
+	Vector<uint8_t> dst_data;
+	dst_data.resize(target_size);
+	Vector<uint32_t> tex;
+	tex.resize(imgh * imgw);
+	size_t count = 0;
+	for (size_t y = 0; y < imgh; y++) {
+		for (size_t x = 0; x < imgw; x++) {
+			Color c = img->get_pixel(x, y);
+			tex.ptrw()[count] = c.to_abgr32();
+			count++;
+		}
+	}
+	do_stuff_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	p_img->create(imgw, imgh, mipmap, format, dst_data);
+	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
+}
+
 static Image::Format _get_etc2_mode(Image::UsedChannels format) {
 	switch (format) {
 		case Image::USED_CHANNELS_R:
