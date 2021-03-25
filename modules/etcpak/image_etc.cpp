@@ -49,7 +49,8 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 
 	Ref<Image> img = p_img->duplicate();
 
-	if (img->has_mipmaps()) {
+	const bool mipmap = img->has_mipmaps();
+	if (mipmap) {
 		if (next_power_of_2(imgw) != imgw || next_power_of_2(imgh) != imgh) {
 			img->resize_to_po2();
 			imgw = img->get_width();
@@ -85,11 +86,10 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	} else {
 		etc_format = Image::FORMAT_ETC2_RGBA8;
 	}
-	unsigned int target_size = Image::get_image_data_size(imgw, imgh, etc_format, p_img->has_mipmaps());
+	unsigned int target_size = Image::get_image_data_size(imgw, imgh, etc_format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
 	const bool dither = false;
-	const bool mipmap = true;
 	Vector<uint32_t> tex;
 	tex.resize(imgh * imgw);
 	size_t count = 0;
@@ -124,7 +124,8 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 
 	Ref<Image> img = p_img->duplicate();
 
-	if (img->has_mipmaps()) {
+	const bool mipmap = img->has_mipmaps();
+	if (mipmap) {
 		if (next_power_of_2(imgw) != imgw || next_power_of_2(imgh) != imgh) {
 			img->resize_to_po2();
 			imgw = img->get_width();
@@ -144,7 +145,6 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	}
 
 	print_verbose("Encoding format: " + Image::get_format_name(format));
-	const bool mipmap = true;
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
 		unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
