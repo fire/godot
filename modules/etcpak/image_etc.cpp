@@ -46,54 +46,41 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 
 	uint32_t imgw = p_img->get_width(), imgh = p_img->get_height();
 
-	Image::Format etc_format = force_etc1_format ? Image::FORMAT_ETC : _get_etc2_mode(p_channels);
+	Image::Format etc_format = Image::FORMAT_ETC2_RGBA8;
 
-	Ref<Image> img = p_img->duplicate();
-
-	const bool mipmap = img->has_mipmaps();
-	if (mipmap) {
-		if (next_power_of_2(imgw) != imgw || next_power_of_2(imgh) != imgh) {
-			img->resize_to_po2();
-			imgw = img->get_width();
-			imgh = img->get_height();
-		}
-	} else {
-		if (imgw % 4 != 0 || imgh % 4 != 0) {
-			if (imgw % 4) {
-				imgw += 4 - imgw % 4;
-			}
-			if (imgh % 4) {
-				imgh += 4 - imgh % 4;
-			}
-
-			img->resize(imgw, imgh);
-		}
-	}
-
+	const bool mipmap = p_img->has_mipmaps();
 	print_verbose("Encoding format: " + Image::get_format_name(etc_format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
-	if (etc_format == Image::FORMAT_ETC || force_etc1_format) {
-		etc_format = Image::FORMAT_ETC;
-	} else if (etc_format == Image::FORMAT_ETC2_RGB8) {
-		etc_format = Image::FORMAT_ETC2_RGB8;
-	} else if (etc_format == Image::FORMAT_ETC2_RGBA8) {
-		etc_format = Image::FORMAT_ETC2_RGBA8;
-	} else if (etc_format == Image::FORMAT_ETC2_R11) {
-		etc_format = Image::FORMAT_ETC2_RGB8;
-		img->convert(Image::FORMAT_RGB8);
-	} else if (etc_format == Image::FORMAT_ETC2_RG11) {
-		etc_format = Image::FORMAT_ETC2_RGB8;
-		img->convert(Image::FORMAT_RGB8);
-	} else {
-		etc_format = Image::FORMAT_ETC2_RGBA8;
-	}
-	unsigned int target_size = Image::get_image_data_size(imgw, imgh, etc_format, mipmap);
-	Vector<uint8_t> dst_data;
-	dst_data.resize(target_size);
+
 	const bool dither = false;
-	bool etc2 = etc_format == Image::FORMAT_ETC2_RGBA8 ? true : false;
-	etcpak_wrap_etc2(imgw, imgh, dither, etc2, mipmap, (uint32_t *)img->get_data().ptr(), target_size, (uint64_t *)dst_data.ptrw());
-	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
+	bool etc2 = true;
+	if (p_img->get_format() != Image::FORMAT_RGBA8) {
+		p_img->convert(Image::FORMAT_RGBA8);
+	}
+
+	Ref<Image> new_img;
+	new_img.instance();
+	new_img->create(p_img->get_width(), p_img->get_height(), mipmap, etc_format);
+	Vector<uint8_t> data = new_img->get_data();
+	uint8_t *wr = data.ptrw();
+
+	Ref<Image> image = p_img->duplicate();
+	int mmc = 1 + (mipmap ? Image::get_image_required_mipmaps(new_img->get_width(), new_img->get_height(), etc_format) : 0);
+	for (int i = 0; i < mmc; i++) {
+		int ofs, size, mip_w, mip_h;
+		new_img->get_mipmap_offset_size_and_dimensions(i, ofs, size, mip_w, mip_h);
+		mip_w = (mip_w + 3) & ~3;
+		mip_h = (mip_h + 3) & ~3;
+		image->resize(mip_w, mip_h);
+		Vector<uint8_t> dst_data;
+		dst_data.resize(size);
+		etcpak_wrap_etc2(mip_w, mip_h, dither, etc2, (uint32_t *)image->get_data().ptr(), size, (uint64_t *)dst_data.ptrw());
+		int target_size = dst_data.size();
+		ERR_FAIL_COND(target_size != size);
+		copymem(&wr[ofs], dst_data.ptr(), size);
+	}
+	p_img->create(new_img->get_width(), new_img->get_height(), mipmap, etc_format, data);
+
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
 
@@ -120,52 +107,32 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	Ref<Image> img = p_img->duplicate();
 
 	const bool mipmap = img->has_mipmaps();
-	if (mipmap) {
-		if (next_power_of_2(imgw) != imgw || next_power_of_2(imgh) != imgh) {
-			img->resize_to_po2();
-			imgw = img->get_width();
-			imgh = img->get_height();
-		}
-	} else {
-		if (imgw % 4 != 0 || imgh % 4 != 0) {
-			if (imgw % 4) {
-				imgw += 4 - imgw % 4;
-			}
-			if (imgh % 4) {
-				imgh += 4 - imgh % 4;
-			}
-
-			img->resize(imgw, imgh);
-		}
-	}
-
 	print_verbose("Encoding format: " + Image::get_format_name(format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
-	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
-	Vector<uint8_t> dst_data;
-	dst_data.resize(target_size);
-	etcpak_wrap_bc(imgw, imgh, mipmap, (uint32_t *)img->get_data().ptr(), target_size, (uint64_t *)dst_data.ptrw());
-	p_img->create(imgw, imgh, mipmap, format, dst_data);
-	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
-}
 
-static Image::Format _get_etc2_mode(Image::UsedChannels format) {
-	switch (format) {
-		case Image::USED_CHANNELS_R:
-			return Image::FORMAT_ETC2_R11;
+	Ref<Image> new_img;
+	new_img.instance();
+	new_img->create(p_img->get_width(), p_img->get_height(), mipmap, format);
+	Vector<uint8_t> data = new_img->get_data();
+	uint8_t *wr = data.ptrw();
 
-		case Image::USED_CHANNELS_RG:
-			return Image::FORMAT_ETC2_RG11;
+	Ref<Image> image = p_img->duplicate();
+	int mmc = 1 + (mipmap ? Image::get_image_required_mipmaps(new_img->get_width(), new_img->get_height(), format) : 0);
+	for (int i = 0; i < mmc; i++) {
+		int ofs, size, mip_w, mip_h;
+		new_img->get_mipmap_offset_size_and_dimensions(i, ofs, size, mip_w, mip_h);
+		mip_w = (mip_w + 3) & ~3;
+		mip_h = (mip_h + 3) & ~3;
+		image->resize(mip_w, mip_h);
+		Vector<uint8_t> dst_data;
+		dst_data.resize(size);
+		etcpak_wrap_bc(mip_w, mip_h, (uint32_t *)img->get_data().ptr(), size, (uint64_t *)dst_data.ptrw());
 
-		case Image::USED_CHANNELS_RGB:
-			return Image::FORMAT_ETC2_RGB8;
-
-		case Image::USED_CHANNELS_RGBA:
-			return Image::FORMAT_ETC2_RGBA8;
-
-		// TODO: would be nice if we could use FORMAT_ETC2_RGB8A1 for FORMAT_RGBA5551
-		default:
-			// TODO: Kept for compatibility, but should be investigated whether it's correct or if it should error out
-			return Image::FORMAT_ETC2_RGBA8;
+		int target_size = dst_data.size();
+		ERR_FAIL_COND(target_size != size);
+		copymem(&wr[ofs], dst_data.ptr(), size);
 	}
+
+	p_img->create(new_img->get_width(), new_img->get_height(), mipmap, format, data);
+	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }

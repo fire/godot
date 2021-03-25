@@ -1,5 +1,5 @@
 #pragma once
 #include <stdint.h>
 
-void etcpak_wrap_etc2(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, bool p_mipmap, const uint32_t *p_src, int32_t p_target_size, uint64_t *r_dst);
-void etcpak_wrap_bc(float p_imgw, float p_imgh, bool p_mipmap, const uint32_t *p_src, int32_t p_target_size, uint64_t *r_dst);
+void etcpak_wrap_etc2(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, const uint32_t *p_src, int32_t p_target_size, uint64_t *r_dst);
+void etcpak_wrap_bc(float p_imgw, float p_imgh, const uint32_t *p_src, int32_t p_target_size, uint64_t *r_dst);
