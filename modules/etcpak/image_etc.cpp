@@ -35,10 +35,10 @@
 #include <limits>
 #include <memory>
 
-#include "core/image.h"
+#include "core/io/image.h"
 #include "core/os/copymem.h"
 #include "core/os/os.h"
-#include "core/print_string.h"
+#include "core/string/print_string.h"
 #include "image_etc.h"
 
 #include "thirdparty/etcpak/Bitmap.hpp"
@@ -51,18 +51,18 @@
 #include "thirdparty/etcpak/TaskDispatch.hpp"
 #include "thirdparty/etcpak/Timing.hpp"
 
-static Image::Format _get_etc2_mode(Image::DetectChannels format) {
+static Image::Format _get_etc2_mode(Image::UsedChannels format) {
 	switch (format) {
-		case Image::DETECTED_R:
+		case Image::USED_CHANNELS_R:
 			return Image::FORMAT_ETC2_R11;
 
-		case Image::DETECTED_RG:
+		case Image::USED_CHANNELS_RG:
 			return Image::FORMAT_ETC2_RG11;
 
-		case Image::DETECTED_RGB:
+		case Image::USED_CHANNELS_RGB:
 			return Image::FORMAT_ETC2_RGB8;
 
-		case Image::DETECTED_RGBA:
+		case Image::USED_CHANNELS_RGBA:
 			return Image::FORMAT_ETC2_RGBA8;
 
 		// TODO: would be nice if we could use FORMAT_ETC2_RGB8A1 for FORMAT_RGBA5551
@@ -72,47 +72,8 @@ static Image::Format _get_etc2_mode(Image::DetectChannels format) {
 	}
 }
 
-static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::CompressSource p_source) {
+static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels) {
 	Image::Format img_format = p_img->get_format();
-	Image::DetectChannels detected_channels = p_img->get_detected_channels();
-
-	if (p_source == Image::COMPRESS_SOURCE_LAYERED) {
-		//keep what comes in
-		switch (p_img->get_format()) {
-			case Image::FORMAT_L8: {
-				detected_channels = Image::DETECTED_L;
-			} break;
-			case Image::FORMAT_LA8: {
-				detected_channels = Image::DETECTED_LA;
-			} break;
-			case Image::FORMAT_R8: {
-				detected_channels = Image::DETECTED_R;
-			} break;
-			case Image::FORMAT_RG8: {
-				detected_channels = Image::DETECTED_RG;
-			} break;
-			case Image::FORMAT_RGB8: {
-				detected_channels = Image::DETECTED_RGB;
-			} break;
-			case Image::FORMAT_RGBA8:
-			case Image::FORMAT_RGBA4444:
-			case Image::FORMAT_RGBA5551: {
-				detected_channels = Image::DETECTED_RGBA;
-			} break;
-			default: {
-			}
-		}
-	}
-
-	if (p_source == Image::COMPRESS_SOURCE_SRGB && (detected_channels == Image::DETECTED_R || detected_channels == Image::DETECTED_RG)) {
-		//R and RG do not support SRGB
-		detected_channels = Image::DETECTED_RGB;
-	}
-
-	if (p_source == Image::COMPRESS_SOURCE_NORMAL) {
-		//use RG channels only for normal
-		detected_channels = Image::DETECTED_RG;
-	}
 
 	if (img_format >= Image::FORMAT_DXT1) {
 		return; //do not compress, already compressed
@@ -125,7 +86,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 
 	uint32_t imgw = p_img->get_width(), imgh = p_img->get_height();
 
-	Image::Format etc_format = force_etc1_format ? Image::FORMAT_ETC : _get_etc2_mode(detected_channels);
+	Image::Format etc_format = force_etc1_format ? Image::FORMAT_ETC : _get_etc2_mode(p_channels);
 
 	Ref<Image> img = p_img->duplicate();
 
@@ -148,7 +109,6 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		}
 	}
 
-	PoolVector<uint8_t>::Read r = img->get_data().read();
 	print_verbose("ETCPAK: Begin encoding, format: " + Image::get_format_name(etc_format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
 	BlockData::Type type = BlockData::Etc1;
@@ -173,16 +133,14 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		etc_format = Image::FORMAT_ETC2_RGBA8;
 	}
 	unsigned int target_size = Image::get_image_data_size(imgw, imgh, etc_format, p_img->has_mipmaps());
-	PoolVector<uint8_t> dst_data;
+	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
-	PoolVector<uint8_t>::Write w = dst_data.write();
 	const bool dither = false;
 	const bool mipmap = true;
 	BlockDataPtr bd = std::make_shared<BlockData>(v2i(img->get_size().x, img->get_size().y), mipmap, type);
 
 	Vector<uint32_t> tex;
 	tex.resize(imgh * imgw);
-	img->lock();
 	size_t count = 0;
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
@@ -191,7 +149,6 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 			count++;
 		}
 	}
-	img->unlock();
 	const int stride = 4;
 	const int block = stride * stride;
 	if (etc_format == Image::FORMAT_ETC2_RGBA8) {
@@ -201,22 +158,21 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		bd->Process(tex.ptr(), imgw / block * imgh, 0, imgw, Channels::RGB, dither);
 	}
 	int wofs = 0;
-	memcpy(&w[wofs], bd->Data(), target_size);
+	memcpy(&dst_data.ptrw()[wofs], bd->Data(), target_size);
 	print_verbose("ETCPAK: Time encoding: " + rtos(OS::get_singleton()->get_ticks_msec() - t));
 	p_img->create(imgw, imgh, p_img->has_mipmaps(), etc_format, dst_data);
 	bd.reset();
 }
 
 static void _compress_etc1(Image *p_img, float p_lossy_quality) {
-	_compress_etc(p_img, p_lossy_quality, true, Image::COMPRESS_SOURCE_GENERIC);
+	_compress_etc(p_img, p_lossy_quality, true, Image::USED_CHANNELS_RGB);
 }
 
-static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::CompressSource p_source) {
+static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source) {
 	_compress_etc(p_img, p_lossy_quality, false, p_source);
 }
 
 void _register_etc_compress_func() {
-
 	Image::_image_compress_etc1_func = _compress_etc1;
 	Image::_image_compress_etc2_func = _compress_etc2;
 }
