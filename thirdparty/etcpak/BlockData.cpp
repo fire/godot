@@ -17,7 +17,6 @@
 #  include <arm_neon.h>
 #endif
 
-#ifdef __SSE4_1__
 #  ifdef _MSC_VER
 #    include <intrin.h>
 #    include <Windows.h>
@@ -26,16 +25,6 @@
 #  else
 #    include <x86intrin.h>
 #  endif
-#else
-#  ifdef __MINGW32__
-#    define _bswap(x) __builtin_bswap32(x)
-#    define _bswap64(x) __builtin_bswap64(x)
-#  else
-#    include <byteswap.h>
-#    define _bswap(x) bswap_32(x)
-#    define _bswap64(x) bswap_64(x)
-#  endif
-#endif
 
 #ifndef _bswap
 #  define _bswap(x) __builtin_bswap32(x)

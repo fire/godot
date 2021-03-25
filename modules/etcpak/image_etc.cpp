@@ -158,7 +158,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 			tex.ptrw()[count] = c.to_abgr32();
 		}
 	}
-	etcpak_wrap_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(img->detect_alpha(), imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
