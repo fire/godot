@@ -64,8 +64,14 @@
 #include "core/string/print_string.h"
 #include "image_etc.h"
 
-static Image::Format _get_etc2_mode(Image::UsedChannels format);
-static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
+enum class EtcpakType {
+	ETCPAK_TYPE_ETC1,
+	ETCPAK_TYPE_ETC2,    
+	ETCPAK_TYPE_DXT1,
+	ETCPAK_TYPE_DXT5,
+};
+
+static void _compress_etcpak(EtcpakType p_compresstype, Image *p_img, float p_lossy_quality, bool force_etc1_format, Image::UsedChannels p_channels);
 static void _compress_etc1(Image *p_img, float p_lossy_quality);
 static void _compress_etc2(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
 static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannels p_source);
