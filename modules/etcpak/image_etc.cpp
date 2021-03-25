@@ -96,7 +96,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_abgr32();
+			tex.ptrw()[count] = c.to_rgba32();
 			count++;
 		}
 	}
@@ -146,7 +146,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 
 	print_verbose("Encoding format: " + Image::get_format_name(format));
 	uint64_t t = OS::get_singleton()->get_ticks_msec();
-		unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
+	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
 	Vector<uint32_t> tex;
@@ -155,10 +155,10 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_abgr32();
+			tex.ptrw()[count] = c.to_rgba32();
 		}
 	}
-	etcpak_wrap_bc(img->detect_alpha(), imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
