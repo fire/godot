@@ -27,8 +27,8 @@ void etcpak_wrap_etc2(float p_imgw, float p_imgh, bool p_dither, bool p_etc2, fl
 	bd.reset();
 }
 
-void etcpak_wrap_bc(float p_imgw, float p_imgh, float p_x, float p_y, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
-	BlockDataPtr bd = std::make_shared<BlockData>(v2i(p_x, p_y), p_mipmap, BlockData::Dxt5);
+void etcpak_wrap_bc(float p_imgw, float p_imgh, bool p_mipmap, const uint8_t *p_src, int32_t p_target_size, uint8_t *r_dst) {
+	BlockDataPtr bd = std::make_shared<BlockData>(v2i(p_imgw, p_imgh), p_mipmap, BlockData::Dxt5);
 	bd->ProcessRGBA((uint32_t *)p_src, p_imgw * p_imgh / 16, 0, p_imgw);
 	int wofs = 0;
 	memcpy(r_dst, bd->Decode()->Data(), p_target_size);

@@ -143,7 +143,7 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	unsigned int target_size = Image::get_image_data_size(imgw, imgh, format, mipmap);
 	Vector<uint8_t> dst_data;
 	dst_data.resize(target_size);
-	etcpak_wrap_bc(imgw, imgh, imgw, imgh, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
+	etcpak_wrap_bc(imgw, imgh, mipmap, img->get_data().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
 	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
