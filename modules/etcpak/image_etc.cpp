@@ -155,13 +155,13 @@ static void _compress_bc(Image *p_img, float p_lossy_quality, Image::UsedChannel
 	for (size_t y = 0; y < imgh; y++) {
 		for (size_t x = 0; x < imgw; x++) {
 			Color c = img->get_pixel(x, y);
-			tex.ptrw()[count] = c.to_abgr32();
+			tex.ptrw()[count] = c.to_rgba32();
 			count++;
 		}
 	}
 	etcpak_wrap_bc(imgw, imgh, img->get_size().x, img->get_size().y, mipmap, tex.to_byte_array().ptr(), target_size, dst_data.ptrw());
 	p_img->create(imgw, imgh, mipmap, format, dst_data);
-	print_verbose("ETCPAK encode took " + rtos(OS::get_singleton()->get_ticks_msec() - t));
+	print_line(vformat("ETCPAK encode took %s ms", rtos(OS::get_singleton()->get_ticks_msec() - t)));
 }
 
 static Image::Format _get_etc2_mode(Image::UsedChannels format) {
