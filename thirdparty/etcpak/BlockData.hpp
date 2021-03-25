@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Bitmap.hpp"
+#include "ForceInline.hpp"
 #include "Vector.hpp"
 
 class BlockData
@@ -20,6 +21,8 @@ public:
         Etc1,
         Etc2_RGB,
         Etc2_RGBA,
+        Dxt1,
+        Dxt5
     };
 
     BlockData( const char* fn );
@@ -28,17 +31,17 @@ public:
     ~BlockData();
 
     BitmapPtr Decode();
-	uint8_t *Data() {
-		return m_data;
-	}
-	void Dissect();
 
     void Process( const uint32_t* src, uint32_t blocks, size_t offset, size_t width, Channels type, bool dither );
-    void ProcessRGBA( const uint32_t* src, uint32_t blocks, size_t offset, size_t width, bool dither );
+    void ProcessRGBA( const uint32_t* src, uint32_t blocks, size_t offset, size_t width );
+
+    const v2i& Size() const { return m_size; }
 
 private:
-    BitmapPtr DecodeRGB();
-    BitmapPtr DecodeRGBA();
+    etcpak_no_inline BitmapPtr DecodeRGB();
+    etcpak_no_inline BitmapPtr DecodeRGBA();
+    etcpak_no_inline BitmapPtr DecodeDxt1();
+    etcpak_no_inline BitmapPtr DecodeDxt5();
 
     uint8_t* m_data;
     v2i m_size;

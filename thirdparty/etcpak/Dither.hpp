@@ -4,15 +4,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void InitDither();
+#ifdef __AVX2__
+#  ifdef _MSC_VER
+#    include <intrin.h>
+#  else
+#    include <x86intrin.h>
+#  endif
+#endif
+
 void Dither( uint8_t* data );
 
-void Swizzle(const uint8_t* data, const ptrdiff_t pitch, uint8_t* output);
-
-#ifdef __SSE4_1__
-void Dither_SSE41(const uint8_t* data0, const uint8_t* data1, uint8_t* output0, uint8_t* output1);
-void Swizzle_SSE41(const uint8_t* data, const ptrdiff_t pitch, uint8_t* output0, uint8_t* output1);
-void Dither_Swizzle_SSE41(const uint8_t* data, const ptrdiff_t pitch, uint8_t* output0, uint8_t* output1);
+#ifdef __AVX2__
+void DitherAvx2( uint8_t* data, __m128i px0, __m128i px1, __m128i px2, __m128i px3 );
 #endif
 
 #endif
