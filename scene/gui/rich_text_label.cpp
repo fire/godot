@@ -4112,3 +4112,6 @@ RichTextLabel::RichTextLabel() {
 RichTextLabel::~RichTextLabel() {
 	memdelete(main);
 }
+int RichTextLabel::get_fixed_width() const {
+	return fixed_width;
+}

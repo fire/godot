@@ -444,6 +444,7 @@ private:
 	bool fit_content_height = false;
 
 public:
+	int get_fixed_width() const;
 	String get_text();
 	void add_text(const String &p_text);
 	void add_image(const Ref<Texture2D> &p_image, const int p_width = 0, const int p_height = 0, const Color &p_color = Color(1.0, 1.0, 1.0), VAlign p_align = VALIGN_TOP);
