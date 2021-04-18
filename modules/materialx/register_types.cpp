@@ -30,8 +30,7 @@
 
 #include "register_types.h"
 
-#include "image_loader_tinyexr.h"
-#include "image_saver_tinyexr.h"
+#include "image_loader_materialx.h"
 
 static ImageLoaderMaterialX *image_loader_materialx = nullptr;
 
