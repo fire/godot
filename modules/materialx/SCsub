@@ -5,34 +5,24 @@ import glob
 Import("env")
 Import("env_modules")
 
+
 env_materialx = env_modules.Clone()
 
 # Thirdparty source files
 
 thirdparty_obj = []
+thirdparty_path = "#thirdparty/materialx/source/"
+env_materialx.Prepend(CPPPATH=[thirdparty_path])
+thirdparty_sources = Glob(thirdparty_path + "MaterialXCore/*.cpp")
+thirdparty_sources += Glob(thirdparty_path + "MaterialXFormat/*.cpp") 
+thirdparty_sources += Glob(thirdparty_path + "MaterialXGenShader/*.cpp")
 
-thirdparty_paths = "#thirdparty_sources/materialx/source/"
-thirdparty_sources = Glob(thirdparty_paths + "MaterialXCore/*.cpp")
-thirdparty_sources += Glob(thirdparty_paths + "MaterialXFormat/*.cpp") 
-thirdparty_sources += Glob(thirdparty_paths + "MaterialXGenShader/*.cpp")
-thirdparty_sources += Glob(thirdparty_paths + "MaterialXRender/*.cpp")
-
-
-env_materialx.Prepend(CPPPATH=[thirdparty_paths])
-
-env_materialx.Append(CPPDEFINES=[""])
+env_materialx.Append(CPPDEFINES=["MATERIALX_MAJOR_VERSION=0"])
+env_materialx.Append(CPPDEFINES=["MATERIALX_MINOR_VERSION=0"])
+env_materialx.Append(CPPDEFINES=["MATERIALX_BUILD_VERSION=0"])
 
 env_thirdparty = env_materialx.Clone()
 env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
-env.modules_sources += thirdparty_obj
 
-# Godot source files
-
-module_obj = []
-
-env_materialx.add_source_files(module_obj, "*.cpp")
-env.modules_sources += module_obj
-
-# Needed to force rebuilding the module files when the thirdparty library is updated.
-env.Depends(module_obj, thirdparty_obj)
+env_materialx.add_source_files(env.modules_sources, "*.cpp")
