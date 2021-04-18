@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import glob
+
 Import("env")
 Import("env_modules")
 
@@ -9,19 +11,20 @@ env_materialx = env_modules.Clone()
 
 thirdparty_obj = []
 
-# thirdparty_dir = "#thirdparty/materialx/"
-# thirdparty_sources = [
-#     "",
-# ]
-# thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+thirdparty_paths = "#thirdparty_sources/materialx/source/"
+thirdparty_sources = Glob(thirdparty_paths + "MaterialXCore/*.cpp")
+thirdparty_sources += Glob(thirdparty_paths + "MaterialXFormat/*.cpp") 
+thirdparty_sources += Glob(thirdparty_paths + "MaterialXGenShader/*.cpp")
+thirdparty_sources += Glob(thirdparty_paths + "MaterialXRender/*.cpp")
 
-# env_materialx.Prepend(CPPPATH=[thirdparty_dir])
+
+env_materialx.Prepend(CPPPATH=[thirdparty_paths])
 
 env_materialx.Append(CPPDEFINES=[""])
 
 env_thirdparty = env_materialx.Clone()
 env_thirdparty.disable_warnings()
-# env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
 env.modules_sources += thirdparty_obj
 
 # Godot source files
