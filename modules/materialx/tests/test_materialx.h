@@ -5,7 +5,7 @@
 
 namespace TestMaterialX {
 
-TEST_CASE("[MaterialX] Hello MaterialX!") {
+TEST_CASE("[Modules][MaterialX] Hello MaterialX!") {
     String hello = "Hello MaterialX!";
     CHECK(hello == "Hello MaterialX!");
 }
