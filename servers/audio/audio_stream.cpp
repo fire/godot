@@ -311,7 +311,6 @@ void AudioStreamPlaybackRandomPitch::start(float p_from_pos) {
 void AudioStreamPlaybackRandomPitch::stop() {
 	if (playing.is_valid()) {
 		playing->stop();
-		;
 	}
 }
 
@@ -357,4 +356,12 @@ void AudioStreamPlaybackRandomPitch::mix(AudioFrame *p_buffer, float p_rate_scal
 
 AudioStreamPlaybackRandomPitch::~AudioStreamPlaybackRandomPitch() {
 	random_pitch->playbacks.erase(this);
+}
+
+double AudioStreamPlayback::get_scheduled_time() const {
+	return scheduled_time;
+}
+
+void AudioStreamPlayback::set_scheduled_time(double p_time) {
+	scheduled_time = p_time;
 }

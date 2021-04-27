@@ -1096,6 +1096,10 @@ double AudioServer::get_time_since_last_mix() const {
 	return AudioDriver::get_singleton()->get_time_since_last_mix();
 }
 
+double AudioServer::get_last_mix_time() const {
+	return AudioDriver::get_singleton()->get_last_mix_time();
+}
+
 AudioServer *AudioServer::singleton = nullptr;
 
 void AudioServer::add_callback(AudioCallback p_callback, void *p_userdata) {
@@ -1288,6 +1292,7 @@ void AudioServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_time_to_next_mix"), &AudioServer::get_time_to_next_mix);
 	ClassDB::bind_method(D_METHOD("get_time_since_last_mix"), &AudioServer::get_time_since_last_mix);
+	ClassDB::bind_method(D_METHOD("get_last_mix_time"), &AudioServer::get_last_mix_time);
 	ClassDB::bind_method(D_METHOD("get_output_latency"), &AudioServer::get_output_latency);
 
 	ClassDB::bind_method(D_METHOD("capture_get_device_list"), &AudioServer::capture_get_device_list);
@@ -1452,3 +1457,7 @@ AudioBusLayout::AudioBusLayout() {
 	buses.resize(1);
 	buses.write[0].name = "Master";
 }
+
+double AudioDriver::get_last_mix_time() const {
+	return _last_mix_time / 1e6;
+};

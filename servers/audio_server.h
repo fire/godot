@@ -104,6 +104,8 @@ public:
 
 	virtual float get_latency() { return 0; }
 
+	virtual double get_last_mix_time() const;
+
 	SpeakerMode get_speaker_mode_by_total_channels(int p_channels) const;
 	int get_total_channels_by_speaker_mode(SpeakerMode) const;
 
@@ -339,6 +341,8 @@ public:
 	virtual double get_output_latency() const;
 	virtual double get_time_to_next_mix() const;
 	virtual double get_time_since_last_mix() const;
+
+	virtual double get_last_mix_time() const;
 
 	void add_callback(AudioCallback p_callback, void *p_userdata);
 	void remove_callback(AudioCallback p_callback, void *p_userdata);

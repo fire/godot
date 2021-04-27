@@ -39,6 +39,9 @@
 class AudioStreamPlayback : public Reference {
 	GDCLASS(AudioStreamPlayback, Reference);
 
+protected:
+	double scheduled_time = 0.0;
+
 public:
 	virtual void start(float p_from_pos = 0.0) = 0;
 	virtual void stop() = 0;
@@ -48,7 +51,8 @@ public:
 
 	virtual float get_playback_position() const = 0;
 	virtual void seek(float p_time) = 0;
-
+	virtual void set_scheduled_time(double p_time);
+	virtual double get_scheduled_time() const;
 	virtual void mix(AudioFrame *p_buffer, float p_rate_scale, int p_frames) = 0;
 };
 

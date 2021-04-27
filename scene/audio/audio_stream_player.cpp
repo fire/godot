@@ -254,6 +254,7 @@ void AudioStreamPlayer::stop() {
 	if (stream_playback.is_valid() && active.is_set()) {
 		setstop.set();
 		stop_has_priority.set();
+		set_scheduled_time(0.0);
 	}
 }
 
@@ -366,8 +367,12 @@ void AudioStreamPlayer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_pitch_scale"), &AudioStreamPlayer::get_pitch_scale);
 
 	ClassDB::bind_method(D_METHOD("play", "from_position"), &AudioStreamPlayer::play, DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("play_scheduled", "abs_mix_time"), &AudioStreamPlayer::play_scheduled);
 	ClassDB::bind_method(D_METHOD("seek", "to_position"), &AudioStreamPlayer::seek);
 	ClassDB::bind_method(D_METHOD("stop"), &AudioStreamPlayer::stop);
+
+	ClassDB::bind_method(D_METHOD("set_scheduled_time", "sec"), &AudioStreamPlayer::set_scheduled_time);
+	ClassDB::bind_method(D_METHOD("get_scheduled_time"), &AudioStreamPlayer::get_scheduled_time);
 
 	ClassDB::bind_method(D_METHOD("is_playing"), &AudioStreamPlayer::is_playing);
 	ClassDB::bind_method(D_METHOD("get_playback_position"), &AudioStreamPlayer::get_playback_position);
@@ -398,6 +403,8 @@ void AudioStreamPlayer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mix_target", PROPERTY_HINT_ENUM, "Stereo,Surround,Center"), "set_mix_target", "get_mix_target");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "bus", PROPERTY_HINT_ENUM, ""), "set_bus", "get_bus");
 
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "scheduled_time_usec"), "set_scheduled_time", "get_scheduled_time");
+
 	ADD_SIGNAL(MethodInfo("finished"));
 
 	BIND_ENUM_CONSTANT(MIX_TARGET_STEREO);
@@ -412,4 +419,22 @@ AudioStreamPlayer::AudioStreamPlayer() {
 }
 
 AudioStreamPlayer::~AudioStreamPlayer() {
+}
+
+void AudioStreamPlayer::set_scheduled_time(double p_usec) {
+	if (stream_playback.is_valid()) {
+		stream_playback->set_scheduled_time(p_usec);
+	}
+}
+
+double AudioStreamPlayer::get_scheduled_time() const {
+	if (stream_playback.is_valid()) {
+		return stream_playback->get_scheduled_time();
+	}
+	return 0.0;
+}
+
+void AudioStreamPlayer::play_scheduled(double p_abs_mix_time) {
+	set_scheduled_time(p_abs_mix_time);
+	play();
 }

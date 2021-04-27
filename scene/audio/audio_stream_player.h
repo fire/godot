@@ -93,7 +93,10 @@ public:
 	float get_pitch_scale() const;
 
 	void play(float p_from_pos = 0.0);
+	void play_scheduled(double p_abs_mix_time);
 	void seek(float p_seconds);
+	void set_scheduled_time(double p_usec);
+	double get_scheduled_time() const;
 	void stop();
 	bool is_playing() const;
 	float get_playback_position();

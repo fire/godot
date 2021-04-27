@@ -32,6 +32,7 @@
 
 #include "core/io/marshalls.h"
 #include "core/os/file_access.h"
+#include <stdint.h>
 
 void AudioStreamPlaybackSample::start(float p_from_pos) {
 	if (base->format == AudioStreamSample::FORMAT_IMA_ADPCM) {
@@ -222,7 +223,8 @@ void AudioStreamPlaybackSample::do_resample(const Depth *p_src, AudioFrame *p_ds
 }
 
 void AudioStreamPlaybackSample::mix(AudioFrame *p_buffer, float p_rate_scale, int p_frames) {
-	if (!base->data || !active) {
+	if (!base->data ||
+			!active) {
 		for (int i = 0; i < p_frames; i++) {
 			p_buffer[i] = AudioFrame(0, 0);
 		}
@@ -287,7 +289,16 @@ void AudioStreamPlaybackSample::mix(AudioFrame *p_buffer, float p_rate_scale, in
 			loop_format = AudioStreamSample::LOOP_FORWARD;
 		}
 	}
+	double scheduled_time = get_scheduled_time();
+	double buffer_start_time = AudioServer::get_singleton()->get_last_mix_time();
+	int64_t silence_frames_into_this_buffer = (scheduled_time - buffer_start_time) * AudioServer::get_singleton()->get_mix_rate();
+	silence_frames_into_this_buffer = CLAMP(silence_frames_into_this_buffer, 0, todo);
 
+	todo -= silence_frames_into_this_buffer;
+	dst_buff += silence_frames_into_this_buffer;
+	for (int i = 0; i < silence_frames_into_this_buffer; i++) {
+		p_buffer[i] = AudioFrame(0.0, 0.0);
+	}
 	while (todo > 0) {
 		int64_t limit = 0;
 		int32_t target = 0, aux = 0;
@@ -398,7 +409,7 @@ void AudioStreamPlaybackSample::mix(AudioFrame *p_buffer, float p_rate_scale, in
 		//bit was missing from mix
 		int todo_ofs = p_frames - todo;
 		for (int i = todo_ofs; i < p_frames; i++) {
-			p_buffer[i] = AudioFrame(0, 0);
+			p_buffer[i] = AudioFrame(0.0, 0.0);
 		}
 	}
 }
