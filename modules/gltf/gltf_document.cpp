@@ -1260,6 +1260,10 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 						dst_i += skip_bytes;
 					}
 					double d = *src;
+					d = CLAMP(d, Math::snapped(FLT_MIN, CMP_EPSILON), Math::snapped(FLT_MAX, CMP_EPSILON));
+					if (Math::is_nan(d)) {
+						d = 0.0;
+					}
 					buffer.write[dst_i] = d;
 					src++;
 					dst_i++;
@@ -2384,16 +2388,15 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 					Vector<real_t> tarr = array_morph[Mesh::ARRAY_TANGENT];
 					if (tarr.size()) {
 						const int ret_size = tarr.size() / 4;
-						Vector<Color> attribs;
+						Vector<Vector3> attribs;
 						attribs.resize(ret_size);
 						for (int i = 0; i < ret_size; i++) {
-							Color tangent;
-							tangent.r = tarr[(i * 4) + 0];
-							tangent.r = tarr[(i * 4) + 1];
-							tangent.r = tarr[(i * 4) + 2];
-							tangent.r = tarr[(i * 4) + 3];
+							Vector3 tangent;
+							tangent.x = tarr[(i * 4) + 0];
+							tangent.y = tarr[(i * 4) + 1];
+							tangent.z = tarr[(i * 4) + 2];
 						}
-						t["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
+						t["TANGENT"] = _encode_accessor_as_vec3(state, attribs, true);
 					}
 					targets.push_back(t);
 				}
