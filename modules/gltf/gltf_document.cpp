@@ -2384,16 +2384,16 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 					Vector<real_t> tarr = array_morph[Mesh::ARRAY_TANGENT];
 					if (tarr.size()) {
 						const int ret_size = tarr.size() / 4;
-						Vector<Color> attribs;
+						Vector<Vector3> attribs;
 						attribs.resize(ret_size);
 						for (int i = 0; i < ret_size; i++) {
-							Color tangent;
-							tangent.r = tarr[(i * 4) + 0];
-							tangent.r = tarr[(i * 4) + 1];
-							tangent.r = tarr[(i * 4) + 2];
-							tangent.r = tarr[(i * 4) + 3];
+							float flip = tarr[(i * 4) + 3];
+							Vector3 tangent;
+							tangent.x = tarr[(i * 4) + 0] * flip;
+							tangent.y = tarr[(i * 4) + 1] * flip;
+							tangent.z = tarr[(i * 4) + 2] * flip;
 						}
-						t["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
+						t["TANGENT"] = _encode_accessor_as_vec3(state, attribs, true);
 					}
 					targets.push_back(t);
 				}
