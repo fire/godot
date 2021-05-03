@@ -1110,6 +1110,43 @@ ProjectSettings::ProjectSettings() {
 	GLOBAL_DEF("editor/script/templates_search_path", "res://script_templates");
 	custom_prop_info["editor/script/templates_search_path"] = PropertyInfo(Variant::STRING, "editor/script/templates_search_path", PROPERTY_HINT_DIR);
 
+	GLOBAL_DEF("application/crashpad/disable_editor_crashpad", false);
+	GLOBAL_DEF("application/crashpad/disable_project_crashpad", false);
+#define STR_EXPAND(tok) #tok
+#define STR(tok) STR_EXPAND(tok)
+#ifndef DEFAULT_CRASHPAD_SERVER_URL
+	GLOBAL_DEF("application/crashpad/editor_crashpad_server", "");
+#else
+	GLOBAL_DEF("application/crashpad/editor_crashpad_server", STR(DEFAULT_CRASHPAD_SERVER_URL));
+#endif
+	GLOBAL_DEF("application/crashpad/project_crashpad_server", "");
+#ifndef DEFAULT_CRASHPAD_HANDLER_PATH
+	GLOBAL_DEF("application/crashpad/editor_crashpad_handler", "");
+#else
+	GLOBAL_DEF("application/crashpad/editor_crashpad_handler", STR(DEFAULT_CRASHPAD_HANDLER_PATH));
+#endif
+	custom_prop_info["application/crashpad/editor_crashpad_handler"] = PropertyInfo(Variant::STRING, "application/crashpad/editor_crashpad_handler", PROPERTY_HINT_FILE, "*");
+	GLOBAL_DEF("application/crashpad/project_crashpad_handler", "");
+	custom_prop_info["application/crashpad/project_crashpad_handler"] = PropertyInfo(Variant::STRING, "application/crashpad/project_crashpad_handler", PROPERTY_HINT_FILE, "*");
+
+	action = Dictionary();
+	action["deadzone"] = Variant(0.5f);
+	events = Array();
+	key.instance();
+	key->set_keycode(KEY_ENTER);
+	events.push_back(key);
+	key.instance();
+	key->set_keycode(KEY_KP_ENTER);
+	events.push_back(key);
+	key.instance();
+	key->set_keycode(KEY_SPACE);
+	events.push_back(key);
+	joyb.instance();
+	joyb->set_button_index(JOY_BUTTON_A);
+	events.push_back(joyb);
+	action["events"] = events;
+	GLOBAL_DEF("input/ui_accept", action);
+	input_presets.push_back("input/ui_accept");
 	_add_builtin_input_map();
 
 	custom_prop_info["display/window/handheld/orientation"] = PropertyInfo(Variant::STRING, "display/window/handheld/orientation", PROPERTY_HINT_ENUM, "landscape,portrait,reverse_landscape,reverse_portrait,sensor_landscape,sensor_portrait,sensor");
