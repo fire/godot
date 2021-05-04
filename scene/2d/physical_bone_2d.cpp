@@ -149,11 +149,6 @@ void PhysicalBone2D::_start_physics_simulation() {
 	// Reset to Bone2D position
 	_position_at_bone2d();
 
-	// Let the RigidBody executing its force integration.
-	if (!follow_bone_when_simulating) {
-		PhysicsServer2D::get_singleton()->body_set_force_integration_callback(get_rid(), this, "_direct_state_changed");
-	}
-
 	// Apply the layers and masks
 	PhysicsServer2D::get_singleton()->body_set_collision_layer(get_rid(), get_collision_layer());
 	PhysicsServer2D::get_singleton()->body_set_collision_mask(get_rid(), get_collision_mask());
