@@ -84,6 +84,8 @@ public:
 	static SimplifyScaleFunc simplify_scale_func;
 	typedef size_t (*SimplifySloppyFunc)(unsigned int *destination, const unsigned int *indices, size_t index_count, const float *vertex_positions_data, size_t vertex_count, size_t vertex_positions_stride, size_t target_index_count, float target_error, float *out_result_error);
 	static SimplifySloppyFunc simplify_sloppy_func;
+	typedef float (*QuantizeFloatFunc)(float v, int N);
+	static QuantizeFloatFunc quantize_float_func;
 
 private:
 	struct VertexHasher {

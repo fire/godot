@@ -38,6 +38,7 @@ void register_meshoptimizer_types() {
 	SurfaceTool::simplify_with_attrib_func = meshopt_simplifyWithAttributes;
 	SurfaceTool::simplify_scale_func = meshopt_simplifyScale;
 	SurfaceTool::simplify_sloppy_func = meshopt_simplifySloppy;
+	SurfaceTool::quantize_float_func = meshopt_quantizeFloat;
 }
 
 void unregister_meshoptimizer_types() {
@@ -45,4 +46,5 @@ void unregister_meshoptimizer_types() {
 	SurfaceTool::simplify_func = nullptr;
 	SurfaceTool::simplify_scale_func = nullptr;
 	SurfaceTool::simplify_sloppy_func = nullptr;
+	SurfaceTool::quantize_float_func = nullptr;
 }

@@ -672,13 +672,26 @@ Error EditorSceneImporterMesh::lightmap_unwrap_cached(const Transform3D &p_base_
 		int ic = rindices.size();
 
 		float eps = 1.19209290e-7F; // Taken from xatlas.h
+
 		if (ic == 0) {
 			for (int j = 0; j < vc / 3; j++) {
 				Vector3 p0 = transform.xform(rvertices[j * 3 + 0]);
 				Vector3 p1 = transform.xform(rvertices[j * 3 + 1]);
 				Vector3 p2 = transform.xform(rvertices[j * 3 + 2]);
 
-				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {
+				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {						
+					// TODO
+					// if (SurfaceTool::quantize_float_func) {
+					// 	p0.x = SurfaceTool::quantize_float_func(p0.x, 7);
+					// 	p0.y = SurfaceTool::quantize_float_func(p0.y, 7);
+					// 	p0.z = SurfaceTool::quantize_float_func(p0.z, 7);
+					// 	p1.x = SurfaceTool::quantize_float_func(p1.x, 7);
+					// 	p1.y = SurfaceTool::quantize_float_func(p1.y, 7);
+					// 	p1.z = SurfaceTool::quantize_float_func(p1.z, 7);
+					// 	p2.x = SurfaceTool::quantize_float_func(p2.x, 7);
+					// 	p2.y = SurfaceTool::quantize_float_func(p2.y, 7);
+					// 	p2.z = SurfaceTool::quantize_float_func(p2.z, 7);
+					// }
 					continue;
 				}
 
@@ -693,7 +706,19 @@ Error EditorSceneImporterMesh::lightmap_unwrap_cached(const Transform3D &p_base_
 				Vector3 p1 = transform.xform(rvertices[rindices[j * 3 + 1]]);
 				Vector3 p2 = transform.xform(rvertices[rindices[j * 3 + 2]]);
 
-				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {
+				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {					
+					// TODO
+					// if (SurfaceTool::quantize_float_func) {
+					// 	p0.x = SurfaceTool::quantize_float_func(p0.x, 7);
+					// 	p0.y = SurfaceTool::quantize_float_func(p0.y, 7);
+					// 	p0.z = SurfaceTool::quantize_float_func(p0.z, 7);
+					// 	p1.x = SurfaceTool::quantize_float_func(p1.x, 7);
+					// 	p1.y = SurfaceTool::quantize_float_func(p1.y, 7);
+					// 	p1.z = SurfaceTool::quantize_float_func(p1.z, 7);
+					// 	p2.x = SurfaceTool::quantize_float_func(p2.x, 7);
+					// 	p2.y = SurfaceTool::quantize_float_func(p2.y, 7);
+					// 	p2.z = SurfaceTool::quantize_float_func(p2.z, 7);
+					// }
 					continue;
 				}
 
@@ -836,6 +861,7 @@ void EditorSceneImporterMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_surface_lod_size", "surface_idx", "lod_idx"), &EditorSceneImporterMesh::get_surface_lod_size);
 	ClassDB::bind_method(D_METHOD("get_surface_lod_indices", "surface_idx", "lod_idx"), &EditorSceneImporterMesh::get_surface_lod_indices);
 	ClassDB::bind_method(D_METHOD("get_surface_material", "surface_idx"), &EditorSceneImporterMesh::get_surface_material);
+	ClassDB::bind_method(D_METHOD("set_surface_material", "surface_idx", "material"), &EditorSceneImporterMesh::set_surface_material);
 
 	ClassDB::bind_method(D_METHOD("get_mesh"), &EditorSceneImporterMesh::get_mesh);
 	ClassDB::bind_method(D_METHOD("clear"), &EditorSceneImporterMesh::clear);
