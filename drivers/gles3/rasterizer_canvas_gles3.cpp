@@ -227,6 +227,11 @@ void RasterizerCanvasGLES3::_legacy_canvas_render_item(Item *p_ci, RenderItemSta
 					t->using_srgb = false;
 				}
 
+				if (!storage->config.srgb_decode_supported && t->using_srgb) {
+					//no srgb in 2D
+					t->using_srgb = false;
+				}
+
 				glBindTexture(t->target, t->tex_id);
 			}
 
@@ -1304,6 +1309,11 @@ void RasterizerCanvasGLES3::render_joined_item(const BItemJoined &p_bij, RenderI
 				if (storage->config.srgb_decode_supported && t->using_srgb) {
 					//no srgb in 2D
 					glTexParameteri(t->target, _TEXTURE_SRGB_DECODE_EXT, _SKIP_DECODE_EXT);
+					t->using_srgb = false;
+				}
+
+				if (!storage->config.srgb_decode_supported && t->using_srgb) {
+					//no srgb in 2D
 					t->using_srgb = false;
 				}
 
