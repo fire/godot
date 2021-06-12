@@ -5083,7 +5083,7 @@ void SpatialEditor::_init_indicators() {
 				"void vertex() { \n"
 				"	// From FLAG_SRGB_VERTEX_COLOR \n"
 				"	if (!OUTPUT_IS_SRGB) { \n"
-				"		COLOR.rgb = mix(pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb * (1.0 / 12.92), lessThan(COLOR.rgb, vec3(0.04045))); \n"
+				"		COLOR.rgb = mix(pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.2)), COLOR.rgb * (1.0 / 12.92), lessThan(COLOR.rgb, vec3(0.04045))); \n"
 				"	} \n"
 				"} \n"
 				"\n"

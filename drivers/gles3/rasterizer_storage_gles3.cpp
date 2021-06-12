@@ -138,8 +138,14 @@ GLuint RasterizerStorageGLES3::system_fbo = 0;
 Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_image, Image::Format p_format, uint32_t p_flags, Image::Format &r_real_format, GLenum &r_gl_format, GLenum &r_gl_internal_format, GLenum &r_gl_type, bool &r_compressed, bool &r_srgb, bool p_force_decompress) const {
 	r_compressed = false;
 	r_gl_format = 0;
-	r_real_format = p_format;
 	Ref<Image> image = p_image;
+#if defined(JAVASCRIPT_ENABLED)
+	if (p_format == Image::FORMAT_RGB8) {
+		image->convert(Image::FORMAT_RGBA8);
+		p_format = image->get_format();
+	}
+#endif
+	r_real_format = p_format;
 	r_srgb = false;
 
 	bool need_decompress = false;
@@ -188,7 +194,15 @@ Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_
 		} break;
 		case Image::FORMAT_RGBA8: {
 			r_gl_format = GL_RGBA;
+#if defined(JAVASCRIPT_ENABLED)
+			if ((p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) {
+				r_gl_internal_format = GL_SRGB8_ALPHA8;
+			} else {				
+				r_gl_internal_format = GL_RGBA8;
+			}
+#else
 			r_gl_internal_format = (config.srgb_decode_supported || (p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+#endif
 			r_gl_type = GL_UNSIGNED_BYTE;
 			r_srgb = true;
 
@@ -260,7 +274,15 @@ Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_
 		} break;
 		case Image::FORMAT_DXT1: {
 			if (config.s3tc_supported) {
+#if defined(JAVASCRIPT_ENABLED)
+				if ((p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) {
+					r_gl_internal_format = _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_NV;
+				} else {
+					r_gl_internal_format = _EXT_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+				}
+#else
 				r_gl_internal_format = (config.srgb_decode_supported || (p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) ? _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_NV : _EXT_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+#endif
 				r_gl_format = GL_RGBA;
 				r_gl_type = GL_UNSIGNED_BYTE;
 				r_compressed = true;
@@ -273,7 +295,15 @@ Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_
 		} break;
 		case Image::FORMAT_DXT3: {
 			if (config.s3tc_supported) {
+#if defined(JAVASCRIPT_ENABLED)
+				if ((p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) {
+					r_gl_internal_format = _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_NV;
+				} else {					
+					r_gl_internal_format = _EXT_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+				}
+#else
 				r_gl_internal_format = (config.srgb_decode_supported || (p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) ? _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_NV : _EXT_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+#endif
 				r_gl_format = GL_RGBA;
 				r_gl_type = GL_UNSIGNED_BYTE;
 				r_compressed = true;
@@ -286,7 +316,15 @@ Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_
 		} break;
 		case Image::FORMAT_DXT5: {
 			if (config.s3tc_supported) {
+#if defined(JAVASCRIPT_ENABLED)
+				if ((p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) {
+					r_gl_internal_format = _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_NV;
+				} else {
+					r_gl_internal_format = _EXT_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+				}
+#else
 				r_gl_internal_format = (config.srgb_decode_supported || (p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) ? _EXT_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_NV : _EXT_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+#endif
 				r_gl_format = GL_RGBA;
 				r_gl_type = GL_UNSIGNED_BYTE;
 				r_compressed = true;
@@ -509,7 +547,15 @@ Ref<Image> RasterizerStorageGLES3::_get_gl_image_and_format(const Ref<Image> &p_
 		}
 
 		r_gl_format = GL_RGBA;
+#if defined(JAVASCRIPT_ENABLED)
+		if ((p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) {
+			r_gl_internal_format = GL_SRGB8_ALPHA8;
+		} else {
+			r_gl_internal_format = GL_RGBA8;		
+		}
+#else
 		r_gl_internal_format = (config.srgb_decode_supported || (p_flags & VS::TEXTURE_FLAG_CONVERT_TO_LINEAR)) ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+#endif
 		r_gl_type = GL_UNSIGNED_BYTE;
 		r_compressed = false;
 		r_real_format = Image::FORMAT_RGBA8;
@@ -8007,7 +8053,9 @@ void RasterizerStorageGLES3::initialize() {
 	config.framebuffer_half_float_supported = config.extensions.has("GL_EXT_color_buffer_half_float") || config.framebuffer_float_supported;
 
 #endif
-
+#ifdef JAVASCRIPT_ENABLED
+	config.rgtc_supported = false;
+#endif
 	// not yet detected on GLES3 (is this mandated?)
 	config.support_npot_repeat_mipmap = true;
 

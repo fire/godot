@@ -357,8 +357,6 @@ void RasterizerGLES3::set_screen_lut(const Ref<Image> &p_lut, int p_h_slices, in
 }
 
 void RasterizerGLES3::blit_render_target_to_screen(RID p_render_target, const Rect2 &p_screen_rect, int p_screen) {
-
-void RasterizerGLES3::blit_render_target_to_screen(RID p_render_target, const Rect2 &p_screen_rect, int p_screen) {
 	ERR_FAIL_COND(storage->frame.current_rt);
 
 	RasterizerStorageGLES3::RenderTarget *rt = storage->render_target_owner.getornull(p_render_target);
