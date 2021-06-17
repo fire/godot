@@ -33,6 +33,7 @@
 #include "core/os/os.h"
 #include "servers/rendering_server.h"
 #include "texture_basisu.h"
+#include "thirdparty/simde-no-tests/simde-common.h"
 
 #ifdef TOOLS_ENABLED
 #include <encoder/basisu_comp.h>
