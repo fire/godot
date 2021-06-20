@@ -121,6 +121,16 @@
 			<description>
 			</description>
 		</method>
+		<method name="compute_image_metrics">
+			<return type="Dictionary">
+			</return>
+			<argument index="0" name="second_image" type="Image">
+			</argument>
+			<argument index="1" name="use_luma" type="bool">
+			</argument>
+			<description>
+			</description>
+		</method>
 		<method name="convert">
 			<return type="void">
 			</return>
