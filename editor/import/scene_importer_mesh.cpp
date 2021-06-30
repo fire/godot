@@ -217,9 +217,7 @@ void EditorSceneImporterMesh::generate_lods() {
 		float mesh_error = 0.0f;
 		float scale = SurfaceTool::simplify_scale_func((const float *)vertices_ptr, vertex_count, sizeof(Vector3));
 		while (index_target > min_indices) {
-			Vector<int> new_indices;
-			new_indices.resize(indices.size());
-			size_t new_len = SurfaceTool::simplify_with_attrib_func((unsigned int *)new_indices.ptrw(), (const unsigned int *)indices.ptr(), indices.size(), (const float *)vertices_ptr, vertex_count, sizeof(Vector3), index_target, max_mesh_error_percentage, &mesh_error, (float *)attributes.ptrw(), normal_weights.ptrw(), attribute_count);
+			size_t new_len = SurfaceTool::simplify_with_attrib_func((unsigned int *)indices.ptrw(), (const unsigned int *)indices.ptr(), indices.size(), (const float *)vertices_ptr, vertex_count, sizeof(Vector3), index_target, max_mesh_error_percentage, &mesh_error, (float *)attributes.ptrw(), normal_weights.ptrw(), attribute_count);
 			if ((int)new_len > (index_target * error_tolerance)) {
 				break;
 			}
@@ -231,8 +229,8 @@ void EditorSceneImporterMesh::generate_lods() {
 			if (new_len <= 0) {
 				break;
 			}
-			new_indices.resize(new_len);
-			lod.indices = new_indices;
+			indices.resize(new_len);
+			lod.indices = indices;
 			print_line("Lod " + itos(surfaces.write[i].lods.size()) + " begin with " + itos(indices.size() / 3) + " triangles and shoot for " + itos(index_target / 3) + " triangles. Got " + itos(new_len / 3) + " triangles. Lod screen ratio " + rtos(lod.distance));
 			surfaces.write[i].lods.push_back(lod);
 			index_target *= threshold;
