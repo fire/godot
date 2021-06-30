@@ -142,18 +142,6 @@ void EditorSceneImporterMesh::set_surface_material(int p_surface, const Ref<Mate
 	surfaces.write[p_surface].material = p_material;
 }
 
-Basis EditorSceneImporterMesh::compute_rotation_matrix_from_ortho_6d(Vector3 p_x_raw, Vector3 p_y_raw) {
-	Vector3 x = p_x_raw.normalized();
-	Vector3 z = x.cross(p_y_raw);
-	z = z.normalized();
-	Vector3 y = z.cross(x);
-	Basis basis;
-	basis.set_axis(Vector3::AXIS_X, x);
-	basis.set_axis(Vector3::AXIS_Y, y);
-	basis.set_axis(Vector3::AXIS_Z, z);
-	return basis;
-}
-
 void EditorSceneImporterMesh::generate_lods() {
 	if (!SurfaceTool::simplify_func) {
 		return;
@@ -192,9 +180,6 @@ void EditorSceneImporterMesh::generate_lods() {
 				basis.set_euler(normals[normal_i]);
 				Vector3 basis_x = basis.get_axis(0);
 				Vector3 basis_y = basis.get_axis(1);
-				basis = compute_rotation_matrix_from_ortho_6d(basis_x, basis_y);
-				basis_x = basis.get_axis(0);
-				basis_y = basis.get_axis(1);
 				attributes.write[normal_i * attribute_count + 0] = basis_x.x;
 				attributes.write[normal_i * attribute_count + 1] = basis_x.y;
 				attributes.write[normal_i * attribute_count + 2] = basis_x.z;
