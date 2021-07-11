@@ -31,6 +31,7 @@
 #include "color_transform.h"
 #include "core/error/error_macros.h"
 #include "core/io/image.h"
+#include "core/templates/local_vector.h"
 #include "core/variant/variant.h"
 #include "pngconf.h"
 #include "scene/resources/texture.h"
@@ -86,7 +87,7 @@ RID ColorTransform::get_color_correction() {
 	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_HALF_FLT, intent, flags);
 
 	ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
-	Vector<Ref<Image>> slices;
+	LocalVector<Ref<Image>> slices;
 	int32_t dim = 256;
 	// Fill image with identity data in source space
 	slices.resize(dim);
@@ -100,16 +101,16 @@ RID ColorTransform::get_color_correction() {
 				c.r = float(x) / dim;
 				c.g = float(y) / dim;
 				c.b = float(z) / dim;
-				lut->set_pixel(x, y, c);
+				lut->set_pixel(x, y, c.to_linear());
 			}
 		}
-		PackedByteArray data;
+		LocalVector<uint8_t> data;
 		data.resize(Image::get_image_data_size(dim, dim, Image::FORMAT_RGBH));
-		cmsDoTransform(transform, lut->get_data().ptr(), data.ptrw(), dim * dim); // cmsDoTransform wants number of pixels
+		cmsDoTransform(transform, lut->get_data().ptr(), data.ptr(), dim * dim); // cmsDoTransform wants number of pixels
 		Ref<Image> out_lut;
 		out_lut.instantiate();
 		out_lut->create(dim, dim, false, Image::FORMAT_RGBH, data);
-		slices.write[z] = out_lut;
+		slices[z] = out_lut;
 	}
 	cmsDeleteTransform(transform); // we don't need it after use
 	RID tex_3d = RS::get_singleton()->texture_3d_create(Image::FORMAT_RGBH, dim, dim, dim, false, slices);
