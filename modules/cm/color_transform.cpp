@@ -101,7 +101,7 @@ RID ColorTransform::get_color_correction() {
 				c.r = float(x) / dim;
 				c.g = float(y) / dim;
 				c.b = float(z) / dim;
-				lut->set_pixel(x, y, c.to_linear());
+				lut->set_pixel(x, y, c);
 			}
 		}
 		LocalVector<uint8_t> data;
