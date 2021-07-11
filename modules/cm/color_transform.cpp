@@ -33,8 +33,10 @@
 #include "core/io/image.h"
 #include "core/variant/variant.h"
 #include "pngconf.h"
+#include "scene/resources/texture.h"
 #include "servers/rendering_server.h"
 #include <lcms2.h>
+#include <stddef.h>
 #include <stdint.h>
 
 bool ColorTransform::is_valid() {
@@ -70,75 +72,47 @@ RID ColorTransform::get_color_correction() {
 		ERR_PRINT("Transform is not valid.");
 		return RID();
 	}
-	Ref<Image> out_lut;
-	out_lut.instantiate();
-	int32_t texture_dim = 4096;
-	int32_t tile_dim = 256;
-	int32_t max_tile_dim_index = tile_dim - 1;
-	out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8);
-	int32_t root = Math::sqrt((float)max_tile_dim_index);
-	{
-		// hard-coded 256x256x256 size for now
-		// Fill image with identity data in source space
-		for (int y = 0; y < texture_dim; y++) {
-			for (int x = 0; x < texture_dim; x++) {
-				Color c;
-				c.r = x % max_tile_dim_index / float(max_tile_dim_index);
-				c.g = y % max_tile_dim_index / float(max_tile_dim_index);
-				c.b = ((float(y) / max_tile_dim_index * root) + (x % max_tile_dim_index / root)) / float(max_tile_dim_index);
-				out_lut->set_pixel(x, y, c);
-			}
-		}
-	}
-	{
-		// Use LCMS to transform data
-		cmsHPROFILE src = src_profile->get_profile_handle().profile; // handles owned by ColorProfile, don't free
-		cmsHPROFILE dst = dst_profile->get_profile_handle().profile;
-		if (src == nullptr || dst == nullptr) {
-			ERR_PRINT("Transform has invalid profiles. This should have been checked earlier.");
-			return RID();
-		}
-		cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
-		// Half allows hdr icc profiless
-		// Identity check
-		cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_8, intent, flags);
-		ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
-		PackedByteArray out_array;
-		out_array.resize(out_lut->get_mipmap_byte_size(0));
-		cmsDoTransform(transform, out_lut->get_data().to_byte_array().ptr(), out_array.ptrw(), texture_dim * texture_dim); // cmsDoTransform wants number of pixels
-		cmsDeleteTransform(transform); // we don't need it after this one use
-		out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8, out_array);
-	}
-	if (out_lut.is_null()) {
-		ERR_PRINT("Failed to create LUT texture.");
+
+	// Use LCMS to transform data
+	cmsHPROFILE src = src_profile->get_profile_handle().profile; // handles owned by ColorProfile, don't free
+	cmsHPROFILE dst = dst_profile->get_profile_handle().profile;
+	if (src == nullptr || dst == nullptr) {
+		ERR_PRINT("Transform has invalid profiles. This should have been checked earlier.");
 		return RID();
 	}
-	out_lut->set_name("LUT Texture");
-	RID tex_3d;
-	if (false) {
-		int h_slices = 16;
-		int v_slices = 16;
+	cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
+	// Half allows hdr icc profiless
+	// Identity check
+	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_HALF_FLT, dst, TYPE_RGB_HALF_FLT, intent, flags);
 
-		Vector<Ref<Image>> slices;
-		int slice_w = out_lut->get_width() / h_slices;
-		int slice_h = out_lut->get_height() / v_slices;
-
-		for (int i = 0; i < v_slices; i++) {
-			for (int j = 0; j < h_slices; j++) {
-				int x = slice_w * j;
-				int y = slice_h * i;
-				Ref<Image> slice = out_lut->get_rect(Rect2(x, y, slice_w, slice_h));
-				ERR_CONTINUE(slice.is_null() || slice->is_empty());
-				if (slice->get_width() != slice_w || slice->get_height() != slice_h) {
-					slice->resize(slice_w, slice_h);
-				}
-				slices.push_back(slice);
+	ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
+	Vector<Ref<Image>> slices;
+	int32_t dim = 256;
+	// Fill image with identity data in source space
+	slices.resize(dim);
+	for (int z = 0; z < dim; z++) {
+		Ref<Image> lut;
+		lut.instantiate();
+		lut->create(dim, dim, false, Image::FORMAT_RGBH);
+		for (int y = 0; y < dim; y++) {
+			for (int x = 0; x < dim; x++) {
+				Color c;
+				c.r = float(x) / dim;
+				c.g = float(y) / dim;
+				c.b = float(z) / dim;
+				lut->set_pixel(x, y, c);
 			}
 		}
-		tex_3d = RS::get_singleton()->texture_3d_create(out_lut->get_format(), slice_w, slice_w, slice_w, false, slices);
+		PackedByteArray data;
+		data.resize(lut->get_data().size());
+		cmsDoTransform(transform, lut->get_data().ptr(), data.ptrw(), dim * dim); // cmsDoTransform wants number of pixels
+		Ref<Image> out_lut;
+		out_lut.instantiate();
+		out_lut->create(dim, dim, false, Image::FORMAT_RGBH, data);
+		slices.write[z] = out_lut;
 	}
-	// TODO iFire 2021-03-18 Remove test output
-	out_lut->save_png("res://lut.png");
+	cmsDeleteTransform(transform); // we don't need it after use
+	RID tex_3d = RS::get_singleton()->texture_3d_create(Image::FORMAT_RGBH, dim, dim, dim, false, slices);
 	return tex_3d;
 }
 
