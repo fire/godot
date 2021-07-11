@@ -84,17 +84,17 @@ RID ColorTransform::get_color_correction() {
 	cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
 	// Half allows hdr icc profiles to be used
 	// Identity check
-	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_8, intent, flags);
+	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_HALF_FLT, dst, TYPE_RGB_HALF_FLT, intent, flags);
 
 	ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
 	LocalVector<Ref<Image>> slices;
 	int32_t dim = 256;
 	// Fill image with identity data in source space
 	slices.resize(256);
-	for (int32_t z = 0; z < dim; z++) {
+	for (int32_t z = dim; z-- > 0;) {
 		Ref<Image> lut;
 		lut.instantiate();
-		lut->create(dim, dim, false, Image::FORMAT_RGB8);
+		lut->create(dim, dim, false, Image::FORMAT_RGBH);
 		for (int32_t y = 0; y < dim; y++) {
 			for (int32_t x = 0; x < dim; x++) {
 				Color c;
@@ -105,15 +105,15 @@ RID ColorTransform::get_color_correction() {
 			}
 		}
 		LocalVector<uint8_t> data;
-		data.resize(Image::get_image_data_size(dim, dim, Image::FORMAT_RGB8));
+		data.resize(Image::get_image_data_size(dim, dim, Image::FORMAT_RGBH));
 		cmsDoTransform(transform, lut->get_data().ptr(), data.ptr(), dim * dim); // cmsDoTransform wants number of pixels
 		Ref<Image> out_lut;
 		out_lut.instantiate();
-		out_lut->create(dim, dim, false, Image::FORMAT_RGB8, data);
+		out_lut->create(dim, dim, false, Image::FORMAT_RGBH, data);
 		slices[z] = out_lut;
 	}
 	cmsDeleteTransform(transform); // we don't need it after use
-	RID tex_3d = RS::get_singleton()->texture_3d_create(Image::FORMAT_RGB8, dim, dim, dim, false, slices);
+	RID tex_3d = RS::get_singleton()->texture_3d_create(Image::FORMAT_RGBH, dim, dim, dim, false, slices);
 	return tex_3d;
 }
 
