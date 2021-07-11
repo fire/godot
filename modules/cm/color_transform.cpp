@@ -74,17 +74,18 @@ RID ColorTransform::get_color_correction() {
 	out_lut.instantiate();
 	int32_t texture_dim = 4096;
 	int32_t tile_dim = 256;
+	int32_t max_tile_dim_index = tile_dim - 1;
 	out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8);
-	int32_t root = Math::sqrt((float)tile_dim);
+	int32_t root = Math::sqrt((float)max_tile_dim_index);
 	{
 		// hard-coded 256x256x256 size for now
 		// Fill image with identity data in source space
 		for (int y = 0; y < texture_dim; y++) {
 			for (int x = 0; x < texture_dim; x++) {
 				Color c;
-				c.r = x % tile_dim / float(tile_dim - 1);
-				c.g = y % tile_dim / float(tile_dim - 1);
-				c.b = ((float(y) / tile_dim * root) + (x % tile_dim / root)) / float(tile_dim - 1);
+				c.r = x % max_tile_dim_index / float(max_tile_dim_index);
+				c.g = y % max_tile_dim_index / float(max_tile_dim_index);
+				c.b = ((float(y) / max_tile_dim_index * root) + (x % max_tile_dim_index / root)) / float(max_tile_dim_index);
 				out_lut->set_pixel(x, y, c);
 			}
 		}

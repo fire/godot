@@ -44,7 +44,7 @@ class ColorProfile : public RefCounted {
 
 public:
 	enum Predef {
-		PREDEF_SRGB,
+		PREDEF_LINEAR,
 	};
 
 	class Handle {
