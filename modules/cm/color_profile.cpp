@@ -30,6 +30,7 @@
 
 #include "color_profile.h"
 #include "core/object/ref_counted.h"
+#include <lcms2.h>
 
 bool ColorProfile::is_valid() {
 	return profile_valid && profile != NULL;
@@ -54,18 +55,8 @@ ColorProfile::Handle ColorProfile::get_profile_handle() {
 
 void ColorProfile::load_predef(Predef p_predef) {
 	switch (p_predef) {
-		case PREDEF_LINEAR: {
-			cmsCIExyY d65_srgb_adobe_specs = { 0.3127, 0.3290, 1.0 };
-			// https://invent.kde.org/graphics/krita/-/blob/63fc02052cd7b84d6bbe60df238fd7cf2395f64d/krita/data/profiles/elles-icc-profiles/README
-			cmsCIExyYTRIPLE srgb_primaries_pre_quantized = {
-				{ 0.639998686, 0.330010138, 1.0 },
-				{ 0.300003784, 0.600003357, 1.0 },
-				{ 0.150002046, 0.059997204, 1.0 }
-			};
-			cmsToneCurve *gamma[3];
-			gamma[0] = gamma[1] = gamma[2] = cmsBuildGamma(nullptr, 1.0f);
-			cmsHPROFILE new_profile = cmsCreateRGBProfile(&d65_srgb_adobe_specs, &srgb_primaries_pre_quantized, gamma);
-			_set_profile(new_profile);
+		case PREDEF_SRGB: {
+			_set_profile(cmsCreate_sRGBProfile());
 			break;
 		}
 		default: {

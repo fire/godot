@@ -491,7 +491,7 @@ void RendererViewport::viewport_set_color_management(RID p_viewport) {
 		return;
 	}
 
-	transform->set_src_profile(memnew(ColorProfile(ColorProfile::PREDEF_LINEAR)));
+	transform->set_src_profile(memnew(ColorProfile(ColorProfile::PREDEF_SRGB)));
 	transform->set_dst_profile(screen_profile);
 
 	String intent = EDITOR_GET("interface/color_management/intent");

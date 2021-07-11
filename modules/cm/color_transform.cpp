@@ -72,8 +72,8 @@ RID ColorTransform::get_color_correction() {
 	}
 	Ref<Image> out_lut;
 	out_lut.instantiate();
-	float texture_dim = 4096.0f;
-	float tile_dim = 256.0f;
+	int32_t texture_dim = 4096;
+	int32_t tile_dim = 256;
 	out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8);
 	int32_t root = Math::sqrt((float)tile_dim);
 	{
@@ -82,9 +82,9 @@ RID ColorTransform::get_color_correction() {
 		for (int y = 0; y < texture_dim; y++) {
 			for (int x = 0; x < texture_dim; x++) {
 				Color c;
-				c.r = (x / int(tile_dim)) / 256.0f;
-				c.g = (y / int(tile_dim)) / 256.0f;
-				c.b = (int(y / tile_dim * root) + int(int(x / tile_dim) % root)) / 256.0f;
+				c.r = x % tile_dim / float(tile_dim - 1);
+				c.g = y % tile_dim / float(tile_dim - 1);
+				c.b = ((float(y) / tile_dim * root) + (x % tile_dim / root)) / float(tile_dim - 1);
 				out_lut->set_pixel(x, y, c);
 			}
 		}
@@ -98,7 +98,7 @@ RID ColorTransform::get_color_correction() {
 			return RID();
 		}
 		cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
-		// Half allows hdr icc profiles
+		// Half allows hdr icc profiless
 		// Identity check
 		cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_8, intent, flags);
 		ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
