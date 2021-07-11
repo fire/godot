@@ -72,22 +72,20 @@ RID ColorTransform::get_color_correction() {
 	}
 	Ref<Image> out_lut;
 	out_lut.instantiate();
-	PackedColorArray data;
-	int32_t texture_dim = 4096;
-	int32_t tile_dim = 256;
+	float texture_dim = 4096.0f;
+	float tile_dim = 256.0f;
+	out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8);
 	int32_t root = Math::sqrt((float)tile_dim);
 	{
 		// hard-coded 256x256x256 size for now
-		data.resize(texture_dim * texture_dim);
 		// Fill image with identity data in source space
-		int32_t t = 0;
 		for (int y = 0; y < texture_dim; y++) {
 			for (int x = 0; x < texture_dim; x++) {
 				Color c;
-				c.r = x % tile_dim;
-				c.g = y % tile_dim;
-				c.b = int(y / tile_dim * root) + int((x / tile_dim) % root);
-				data.write[t++] = c;
+				c.r = (x / int(tile_dim)) / 256.0f;
+				c.g = (y / int(tile_dim)) / 256.0f;
+				c.b = (int(y / tile_dim * root) + int(int(x / tile_dim) % root)) / 256.0f;
+				out_lut->set_pixel(x, y, c);
 			}
 		}
 	}
@@ -102,13 +100,13 @@ RID ColorTransform::get_color_correction() {
 		cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
 		// Half allows hdr icc profiles
 		// Identity check
-		cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGBA_FLT, dst, TYPE_RGBA_FLT, intent, flags);
+		cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_8, intent, flags);
 		ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
-		PackedColorArray out_array;
-		out_array.resize(data.size());
-		cmsDoTransform(transform, data.ptr(), out_array.ptrw(), texture_dim * texture_dim); // cmsDoTransform wants number of pixels
+		PackedByteArray out_array;
+		out_array.resize(out_lut->get_mipmap_byte_size(0));
+		cmsDoTransform(transform, out_lut->get_data().to_byte_array().ptr(), out_array.ptrw(), texture_dim * texture_dim); // cmsDoTransform wants number of pixels
 		cmsDeleteTransform(transform); // we don't need it after this one use
-		out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGBAF, out_array.to_byte_array());
+		out_lut->create(texture_dim, texture_dim, false, Image::FORMAT_RGB8, out_array);
 	}
 	if (out_lut.is_null()) {
 		ERR_PRINT("Failed to create LUT texture.");
@@ -139,7 +137,7 @@ RID ColorTransform::get_color_correction() {
 		tex_3d = RS::get_singleton()->texture_3d_create(out_lut->get_format(), slice_w, slice_w, slice_w, false, slices);
 	}
 	// TODO iFire 2021-03-18 Remove test output
-	out_lut->save_exr("res://lut.exr", false);
+	out_lut->save_png("res://lut.png");
 	return tex_3d;
 }
 

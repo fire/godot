@@ -63,7 +63,7 @@ void ColorProfile::load_predef(Predef p_predef) {
 				{ 0.150002046, 0.059997204, 1.0 }
 			};
 			cmsToneCurve *gamma[3];
-			gamma[0] = gamma[1] = gamma[2] = cmsBuildGamma(nullptr, 1.0);
+			gamma[0] = gamma[1] = gamma[2] = cmsBuildGamma(nullptr, 1.0f);
 			cmsHPROFILE new_profile = cmsCreateRGBProfile(&d65_srgb_adobe_specs, &srgb_primaries_pre_quantized, gamma);
 			_set_profile(new_profile);
 			break;
