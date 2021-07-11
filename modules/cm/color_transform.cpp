@@ -83,7 +83,7 @@ RID ColorTransform::get_color_correction() {
 	cmsUInt32Number flags = use_bpc ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0;
 	// Half allows hdr icc profiless
 	// Identity check
-	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_HALF_FLT, dst, TYPE_RGB_HALF_FLT, intent, flags);
+	cmsHTRANSFORM transform = cmsCreateTransform(src, TYPE_RGB_8, dst, TYPE_RGB_HALF_FLT, intent, flags);
 
 	ERR_FAIL_COND_V_MSG(!transform, RID(), "Failed to create lcms transform.");
 	Vector<Ref<Image>> slices;
@@ -93,7 +93,7 @@ RID ColorTransform::get_color_correction() {
 	for (int z = 0; z < dim; z++) {
 		Ref<Image> lut;
 		lut.instantiate();
-		lut->create(dim, dim, false, Image::FORMAT_RGBH);
+		lut->create(dim, dim, false, Image::FORMAT_RGB8);
 		for (int y = 0; y < dim; y++) {
 			for (int x = 0; x < dim; x++) {
 				Color c;
@@ -104,7 +104,7 @@ RID ColorTransform::get_color_correction() {
 			}
 		}
 		PackedByteArray data;
-		data.resize(lut->get_data().size());
+		data.resize(Image::get_image_data_size(dim, dim, Image::FORMAT_RGBH));
 		cmsDoTransform(transform, lut->get_data().ptr(), data.ptrw(), dim * dim); // cmsDoTransform wants number of pixels
 		Ref<Image> out_lut;
 		out_lut.instantiate();
