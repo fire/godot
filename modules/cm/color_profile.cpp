@@ -55,18 +55,8 @@ ColorProfile::Handle ColorProfile::get_profile_handle() {
 
 void ColorProfile::load_predef(Predef p_predef) {
 	switch (p_predef) {
-		case PREDEF_LINEAR: {
-			cmsCIExyY d65_srgb_adobe_specs = { 0.3127, 0.3290, 1.0 };
-			// https://invent.kde.org/graphics/krita/-/blob/63fc02052cd7b84d6bbe60df238fd7cf2395f64d/krita/data/profiles/elles-icc-profiles/README
-			cmsCIExyYTRIPLE Rec709Primaries = {
-				{ 0.6400, 0.3300, 1.0 },
-				{ 0.3000, 0.6000, 1.0 },
-				{ 0.1500, 0.0600, 1.0 }
-			};
-			cmsToneCurve *gamma[3];
-			gamma[0] = gamma[1] = gamma[2] = cmsBuildGamma(nullptr, 1.0f);
-			cmsHPROFILE new_profile = cmsCreateRGBProfile(&d65_srgb_adobe_specs, &Rec709Primaries, gamma);
-			_set_profile(new_profile);
+		case PREDEF_SRGB: {
+			_set_profile(cmsCreate_sRGBProfile());
 			break;
 		}
 		default: {
